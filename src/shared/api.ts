@@ -11,6 +11,7 @@ import type {
   Profil,
   Regel,
   SymbolInfo,
+  Tagessumme,
   Ziel
 } from './typen'
 
@@ -49,6 +50,8 @@ export interface Api {
     tag: (datum: string) => Promise<Block[]>
     /** Alle Blöcke zwischen zwei Zeitpunkten (ISO). */
     zeitraum: (von: string, bis: string) => Promise<Block[]>
+    /** Sekunden je Tag, Tätigkeit und Bewertung zwischen zwei Kalendertagen ("JJJJ-MM-TT"). Lange Zeiträume aus der Datenbank. */
+    tagesSummen: (vonDatum: string, bisDatum: string) => Promise<Tagessumme[]>
     /** Wie viele automatische Blöcke noch nicht eingeordnet sind. */
     ungeklaert: () => Promise<number>
     /** Die nicht eingeordneten Blöcke, neueste zuerst. */

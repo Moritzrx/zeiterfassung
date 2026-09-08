@@ -13,13 +13,15 @@ function stundenFormat(wert: number): string {
   return wert.toFixed(1).replace('.', ',') + ' h'
 }
 
-/** Produktive Stunden je Tag über die letzten 30 Tage, darüber der gleitende 7-Tage-Schnitt als dünne Linie. */
+/** Produktive Stunden je Tag über den gewählten Zeitraum, darüber der gleitende 7-Tage-Schnitt als dünne Linie. */
 export function MonatsVerlauf({ werte }: { werte: Monatswert[] }): ReactElement {
+  // Höchstens etwa acht Beschriftungen auf der Achse, egal wie lang der Zeitraum ist.
+  const abstand = Math.max(0, Math.ceil(werte.length / 8) - 1)
   return (
     <div className="h-[200px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={werte} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 11 }} interval={4} />
+          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 11 }} interval={abstand} />
           <YAxis hide domain={[0, 'auto']} />
           <Tooltip content={<DiagrammTooltip format={stundenFormat} />} cursor={{ stroke: '#3A3A3E' }} />
           <Area

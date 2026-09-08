@@ -64,6 +64,17 @@ import {
   siYoutube,
   type SimpleIcon
 } from 'simple-icons'
+// Ältere Ausgabe der Bibliothek: enthält Marken, die aus der aktuellen entfernt wurden. Nur für den internen Gebrauch.
+import {
+  siAdobeaftereffects,
+  siAdobelightroom,
+  siAdobephotoshop,
+  siAdobepremierepro,
+  siCanva,
+  siLinkedin,
+  siOpenai,
+  siSlack
+} from 'simple-icons-13'
 import { taetigkeitSchluessel } from '@shared/regeln'
 import type { SymbolInfo } from '@shared/typen'
 
@@ -77,18 +88,18 @@ export const LUCIDE_SYMBOLE: Record<string, { Icon: LucideIcon; suche: string }>
   camera: { Icon: Camera, suche: 'Kamera Foto Dreh' },
   image: { Icon: Image, suche: 'Bild Foto Grafik' },
   scissors: { Icon: Scissors, suche: 'Schere Schnitt CapCut' },
-  palette: { Icon: Palette, suche: 'Palette Design Farbe Canva' },
+  palette: { Icon: Palette, suche: 'Palette Design Farbe' },
   pencil: { Icon: Pencil, suche: 'Stift Konzept Schreiben Text' },
   'file-text': { Icon: FileText, suche: 'Dokument Datei Angebot Rechnung' },
   'list-checks': { Icon: ListChecks, suche: 'Liste Häkchen Orga Aufgaben' },
   calendar: { Icon: Calendar, suche: 'Kalender Termin Planung' },
   clock: { Icon: Clock, suche: 'Uhr Zeit' },
   mail: { Icon: Mail, suche: 'Mail E-Mail Post' },
-  'message-circle': { Icon: MessageCircle, suche: 'Chat Nachricht WhatsApp' },
-  'message-square': { Icon: MessageSquare, suche: 'Chat Nachricht Slack Teams' },
+  'message-circle': { Icon: MessageCircle, suche: 'Chat Nachricht' },
+  'message-square': { Icon: MessageSquare, suche: 'Chat Nachricht Teams' },
   phone: { Icon: Phone, suche: 'Telefon Anruf Kundengespräch' },
   users: { Icon: Users, suche: 'Personen Kunde Termin Meeting' },
-  briefcase: { Icon: Briefcase, suche: 'Aktenkoffer Business LinkedIn Vertrieb' },
+  briefcase: { Icon: Briefcase, suche: 'Aktenkoffer Business Vertrieb' },
   car: { Icon: Car, suche: 'Auto Fahrt Reise' },
   coffee: { Icon: Coffee, suche: 'Kaffee Pause' },
   globe: { Icon: Globe, suche: 'Welt Website Internet' },
@@ -108,46 +119,66 @@ export const LUCIDE_SYMBOLE: Record<string, { Icon: LucideIcon; suche: string }>
   music: { Icon: Music, suche: 'Musik Note' },
   'shopping-cart': { Icon: ShoppingCart, suche: 'Einkauf Shop Bestellung' },
   wrench: { Icon: Wrench, suche: 'Werkzeug Technik Einrichtung' },
-  bot: { Icon: Bot, suche: 'Roboter KI ChatGPT OpenAI' }
+  bot: { Icon: Bot, suche: 'Roboter KI' }
 }
 
-/** Markenlogos aus simple-icons, Schlüssel = Kurzname der Marke. */
+/** Markenlogos, Schlüssel = Kurzname der Marke. */
 export const MARKEN: Record<string, SimpleIcon> = {
   instagram: siInstagram,
   tiktok: siTiktok,
   youtube: siYoutube,
   meta: siMeta,
   googleads: siGoogleads,
+  linkedin: siLinkedin,
+  adobepremierepro: siAdobepremierepro,
+  adobeaftereffects: siAdobeaftereffects,
+  adobephotoshop: siAdobephotoshop,
+  adobelightroom: siAdobelightroom,
   davinciresolve: siDavinciresolve,
+  canva: siCanva,
+  figma: siFigma,
   asana: siAsana,
   notion: siNotion,
+  slack: siSlack,
   whatsapp: siWhatsapp,
-  figma: siFigma,
   googlechrome: siGooglechrome,
   gmail: siGmail,
   googledrive: siGoogledrive,
   netflix: siNetflix,
   twitch: siTwitch,
+  openai: siOpenai,
   anthropic: siAnthropic,
   claude: siClaude,
   googlegemini: siGooglegemini,
   spotify: siSpotify
 }
 
-/** Marken, die simple-icons nicht (mehr) enthält: passendes Ersatzsymbol in Weiß. */
+/** Marken ohne Logo in der Bibliothek: passendes Ersatzsymbol in Weiß. */
 export const MARKEN_ERSATZ: Record<string, LucideIcon> = {
-  linkedin: Briefcase,
-  adobepremierepro: Clapperboard,
-  adobeaftereffects: Film,
-  adobephotoshop: Image,
-  capcut: Scissors,
-  canva: Palette,
-  slack: MessageSquare,
-  openai: Bot
+  capcut: Scissors
 }
 
-/** Marken, deren Markenfarbe auf dem fast schwarzen Grund unsichtbar wäre: in Weiß. */
-const HELL = new Set(['tiktok', 'notion', 'anthropic', 'davinciresolve'])
+/**
+ * Anzeigefarbe je Marke. Meist die Markenfarbe; bei zu dunklen Marken eine
+ * helle Variante, damit auf dem fast schwarzen Grund etwas zu sehen ist.
+ */
+export const MARKEN_FARBEN: Record<string, string> = {
+  tiktok: '#69C9D0',
+  notion: '#F2F2F3',
+  anthropic: '#D97757',
+  davinciresolve: '#5B8DEF',
+  slack: '#E01E5A',
+  openai: '#10A37F'
+}
+
+/** Farbpalette für Tätigkeiten ohne Marke, gedacht für Diagramme. */
+export const PALETTE = ['#FE5303', '#2DD4BF', '#A78BFA', '#FBBF24', '#FB7185', '#38BDF8', '#A3E635', '#E879F9', '#F97316', '#34D399']
+
+export function markenFarbe(marke: string): string | null {
+  const si = MARKEN[marke]
+  if (!si) return null
+  return MARKEN_FARBEN[marke] ?? `#${si.hex}`
+}
 
 const STANDARD: SymbolInfo = { typ: 'lucide', name: 'tag' }
 const Kontext = createContext<Record<string, SymbolInfo>>({})
@@ -166,10 +197,28 @@ export function SymbolProvider({ children }: { children: ReactNode }): ReactElem
   return <Kontext.Provider value={zuordnung}>{children}</Kontext.Provider>
 }
 
-export function useSymbol(name: string | null | undefined): SymbolInfo {
-  const zuordnung = useContext(Kontext)
+/** Die ganze Zuordnung, für Diagramme mit vielen Einträgen. */
+export function useSymbolZuordnung(): Record<string, SymbolInfo> {
+  return useContext(Kontext)
+}
+
+export function symbolFuer(zuordnung: Record<string, SymbolInfo>, name: string | null | undefined): SymbolInfo {
   if (!name) return STANDARD
   return zuordnung[taetigkeitSchluessel(name)] ?? STANDARD
+}
+
+export function useSymbol(name: string | null | undefined): SymbolInfo {
+  return symbolFuer(useContext(Kontext), name)
+}
+
+/** Diagrammfarbe einer Tätigkeit: Markenfarbe, sonst Palette nach Position. */
+export function taetigkeitFarbe(zuordnung: Record<string, SymbolInfo>, name: string, position: number): string {
+  const symbol = symbolFuer(zuordnung, name)
+  if (symbol.typ === 'marke') {
+    const farbe = markenFarbe(symbol.name)
+    if (farbe) return farbe
+  }
+  return PALETTE[position % PALETTE.length]
 }
 
 /** Zeichnet ein Symbol: Markenlogo in Markenfarbe, sonst lucide in Weiß, unbekannt in Grau. */
@@ -177,10 +226,9 @@ export function SymbolBild({ symbol, groesse = 18 }: { symbol: SymbolInfo; groes
   if (symbol.typ === 'marke') {
     const marke = MARKEN[symbol.name]
     if (marke) {
-      const farbe = HELL.has(symbol.name) ? '#F2F2F3' : `#${marke.hex}`
       return (
         <svg width={groesse} height={groesse} viewBox="0 0 24 24" role="img" aria-label={marke.title} className="shrink-0">
-          <path d={marke.path} fill={farbe} />
+          <path d={marke.path} fill={markenFarbe(symbol.name) ?? '#F2F2F3'} />
         </svg>
       )
     }

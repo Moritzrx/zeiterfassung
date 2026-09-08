@@ -45,6 +45,14 @@ export interface NeueRegel {
   fuerAlle: boolean
 }
 
+/** Sekunden je Tag, Tätigkeit und Bewertung. Gleiche Form wie die Datenbankfunktion tages_summen. */
+export interface Tagessumme {
+  datum: string
+  taetigkeit: string | null
+  bewertung: Bewertung
+  sekunden: number
+}
+
 /** Die persönlichen Einstellungen aus der Tabelle profile. */
 export interface Profil {
   name: string

@@ -22,7 +22,8 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "recharts": "3.10.1",
-    "simple-icons": "^16.30.0"
+    "simple-icons": "^16.30.0",
+    "simple-icons-13": "npm:simple-icons@^13.21.0"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "2.0.0",

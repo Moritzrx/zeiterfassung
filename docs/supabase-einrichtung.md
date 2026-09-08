@@ -49,6 +49,13 @@ Damit sich niemand Fremdes ein Konto anlegen kann:
 - Einfügen: `supabase/03_testdaten_einfuegen.sql` genauso ausführen. Unten erscheint eine Übersicht mit Stunden je Person und Woche.
 - Wieder entfernen: `supabase/04_testdaten_entfernen.sql` ausführen. Es werden nur die Testzeilen gelöscht, echte Daten bleiben.
 
+## 6b. Tagessummen für lange Auswertungen (Skript 5)
+
+Damit die Auswertung auch 6 oder 12 Monate zeigen kann, braucht die Datenbank eine kleine Zusatzfunktion.
+
+- `supabase/05_auswertung.sql` genauso ausführen wie die anderen Skripte: **SQL Editor** → **New query** → einfügen → **Run**.
+- Solange das Skript nicht gelaufen ist, zeigt die App für Zeiträume über zwölf Wochen einen Hinweis statt Zahlen. Alles bis zwölf Wochen funktioniert auch ohne.
+
 ## 7. Zugangsdaten in die App bringen
 
 1. Links unten **"Project Settings"** (Zahnrad) → **"API Keys"**.

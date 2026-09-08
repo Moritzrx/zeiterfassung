@@ -10,10 +10,12 @@ import type {
   Profil as ProfilDaten,
   Regel,
   SymbolInfo,
+  Tagessumme,
   Ziel
 } from '@shared/typen'
 import { regelnAnwenden } from '@shared/regeln'
-import { datumZuTagesanfang, naechsterTagesanfang, tagesanfang, wochenanfang } from '@shared/zeit'
+import { tagessummenAusBloecken } from '@shared/summen'
+import { berlinDatum, datumZuTagesanfang, naechsterTagesanfang, tagesanfang, wochenanfang } from '@shared/zeit'
 import { authIpcRegistrieren, authStatus } from './auth'
 import { blockAendern, eintragAnlegen } from './bearbeiten'
 import { alleNeuBewerten } from './bewertung'
@@ -22,6 +24,7 @@ import { Profil } from './profil'
 import { istSystemUeberlagerung } from './programme'
 import { Regelwerk } from './regelwerk'
 import { Speicher } from './speicher'
+import { supabase, supabaseKonfiguriert } from './supabase'
 import { Sync } from './sync'
 import { Taetigkeiten } from './taetigkeiten'
 import { TrayLeiste } from './tray'
@@ -260,6 +263,23 @@ function ipcRegistrieren(): void {
   ipcMain.handle('bloecke:zeitraum', (_ereignis, von: string, bis: string): Block[] => {
     if (!sitzung) return []
     return sitzung.speicher.imZeitraum(new Date(von), new Date(bis))
+  })
+  ipcMain.handle('bloecke:tagesSummen', async (_ereignis, vonDatum: string, bisDatum: string): Promise<Tagessumme[]> => {
+    if (!sitzung) return []
+    // Die letzten 90 Tage liegen lokal vor (13 Wochen); alles davor kommt als fertige Summen aus der Datenbank.
+    const lokalAb = berlinDatum(new Date(Date.now() - 90 * 86_400_000))
+    if (vonDatum >= lokalAb) return tagessummenAusBloecken(sitzung.speicher.alle(), vonDatum, bisDatum)
+    if (!supabaseKonfiguriert()) throw new Error('Keine Datenbank konfiguriert.')
+    const { data, error } = await supabase().rpc('tages_summen', { von: vonDatum, bis: bisDatum })
+    if (error) {
+      if (/tages_summen/.test(error.message)) {
+        throw new Error('Für Zeiträume über zwölf Wochen muss in Supabase einmal das Skript 5 (05_auswertung.sql) ausgeführt werden.')
+      }
+      throw new Error('Datenbank nicht erreichbar: ' + error.message)
+    }
+    return ((data ?? []) as Array<{ datum: string; taetigkeit: string | null; bewertung: Tagessumme['bewertung']; sekunden: number | string }>).map(
+      (z) => ({ datum: z.datum, taetigkeit: z.taetigkeit, bewertung: z.bewertung, sekunden: Number(z.sekunden) })
+    )
   })
   ipcMain.handle('bloecke:manuellAnlegen', (_ereignis, eintrag: NeuerEintrag): Block => {
     if (!sitzung) throw new Error('Nicht angemeldet.')

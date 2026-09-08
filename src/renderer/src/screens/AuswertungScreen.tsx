@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
-import {
-  gleitenderSchnitt,
-  hochrechnungBerechnen,
-  produktivJeTag,
-  verteilung,
-  wochenLevel
-} from '@shared/auswertung'
+import { gleitenderSchnitt, hochrechnungBerechnen } from '@shared/auswertung'
 import { STANDARD_GESAMTZIEL, zielLevel } from '@shared/level'
-import type { Block, Profil, Ziel } from '@shared/typen'
-import { berlinDatum, datumVerschieben, datumZuTagesanfang } from '@shared/zeit'
+import { produktivJeTagAusSummen, verteilungAusSummen, wochenLevelAusSummen } from '@shared/summen'
+import type { Block, Profil, Tagessumme, Ziel } from '@shared/typen'
+import { berlinDatum, datumVerschieben, wochenanfang } from '@shared/zeit'
 import { HochrechnungKarte } from '../components/HochrechnungKarte'
 import { Karte } from '../components/Karte'
 import { MonatsVerlauf, type Monatswert } from '../components/MonatsVerlauf'
@@ -16,23 +11,51 @@ import { TrendBalken, type Trendwert } from '../components/TrendBalken'
 import { VerteilungsRing } from '../components/VerteilungsRing'
 import { datumText, kurzDatum, stundenText } from '../format'
 
-const WOCHEN_ZURUECK = 13
-const MONAT_TAGE = 30
-const SCHNITT_FENSTER = 7
+const ZEITRAEUME = [
+  { tage: 7, label: '7 Tage' },
+  { tage: 30, label: '30 Tage' },
+  { tage: 84, label: '12 Wochen' },
+  { tage: 182, label: '6 Monate' },
+  { tage: 365, label: '12 Monate' }
+] as const
 
-/** Screen 3: Auswertung. Monatsverlauf, Trend, Verteilung und die Hochrechnungen aus dem Tagesschnitt. */
+const SCHNITT_FENSTER = 7
+const LOKALE_WOCHEN = 13
+const SPEICHER_SCHLUESSEL = 'auswertung.zeitraum'
+
+function gespeicherterZeitraum(): number {
+  try {
+    const wert = Number(localStorage.getItem(SPEICHER_SCHLUESSEL))
+    return ZEITRAEUME.some((z) => z.tage === wert) ? wert : 30
+  } catch {
+    return 30
+  }
+}
+
+/** Screen 3: Auswertung. Zeitraum wählbar; Verlauf, Trend und Verteilung folgen ihm, die Hochrechnung bleibt bei 28 Tagen. */
 export function AuswertungScreen(): ReactElement {
+  const [tage, setTage] = useState<number>(gespeicherterZeitraum)
+  const [summen, setSummen] = useState<Tagessumme[]>([])
+  const [summenFehler, setSummenFehler] = useState<string | null>(null)
   const [bloecke, setBloecke] = useState<Block[]>([])
   const [ziele, setZiele] = useState<Ziel[]>([])
   const [profil, setProfil] = useState<Profil | null>(null)
   const [jetzt, setJetzt] = useState(() => Date.now())
 
+  const heute = berlinDatum(new Date(jetzt))
+  // Der Trend zeigt mindestens 12 Wochen, bei langen Zeiträumen entsprechend mehr.
+  const wochen = Math.min(52, Math.max(12, Math.round(tage / 7)))
+  // Verlauf braucht 6 Tage Vorlauf für den Schnitt, der Trend ganze Wochen vor der laufenden.
+  const verlaufAb = datumVerschieben(heute, -(tage + SCHNITT_FENSTER - 2))
+  const trendAb = datumVerschieben(berlinDatum(wochenanfang(new Date(jetzt))), -wochen * 7)
+  const vonDatum = verlaufAb < trendAb ? verlaufAb : trendAb
+
   const laden = useCallback(async () => {
     if (!window.api) return
     const bis = new Date()
-    const von = new Date(bis.getTime() - WOCHEN_ZURUECK * 7 * 86_400_000)
+    const lokalVon = new Date(bis.getTime() - LOKALE_WOCHEN * 7 * 86_400_000)
     const [liste, eigeneZiele, eigenesProfil] = await Promise.all([
-      window.api.bloecke.zeitraum(von.toISOString(), bis.toISOString()),
+      window.api.bloecke.zeitraum(lokalVon.toISOString(), bis.toISOString()),
       window.api.ziele.eigene(),
       window.api.profil.eigenes()
     ])
@@ -40,7 +63,14 @@ export function AuswertungScreen(): ReactElement {
     setZiele(eigeneZiele)
     setProfil(eigenesProfil)
     setJetzt(Date.now())
-  }, [])
+    try {
+      setSummen(await window.api.bloecke.tagesSummen(vonDatum, berlinDatum(bis)))
+      setSummenFehler(null)
+    } catch (e) {
+      setSummen([])
+      setSummenFehler(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : String(e))
+    }
+  }, [vonDatum])
 
   useEffect(() => {
     void laden()
@@ -53,65 +83,93 @@ export function AuswertungScreen(): ReactElement {
     }
   }, [laden])
 
-  const heute = berlinDatum(new Date(jetzt))
+  function zeitraumWaehlen(neu: number): void {
+    setTage(neu)
+    try {
+      localStorage.setItem(SPEICHER_SCHLUESSEL, String(neu))
+    } catch {
+      // Merken ist optional
+    }
+  }
+
   const gesamtziel = ziele.find((z) => z.taetigkeit === null)?.stundenProWoche ?? STANDARD_GESAMTZIEL
   const ziel = zielLevel(gesamtziel)
   const urlaubswochen = profil?.urlaubswochen ?? 6
+  const verlaufVon = datumVerschieben(heute, -(tage - 1))
 
-  const monat = useMemo<Monatswert[]>(() => {
-    const tage = produktivJeTag(bloecke, heute, MONAT_TAGE + SCHNITT_FENSTER - 1)
+  const verlauf = useMemo<Monatswert[]>(() => {
+    const mitVorlauf = produktivJeTagAusSummen(summen, datumVerschieben(verlaufVon, -(SCHNITT_FENSTER - 1)), heute)
     const schnitt = gleitenderSchnitt(
-      tage.map((t) => t.sekunden),
+      mitVorlauf.map((t) => t.sekunden),
       SCHNITT_FENSTER
     )
-    return tage.slice(SCHNITT_FENSTER - 1).map((t, i) => ({
+    return mitVorlauf.slice(SCHNITT_FENSTER - 1).map((t, i) => ({
       label: kurzDatum(t.datum).replace(/\.\s.*$/, '.'),
       titel: datumText(t.datum),
       produktiv: t.sekunden / 3600,
       schnitt: schnitt[i + SCHNITT_FENSTER - 1] / 3600
     }))
-  }, [bloecke, heute])
+  }, [summen, verlaufVon, heute])
 
   const trend = useMemo<Trendwert[]>(
     () =>
-      wochenLevel(bloecke, new Date(jetzt), 12).map((w) => ({
+      wochenLevelAusSummen(summen, new Date(jetzt), wochen).map((w) => ({
         label: `KW ${w.kw}`,
         titel: `KW ${w.kw} · ${kurzDatum(w.start)} bis ${kurzDatum(datumVerschieben(w.start, 6))}`,
         text: `${stundenText(w.sekunden)} h`,
         level: w.level,
         leer: w.leer
       })),
-    [bloecke, jetzt]
+    [summen, jetzt, wochen]
   )
 
   const anteile = useMemo(
-    () => verteilung(bloecke, datumZuTagesanfang(datumVerschieben(heute, -(MONAT_TAGE - 1))), new Date(jetzt)),
-    [bloecke, heute, jetzt]
+    () => verteilungAusSummen(summen.filter((s) => s.datum >= verlaufVon && s.datum <= heute)),
+    [summen, verlaufVon, heute]
   )
 
   const hochrechnung = useMemo(() => hochrechnungBerechnen(bloecke, heute, urlaubswochen), [bloecke, heute, urlaubswochen])
+  const zeitraumLabel = ZEITRAEUME.find((z) => z.tage === tage)?.label ?? `${tage} Tage`
 
   return (
     <div className="flex flex-col gap-4 pt-6">
-      <h1 className="text-2xl font-light">Auswertung</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-light">Auswertung</h1>
+        <div className="flex gap-1 rounded-chip bg-panel p-1">
+          {ZEITRAEUME.map((z) => (
+            <button
+              key={z.tage}
+              type="button"
+              onClick={() => zeitraumWaehlen(z.tage)}
+              className={`rounded-chip px-3 py-1.5 text-sm transition-colors ${
+                tage === z.tage ? 'bg-panel-2 text-ink' : 'text-mute hover:text-ink'
+              }`}
+            >
+              {z.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {summenFehler && <p className="rounded-card bg-panel p-4 text-sm text-mute">{summenFehler}</p>}
 
       <Karte>
-        <p className="text-xs tracking-wide text-mute uppercase">Produktive Stunden je Tag, letzte 30 Tage</p>
+        <p className="text-xs tracking-wide text-mute uppercase">Produktive Stunden je Tag, letzte {zeitraumLabel}</p>
         <div className="mt-3">
-          <MonatsVerlauf werte={monat} />
+          <MonatsVerlauf werte={verlauf} />
         </div>
         <p className="mt-2 text-xs text-dim">Grüne Fläche: je Tag. Graue Linie: Schnitt der letzten 7 Kalendertage, Wochenende eingerechnet.</p>
       </Karte>
 
       <Karte>
-        <p className="text-xs tracking-wide text-mute uppercase">Level je Woche, letzte 12 Wochen</p>
+        <p className="text-xs tracking-wide text-mute uppercase">Level je Woche, letzte {wochen} Wochen</p>
         <div className="mt-3">
           <TrendBalken werte={trend} zielLevel={ziel} />
         </div>
       </Karte>
 
       <Karte>
-        <p className="text-xs tracking-wide text-mute uppercase">Verteilung der Tätigkeiten, letzte 30 Tage</p>
+        <p className="text-xs tracking-wide text-mute uppercase">Verteilung der Tätigkeiten, letzte {zeitraumLabel}</p>
         <VerteilungsRing werte={anteile} />
       </Karte>
 
@@ -134,8 +192,9 @@ export function AuswertungScreen(): ReactElement {
           />
         ))}
       <p className="text-xs text-dim">
-        Alle Hochrechnungen kommen aus derselben Basiszahl: produktive Stunden je erfasstem Tag, mal 5 Tage die Woche, mal
-        4,333 Wochen im Monat, mal {52 - urlaubswochen} Arbeitswochen im Jahr bei {urlaubswochen} Urlaubswochen.
+        Die Hochrechnung bleibt unabhängig vom gewählten Zeitraum immer bei den letzten 28 Tagen, damit alle Zahlen
+        aus derselben Basis kommen: produktive Stunden je erfasstem Tag, mal 5 Tage die Woche, mal 4,333 Wochen im
+        Monat, mal {52 - urlaubswochen} Arbeitswochen im Jahr bei {urlaubswochen} Urlaubswochen.
       </p>
     </div>
   )
