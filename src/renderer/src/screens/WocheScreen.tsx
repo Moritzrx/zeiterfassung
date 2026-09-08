@@ -20,6 +20,7 @@ import { hinweisZeigen } from '../components/Hinweis'
 import { Karte } from '../components/Karte'
 import { RangAbzeichen } from '../components/RangAbzeichen'
 import { RangRing } from '../components/RangRing'
+import { RangUebersicht } from '../components/RangUebersicht'
 import { TaetigkeitenListe, type TaetigkeitEintrag } from '../components/TaetigkeitenListe'
 import { WochenBalken, type TagesWerte } from '../components/WochenBalken'
 import { useErfassung } from '../erfassung'
@@ -45,6 +46,7 @@ export function WocheScreen(): ReactElement {
   const [bloecke, setBloecke] = useState<Block[]>([])
   const [ziele, setZiele] = useState<Ziel[]>([])
   const [durchgehen, setDurchgehen] = useState<{ liste: Block[]; index: number } | null>(null)
+  const [uebersichtOffen, setUebersichtOffen] = useState(false)
 
   useEffect(() => {
     const timer = setInterval(() => setJetzt(Date.now()), 30_000)
@@ -225,7 +227,16 @@ export function WocheScreen(): ReactElement {
         </RangRing>
         <p className={`mt-4 text-center text-sm ${geschafft ? 'text-produktiv' : 'text-mute'}`}>{rangText}</p>
         {restlaufzeit && <p className="mt-1 text-center text-sm text-dim">{restlaufzeit}</p>}
+        <button
+          type="button"
+          onClick={() => setUebersichtOffen(true)}
+          className="mt-3 rounded-chip px-3 py-1.5 text-xs text-mute transition-colors hover:bg-panel hover:text-ink"
+        >
+          Alle {MAX_RANG} Ränge ansehen
+        </button>
       </section>
+
+      {uebersichtOffen && <RangUebersicht aktuellerRang={aktuellerRang} onSchliessen={() => setUebersichtOffen(false)} />}
 
       <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">Montag bis Sonntag</p>

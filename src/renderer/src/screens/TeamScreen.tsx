@@ -4,6 +4,7 @@ import type { TeamMitglied, TeamWoche, Ziel } from '@shared/typen'
 import { berlinDatum, datumVerschieben, datumZuTagesanfang, kalenderwoche, wochenanfang } from '@shared/zeit'
 import { Karte } from '../components/Karte'
 import { RangAbzeichen } from '../components/RangAbzeichen'
+import { RangUebersicht } from '../components/RangUebersicht'
 import { TeamBalken, type Teamwert } from '../components/TeamBalken'
 import { TeamVerlauf, type Verlaufsperson, type Verlaufswoche } from '../components/TeamVerlauf'
 import { useErfassung } from '../erfassung'
@@ -48,6 +49,7 @@ export function TeamScreen(): ReactElement {
   const [wochenAnzahl, setWochenAnzahl] = useState<number>(gespeicherterZeitraum)
   const [teamWochen, setTeamWochen] = useState<TeamWoche[]>([])
   const [verlaufFehler, setVerlaufFehler] = useState<string | null>(null)
+  const [uebersichtOffen, setUebersichtOffen] = useState(false)
 
   const laden = useCallback(async () => {
     if (!window.api) return
@@ -154,12 +156,25 @@ export function TeamScreen(): ReactElement {
 
   return (
     <div className="flex flex-col gap-4 pt-6">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-4">
         <h1 className="text-2xl font-light">Team</h1>
-        {stand && <p className="text-xs text-dim">Stand {uhrzeit(stand)}, Abgleich alle 60 Sekunden</p>}
+        <div className="flex items-baseline gap-4">
+          <button
+            type="button"
+            onClick={() => setUebersichtOffen(true)}
+            className="rounded-chip px-3 py-1.5 text-xs text-mute transition-colors hover:bg-panel hover:text-ink"
+          >
+            Alle Ränge
+          </button>
+          {stand && <p className="text-xs text-dim">Stand {uhrzeit(stand)}, Abgleich alle 60 Sekunden</p>}
+        </div>
       </div>
 
       {fehler && <p className="rounded-card bg-panel p-4 text-sm text-mute">{fehler}</p>}
+
+      {uebersichtOffen && (
+        <RangUebersicht aktuellerRang={rang(status.wocheProduktivSekunden)} onSchliessen={() => setUebersichtOffen(false)} />
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {zeilen.map((z) => {

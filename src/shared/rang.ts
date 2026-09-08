@@ -11,27 +11,36 @@ export const RANG_ZIEL = 10
 export const MAX_RANG = 15
 export const STUNDEN_PRO_BONUSRANG = 2
 
-/** Die Namen der Ränge, Index = Rang. Rang 0 heißt noch nichts. */
+/** Die Namen der Ränge, Index = Rang. Rang 0 ist noch kein Rang. Bewusst englisch und episch. */
 export const RANG_NAMEN: readonly string[] = [
-  'Aufwärmen',
-  'Rekrut',
-  'Novize',
-  'Lehrling',
-  'Geselle',
-  'Könner',
-  'Profi',
-  'Veteran',
-  'Elite',
-  'Meister',
+  'Unranked',
+  'Recruit',
+  'Initiate',
+  'Vanguard',
+  'Warden',
+  'Sentinel',
+  'Paladin',
+  'Conqueror',
+  'Warlord',
+  'Overlord',
   'Champion',
   'Titan',
-  'Legende',
-  'Mythos',
-  'Ikone',
-  'Unsterblich'
+  'Legend',
+  'Mythic',
+  'Immortal',
+  'Eternal'
 ]
 
 export type RangStufe = 'keine' | 'bronze' | 'silber' | 'gold' | 'champion' | 'diamant'
+
+export const STUFEN_NAMEN: Record<RangStufe, string> = {
+  keine: 'Noch kein Rang',
+  bronze: 'Bronze',
+  silber: 'Silber',
+  gold: 'Gold',
+  champion: 'Champion',
+  diamant: 'Diamant'
+}
 
 export const STUFEN_FARBEN: Record<RangStufe, string> = {
   keine: '#5A5A60',
