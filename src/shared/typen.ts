@@ -53,6 +53,15 @@ export interface Tagessumme {
   sekunden: number
 }
 
+/** Der Wochenstand einer Person für den Team-Screen. Nur Summen, keine einzelnen Blöcke. */
+export interface TeamMitglied {
+  userId: string
+  name: string
+  produktiveSekunden: number
+  zuletztSync: string | null
+  istIch: boolean
+}
+
 /** Die persönlichen Einstellungen aus der Tabelle profile. */
 export interface Profil {
   name: string

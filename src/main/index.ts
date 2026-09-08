@@ -11,6 +11,7 @@ import type {
   Regel,
   SymbolInfo,
   Tagessumme,
+  TeamMitglied,
   Ziel
 } from '@shared/typen'
 import { regelnAnwenden } from '@shared/regeln'
@@ -338,6 +339,34 @@ function ipcRegistrieren(): void {
 
   ipcMain.handle('ziele:eigene', (): Ziel[] => sitzung?.ziele.eigene() ?? [])
   ipcMain.handle('ziele:alle', (): Ziel[] => sitzung?.ziele.alle() ?? [])
+
+  ipcMain.handle('team:stand', async (): Promise<TeamMitglied[]> => {
+    if (!sitzung) return []
+    if (!supabaseKonfiguriert()) throw new Error('Keine Datenbank konfiguriert.')
+    const jetzt = new Date()
+    const von = wochenanfang(jetzt)
+    const { data, error } = await supabase().rpc('team_stand', { von: von.toISOString(), bis: jetzt.toISOString() })
+    if (error) throw new Error('Datenbank nicht erreichbar: ' + error.message)
+    const zeilen = (data ?? []) as Array<{
+      user_id: string
+      name: string
+      produktive_sekunden: number | string
+      zuletzt_sync: string | null
+    }>
+    const eigeneId = sitzung.userId
+    const eigeneSekunden = sitzung.speicher.produktiveSekunden(von, jetzt)
+    return zeilen.map((z) => {
+      const istIch = z.user_id === eigeneId
+      return {
+        userId: z.user_id,
+        name: z.name,
+        // Die eigenen Zahlen kommen live vom Rechner, die der anderen aus der Datenbank.
+        produktiveSekunden: istIch ? eigeneSekunden : Number(z.produktive_sekunden),
+        zuletztSync: istIch ? jetzt.toISOString() : z.zuletzt_sync ? new Date(z.zuletzt_sync).toISOString() : null,
+        istIch
+      }
+    })
+  })
 
   ipcMain.handle('profil:eigenes', (): ProfilDaten | null => sitzung?.profil.daten ?? null)
   ipcMain.handle('profil:aendern', async (_ereignis, aenderung: Partial<ProfilDaten>): Promise<ProfilDaten> => {

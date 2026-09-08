@@ -12,6 +12,7 @@ import type {
   Regel,
   SymbolInfo,
   Tagessumme,
+  TeamMitglied,
   Ziel
 } from './typen'
 
@@ -85,6 +86,10 @@ export interface Api {
     eigene: () => Promise<Ziel[]>
     /** Die Wochenziele aller drei (für den Team-Screen). */
     alle: () => Promise<Ziel[]>
+  }
+  team: {
+    /** Produktive Wochenstunden aller aktiven Personen, eigene live. */
+    stand: () => Promise<TeamMitglied[]>
   }
   profil: {
     /** Die eigenen Einstellungen. */

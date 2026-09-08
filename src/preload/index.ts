@@ -50,6 +50,9 @@ const api: Api = {
     eigene: () => ipcRenderer.invoke('ziele:eigene'),
     alle: () => ipcRenderer.invoke('ziele:alle')
   },
+  team: {
+    stand: () => ipcRenderer.invoke('team:stand')
+  },
   profil: {
     eigenes: () => ipcRenderer.invoke('profil:eigenes'),
     aendern: (aenderung) => ipcRenderer.invoke('profil:aendern', aenderung)
