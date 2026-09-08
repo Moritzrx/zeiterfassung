@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { authIpcRegistrieren } from './auth'
 
 const APP_ID = 'com.wessamedia.zeit'
 const HINTERGRUND = '#0B0B0C'
@@ -45,6 +46,7 @@ void app.whenReady().then(() => {
   // F12 öffnet die Entwicklerwerkzeuge, aber nur in der Entwicklungsversion.
   app.on('browser-window-created', (_, fenster) => optimizer.watchWindowShortcuts(fenster))
 
+  authIpcRegistrieren()
   fensterAnlegen()
 
   app.on('activate', () => {

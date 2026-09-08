@@ -1,0 +1,73 @@
+# Supabase einrichten – Schritt für Schritt
+
+Einmalig nötig, dauert etwa 20 Minuten. Alles läuft im Browser auf supabase.com.
+
+## 1. Konto und Projekt anlegen
+
+1. Auf https://supabase.com gehen, oben rechts **"Start your project"** oder **"Sign in"**.
+2. Konto mit **info@wessamedia.com** anlegen (oder "Continue with GitHub", falls du das GitHub-Konto schon hast).
+3. Nach dem Anmelden: **"New project"** klicken.
+4. Ausfüllen:
+   - **Organization:** die vorgeschlagene lassen.
+   - **Project name:** `zeiterfassung`
+   - **Database password:** auf **"Generate a password"** klicken und das Passwort **sofort in eurem Passwort-Speicher ablegen**. Es wird nur für Notfälle gebraucht, lässt sich aber nicht mehr anzeigen.
+   - **Region:** **"Central EU (Frankfurt)"** wählen. Das lässt sich später nicht ändern.
+5. **"Create new project"** klicken und ein bis zwei Minuten warten, bis oben links das Projekt grün ist.
+
+## 2. Tabellen anlegen (Skript 1)
+
+1. Links in der Leiste das Symbol **"SQL Editor"** klicken.
+2. Auf **"New query"** (oder das Plus).
+3. Die Datei `supabase/01_tabellen.sql` aus dem Projektordner im Editor (Notepad) öffnen, **alles markieren, kopieren** und in das große Textfeld bei Supabase einfügen.
+4. Unten rechts **"Run"** klicken. Es sollte "Success. No rows returned" erscheinen.
+
+## 3. Die drei Konten anlegen
+
+1. Links **"Authentication"** klicken, dann **"Users"**.
+2. **"Add user"** → **"Create new user"**.
+3. E-Mail eintragen, zum Beispiel `moritz@wessamedia.com`, ein Passwort vergeben.
+4. Das Häkchen **"Auto Confirm User"** setzen, sonst wartet Supabase auf eine Bestätigungs-Mail.
+5. **"Create user"**. Dasselbe für `filipo@wessamedia.com` und `leon@wessamedia.com`.
+6. Die Passwörter gibst du den beiden persönlich. Ein Passwort ändern: In der Nutzerliste auf den Nutzer klicken, dann "Reset password" oder "Send password recovery" nutzen. Einfacher: Nutzer löschen und mit neuem Passwort neu anlegen, solange noch keine Daten da sind.
+
+## 4. Selbstregistrierung ausschalten
+
+Damit sich niemand Fremdes ein Konto anlegen kann:
+
+1. **"Authentication"** → **"Sign In / Providers"** (bei älteren Ansichten "Providers").
+2. **"Email"** aufklappen.
+3. Den Schalter **"Allow new users to sign up"** ausschalten. **"Save"**.
+
+## 5. Namen, Ziele und Regeln setzen (Skript 2)
+
+1. Falls ihr andere E-Mail-Adressen benutzt als `moritz@`, `filipo@`, `leon@wessamedia.com`: Die Datei `supabase/02_startwerte.sql` öffnen und die drei Adressen ganz oben anpassen.
+2. Wie bei Skript 1: **SQL Editor** → **New query** → Inhalt einfügen → **Run**.
+3. Unten erscheint eine Tabelle mit den Zielen je Person. Das ist die Kontrolle, dass alles geklappt hat.
+
+## 6. Testdaten (optional, empfohlen zum Anschauen der Diagramme)
+
+- Einfügen: `supabase/03_testdaten_einfuegen.sql` genauso ausführen. Unten erscheint eine Übersicht mit Stunden je Person und Woche.
+- Wieder entfernen: `supabase/04_testdaten_entfernen.sql` ausführen. Es werden nur die Testzeilen gelöscht, echte Daten bleiben.
+
+## 7. Zugangsdaten in die App bringen
+
+1. Links unten **"Project Settings"** (Zahnrad) → **"API Keys"**.
+2. Dort stehen zwei Dinge, die du brauchst:
+   - **Project URL**, sieht aus wie `https://abcdefgh.supabase.co`
+   - **Publishable key**, beginnt mit `sb_publishable_`
+   Den **Secret key** brauchen wir nie. Nirgends eintragen, niemandem geben.
+3. Im Projektordner `C:\Users\mouga\Projekte\zeiterfassung` die Datei `.env.example` kopieren und die Kopie in `.env` umbenennen (ohne `.example`). Hinweis: Windows blendet Dateiendungen oft aus; im Explorer unter "Ansicht" → "Anzeigen" → "Dateinamenerweiterungen" einschalten.
+4. Die `.env` mit dem Editor (Notepad) öffnen und die beiden Werte hinter dem Gleichheitszeichen eintragen:
+   ```
+   VITE_SUPABASE_URL=https://abcdefgh.supabase.co
+   VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+   ```
+5. Speichern. Die `.env` bleibt nur auf deinem Rechner, sie wandert nie ins Git.
+6. App neu starten (Doppelklick auf `scripts\dev-windows.cmd`). Jetzt erscheint die Anmeldung ohne den Hinweis "Zugangsdaten fehlen", und du kannst dich mit deinem Konto anmelden.
+
+## Wenn etwas hakt
+
+- **"Kein Konto mit der Adresse ... gefunden"** beim Skript 2 oder 3: Die Adressen oben im Skript stimmen nicht mit den Konten überein, oder die Konten sind noch nicht angelegt.
+- **"E-Mail oder Passwort stimmt nicht"** in der App: Passwort in Supabase neu setzen (Abschnitt 3).
+- **"Das Konto ist noch nicht bestätigt"**: In Authentication → Users den Nutzer anklicken und bestätigen, oder ihn mit Häkchen "Auto Confirm User" neu anlegen.
+- **"Keine Verbindung zur Datenbank"**: Internet prüfen. Nach längerer Pause kann Supabase das Gratis-Projekt schlafen legen; dann im Dashboard auf **"Restore project"** klicken.

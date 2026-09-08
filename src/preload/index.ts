@@ -1,8 +1,16 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { Api } from '@shared/api'
 
-// Hier kommen ab Schritt 3 die Brücken zwischen Fenster und Hintergrundprozess hinein.
-const api = {}
+// Die Brücke zwischen Fenster und Hintergrundprozess. Nur diese Funktionen
+// kann das Fenster aufrufen, alles andere bleibt im Hintergrund.
+const api: Api = {
+  auth: {
+    status: () => ipcRenderer.invoke('auth:status'),
+    anmelden: (email, passwort) => ipcRenderer.invoke('auth:anmelden', email, passwort),
+    abmelden: () => ipcRenderer.invoke('auth:abmelden')
+  }
+}
 
 if (process.contextIsolated) {
   try {

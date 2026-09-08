@@ -40,7 +40,10 @@ Tailwind-Farbnamen: bg-ground, bg-panel, text-ink, text-mute, text-dim, produkti
 
 ## Stand
 - Schritt 1 (Grundgerüst, leeres Dashboard, dunkles Design): fertig am 8. September 2026. App startet, sechs leere Screens, Navigation unten, Kopfzeile mit Pause-Platzhalter.
-- Schritt 2 (Supabase anbinden, Login, Tabellen, Testdaten): als Nächstes. Braucht vom Auftraggeber: Supabase-Konto, drei E-Mail-Adressen, Antwort auf Frage 2 (GitHub).
+- Schritt 2 (Supabase anbinden, Login, Tabellen, Testdaten): vorbereitet am 8. September 2026. SQL-Skripte in `supabase/` (01 Tabellen + RLS + team_stand-Funktion, 02 Startwerte, 03 Testdaten, 04 Entfernen), Anmeldung in der App (`src/main/supabase.ts`, `src/main/auth.ts`, `LoginScreen`, Abmelden in Einstellungen). Anleitung für den Auftraggeber: `docs/supabase-einrichtung.md`. OFFEN: Der Auftraggeber muss Supabase-Konto anlegen, Skripte ausführen, `.env` befüllen; dann Login und Skripte gegen das echte Projekt testen. Die SQL-Skripte sind noch gegen keine Datenbank gelaufen.
+- Datenschutz-Entscheidung im Schema: Blöcke sind nur für die eigene Person lesbar; das Team sieht Summen über die Funktion `team_stand(von, bis)`. Weicht vom Auftrag ("jeder darf alle Blöcke lesen") ab, Frage 7 war unbeantwortet. Umstellen = eine RLS-Policy ändern.
+- Tätigkeitsnamen: Startregeln liefern direkt die Zielnamen mit "Learning" (Frage 10, unbeantwortet, Vorschlag umgesetzt).
+- get-windows 9.3 bringt fertige Binärdateien für win32-x64 und darwin arm64/x64 mit; `require('get-windows')` funktioniert unter Node 24. Am 8. September 2026 auf dem Windows-PC erfolgreich getestet.
 - Schritte 3 bis 12: offen. Reihenfolge laut `docs/auftrag.md`.
 
 ## Befehle

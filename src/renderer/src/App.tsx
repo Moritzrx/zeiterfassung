@@ -1,6 +1,8 @@
 import { useState, type ReactElement } from 'react'
 import { Kopfzeile } from './components/Kopfzeile'
 import { Navigation, type ScreenId } from './components/Navigation'
+import { NutzerProvider, useNutzer } from './nutzer'
+import { LoginScreen } from './screens/LoginScreen'
 import { HeuteScreen } from './screens/HeuteScreen'
 import { WocheScreen } from './screens/WocheScreen'
 import { AuswertungScreen } from './screens/AuswertungScreen'
@@ -17,7 +19,8 @@ const SCREENS: Record<ScreenId, () => ReactElement> = {
   einstellungen: EinstellungenScreen
 }
 
-export default function App(): ReactElement {
+/** Das eigentliche Fenster mit Kopfzeile, Inhalt und Navigation. */
+function Oberflaeche(): ReactElement {
   const [aktiv, setAktiv] = useState<ScreenId>('heute')
   const Screen = SCREENS[aktiv]
 
@@ -31,5 +34,21 @@ export default function App(): ReactElement {
       </main>
       <Navigation aktiv={aktiv} onWechsel={setAktiv} />
     </div>
+  )
+}
+
+/** Entscheidet zwischen Anmeldung und Oberfläche. */
+function Weiche(): ReactElement {
+  const { status } = useNutzer()
+  if (status === null) return <div className="h-full" />
+  if (!status.angemeldet) return <LoginScreen />
+  return <Oberflaeche />
+}
+
+export default function App(): ReactElement {
+  return (
+    <NutzerProvider>
+      <Weiche />
+    </NutzerProvider>
   )
 }
