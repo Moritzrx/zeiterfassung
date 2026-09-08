@@ -45,6 +45,20 @@ export interface NeueRegel {
   fuerAlle: boolean
 }
 
+/** Die persönlichen Einstellungen aus der Tabelle profile. */
+export interface Profil {
+  name: string
+  urlaubswochen: number
+  idleSchwelleSekunden: number
+  fenstertitelSpeichern: boolean
+}
+
+/** Das Symbol einer Tätigkeit: ein Markenlogo oder ein lucide-Symbol. */
+export interface SymbolInfo {
+  typ: 'lucide' | 'marke'
+  name: string
+}
+
 /** Ein Wochenziel. taetigkeit null = Arbeitszeit gesamt. */
 export interface Ziel {
   id: string

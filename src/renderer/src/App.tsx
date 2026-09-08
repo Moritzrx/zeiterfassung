@@ -3,6 +3,7 @@ import { Hinweise } from './components/Hinweis'
 import { Kopfzeile } from './components/Kopfzeile'
 import { Navigation, type ScreenId } from './components/Navigation'
 import { NutzerProvider, useNutzer } from './nutzer'
+import { SymbolProvider } from './symbole'
 import { LoginScreen } from './screens/LoginScreen'
 import { HeuteScreen } from './screens/HeuteScreen'
 import { WocheScreen } from './screens/WocheScreen'
@@ -44,7 +45,11 @@ function Weiche(): ReactElement {
   const { status } = useNutzer()
   if (status === null) return <div className="h-full" />
   if (!status.angemeldet) return <LoginScreen />
-  return <Oberflaeche />
+  return (
+    <SymbolProvider>
+      <Oberflaeche />
+    </SymbolProvider>
+  )
 }
 
 export default function App(): ReactElement {

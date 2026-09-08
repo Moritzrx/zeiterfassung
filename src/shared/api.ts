@@ -2,7 +2,17 @@
  * Schnittstelle zwischen Fenster (Renderer) und Hintergrundprozess (Main).
  * Wird vom Preload-Skript als window.api bereitgestellt.
  */
-import type { Block, BlockAenderung, ErfassungsStatus, NeueRegel, NeuerEintrag, Regel, Ziel } from './typen'
+import type {
+  Block,
+  BlockAenderung,
+  ErfassungsStatus,
+  NeueRegel,
+  NeuerEintrag,
+  Profil,
+  Regel,
+  SymbolInfo,
+  Ziel
+} from './typen'
 
 export interface AuthStatus {
   /** false, wenn die Supabase-Zugangsdaten beim Bauen gefehlt haben */
@@ -62,11 +72,21 @@ export interface Api {
   taetigkeiten: {
     /** Alle bekannten Tätigkeitsnamen des Teams, alphabetisch. */
     liste: () => Promise<string[]>
+    /** Symbol je Vergleichsschlüssel (siehe taetigkeitSchluessel). */
+    symbole: () => Promise<Record<string, SymbolInfo>>
+    /** Symbol einer Tätigkeit für das ganze Team setzen. */
+    symbolSetzen: (name: string, symbol: SymbolInfo) => Promise<void>
   }
   ziele: {
     /** Die eigenen Wochenziele. */
     eigene: () => Promise<Ziel[]>
     /** Die Wochenziele aller drei (für den Team-Screen). */
     alle: () => Promise<Ziel[]>
+  }
+  profil: {
+    /** Die eigenen Einstellungen. */
+    eigenes: () => Promise<Profil | null>
+    /** Einstellungen ändern; wirkt sofort auf die Erfassung. */
+    aendern: (aenderung: Partial<Profil>) => Promise<Profil>
   }
 }

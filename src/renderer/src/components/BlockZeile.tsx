@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { Check } from 'lucide-react'
 import type { Block } from '@shared/typen'
 import { dauerText, uhrzeit } from '../format'
+import { TaetigkeitSymbol } from '../symbole'
 
 const PUNKT: Record<Block['bewertung'], string> = {
   produktiv: 'bg-produktiv',
@@ -58,9 +59,12 @@ export function BlockZeile({ block, laeuft = false, onClick, auswahlModus = fals
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
+          {block.taetigkeit && block.quelle === 'manuell' && <TaetigkeitSymbol name={block.taetigkeit} groesse={14} />}
           <span className="truncate text-sm">{hauptzeile}</span>
           {block.taetigkeit && block.quelle === 'auto' && (
-            <span className="shrink-0 text-xs text-mute">· {block.taetigkeit}</span>
+            <span className="flex shrink-0 items-center gap-1 text-xs text-mute">
+              · <TaetigkeitSymbol name={block.taetigkeit} groesse={12} /> {block.taetigkeit}
+            </span>
           )}
           {block.manuellGeprueft && block.quelle === 'auto' && (
             <Check size={12} strokeWidth={2} className="shrink-0 text-dim" aria-label="von Hand geprüft" />

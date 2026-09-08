@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { stundenText } from '../format'
+import { TaetigkeitSymbol } from '../symbole'
 
 export interface TaetigkeitEintrag {
   name: string
@@ -25,8 +26,11 @@ export function TaetigkeitenListe({ eintraege }: Props): ReactElement {
         const breite = Math.min(100, (e.sekunden / skala) * 100)
         return (
           <div key={e.name}>
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="truncate text-sm">{e.name}</span>
+            <div className="flex items-center justify-between gap-4">
+              <span className="flex min-w-0 items-center gap-2 text-sm">
+                <TaetigkeitSymbol name={e.name} groesse={16} />
+                <span className="truncate">{e.name}</span>
+              </span>
               <span className={`shrink-0 text-sm ${erreicht ? 'text-produktiv' : 'text-mute'}`}>
                 {e.zielSekunden !== null
                   ? `${stundenText(e.sekunden)} von ${stundenText(e.zielSekunden)} h`

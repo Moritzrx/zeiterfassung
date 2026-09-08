@@ -1,13 +1,24 @@
 import { app, BrowserWindow, ipcMain, powerMonitor, shell } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import type { Block, BlockAenderung, ErfassungsStatus, NeueRegel, NeuerEintrag, Regel, Ziel } from '@shared/typen'
+import type {
+  Block,
+  BlockAenderung,
+  ErfassungsStatus,
+  NeueRegel,
+  NeuerEintrag,
+  Profil as ProfilDaten,
+  Regel,
+  SymbolInfo,
+  Ziel
+} from '@shared/typen'
 import { regelnAnwenden } from '@shared/regeln'
 import { datumZuTagesanfang, naechsterTagesanfang, tagesanfang, wochenanfang } from '@shared/zeit'
 import { authIpcRegistrieren, authStatus } from './auth'
 import { blockAendern, eintragAnlegen } from './bearbeiten'
 import { alleNeuBewerten } from './bewertung'
 import { Erfassung } from './erfassung'
+import { Profil } from './profil'
 import { istSystemUeberlagerung } from './programme'
 import { Regelwerk } from './regelwerk'
 import { Speicher } from './speicher'
@@ -29,6 +40,7 @@ interface Sitzung {
   regelwerk: Regelwerk
   taetigkeiten: Taetigkeiten
   ziele: Ziele
+  profil: Profil
   regelTimer: NodeJS.Timeout
 }
 
@@ -154,9 +166,16 @@ function bloeckeGeaendert(): void {
   if (fenster && !fenster.isDestroyed()) fenster.webContents.send('bloecke:aenderung')
 }
 
-/** Regeln und Ziele neu laden und alle nicht geprüften Blöcke danach bewerten. */
+/** Persönliche Einstellungen auf die Erfassung anwenden. */
+function profilAnwenden(s: Sitzung): void {
+  s.erfassung.idleSchwelleSekunden = s.profil.daten.idleSchwelleSekunden
+  s.erfassung.fenstertitelSpeichern = s.profil.daten.fenstertitelSpeichern
+}
+
+/** Regeln, Ziele und Profil neu laden und alle nicht geprüften Blöcke danach bewerten. */
 async function regelnAktualisieren(s: Sitzung): Promise<number> {
   void s.ziele.laden()
+  void s.profil.laden().then(() => profilAnwenden(s))
   const ok = await s.regelwerk.laden()
   if (!ok) return 0
   const geaendert = alleNeuBewerten(s.speicher, s.regelwerk.liste(), s.userId)
@@ -175,6 +194,7 @@ function sitzungStarten(userId: string): void {
   const regelwerk = new Regelwerk(userId)
   const taetigkeiten = new Taetigkeiten(userId)
   const ziele = new Ziele(userId)
+  const profil = new Profil(userId)
   taetigkeiten.ausBloecken(speicher.alle())
   const erfassung = new Erfassung(speicher, userId, (programm, titel) =>
     regelnAnwenden(programm, titel, regelwerk.liste(), userId)
@@ -197,9 +217,11 @@ function sitzungStarten(userId: string): void {
     regelwerk,
     taetigkeiten,
     ziele,
+    profil,
     regelTimer: setInterval(() => void regelnAktualisieren(s), REGELN_TAKT_MS)
   }
   sitzung = s
+  profilAnwenden(s)
   erfassung.on('status', statusVerteilen)
   erfassung.on('bloecke', bloeckeGeaendert)
   erfassung.start()
@@ -287,8 +309,23 @@ function ipcRegistrieren(): void {
 
   ipcMain.handle('taetigkeiten:liste', (): string[] => sitzung?.taetigkeiten.liste() ?? [])
 
+  ipcMain.handle('taetigkeiten:symbole', (): Record<string, SymbolInfo> => sitzung?.taetigkeiten.symbole() ?? {})
+  ipcMain.handle('taetigkeiten:symbolSetzen', async (_ereignis, name: string, symbol: SymbolInfo): Promise<void> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    await sitzung.taetigkeiten.symbolSetzen(name, symbol)
+    bloeckeGeaendert()
+  })
+
   ipcMain.handle('ziele:eigene', (): Ziel[] => sitzung?.ziele.eigene() ?? [])
   ipcMain.handle('ziele:alle', (): Ziel[] => sitzung?.ziele.alle() ?? [])
+
+  ipcMain.handle('profil:eigenes', (): ProfilDaten | null => sitzung?.profil.daten ?? null)
+  ipcMain.handle('profil:aendern', async (_ereignis, aenderung: Partial<ProfilDaten>): Promise<ProfilDaten> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    const neu = await sitzung.profil.aendern(aenderung)
+    profilAnwenden(sitzung)
+    return neu
+  })
 }
 
 /** In der fertigen App startet sie mit dem Rechner, versteckt im Symbol. */

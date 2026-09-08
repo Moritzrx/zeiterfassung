@@ -41,11 +41,17 @@ const api: Api = {
     anlegen: (neu) => ipcRenderer.invoke('regeln:anlegen', neu)
   },
   taetigkeiten: {
-    liste: () => ipcRenderer.invoke('taetigkeiten:liste')
+    liste: () => ipcRenderer.invoke('taetigkeiten:liste'),
+    symbole: () => ipcRenderer.invoke('taetigkeiten:symbole'),
+    symbolSetzen: (name, symbol) => ipcRenderer.invoke('taetigkeiten:symbolSetzen', name, symbol)
   },
   ziele: {
     eigene: () => ipcRenderer.invoke('ziele:eigene'),
     alle: () => ipcRenderer.invoke('ziele:alle')
+  },
+  profil: {
+    eigenes: () => ipcRenderer.invoke('profil:eigenes'),
+    aendern: (aenderung) => ipcRenderer.invoke('profil:aendern', aenderung)
   }
 }
 

@@ -8,6 +8,14 @@ const DATUM = new Intl.DateTimeFormat('de-DE', {
   month: 'short'
 })
 
+/** Zahl im deutschen Format mit fester Anzahl Nachkommastellen, z. B. "1.702" oder "30,3". */
+export function zahlText(wert: number, nachkommastellen = 1): string {
+  return wert.toLocaleString('de-DE', {
+    minimumFractionDigits: nachkommastellen,
+    maximumFractionDigits: nachkommastellen
+  })
+}
+
 /** Stunden mit einer Nachkommastelle und Komma, z. B. "7,4". */
 export function stundenText(sekunden: number): string {
   return (sekunden / 3600).toFixed(1).replace('.', ',')
