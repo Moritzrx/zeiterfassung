@@ -23,6 +23,7 @@ interface Zeile {
   geraet: string | null
   geaendert_am?: string
   geloescht_am: string | null
+  testdaten?: boolean
 }
 
 function zuZeile(b: Block): Zeile {
@@ -60,7 +61,8 @@ function vonZeile(z: Zeile): Block {
     manuellGeprueft: z.manuell_geprueft,
     geraet: z.geraet,
     geaendertAm: z.geaendert_am ? new Date(z.geaendert_am).toISOString() : new Date(0).toISOString(),
-    geloeschtAm: z.geloescht_am ? new Date(z.geloescht_am).toISOString() : null
+    geloeschtAm: z.geloescht_am ? new Date(z.geloescht_am).toISOString() : null,
+    testdaten: z.testdaten ?? false
   }
 }
 

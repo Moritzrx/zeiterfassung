@@ -21,6 +21,18 @@ export interface Block {
   geraet: string | null
   geaendertAm: string
   geloeschtAm: string | null
+  /** true bei erfundenen Blöcken aus dem Testdaten-Skript */
+  testdaten?: boolean
+}
+
+export type AuszeichnungTyp = 'erste_woche_level10' | 'drei_wochen_level10' | 'alle_lernziele' | 'fokus_woche'
+
+/** Eine freigeschaltete Auszeichnung. Einmal verdient, bleibt sie. */
+export interface Auszeichnung {
+  typ: AuszeichnungTyp
+  wocheStart: string
+  freigeschaltetAm: string
+  testdaten: boolean
 }
 
 /** Eine Regel: Programm oder Fenstertitel enthält ein Muster, dann Tätigkeit und Bewertung. */
@@ -155,6 +167,8 @@ export interface ErfassungsStatus {
   heuteProduktivSekunden: number
   wocheProduktivSekunden: number
   rang: number
+  /** Ein Rang, der diese Woche noch nicht gefeiert wurde, sonst null */
+  neuerRang: number | null
   unsynchronisiert: number
   letzterSync: string | null
   syncFehler: string | null

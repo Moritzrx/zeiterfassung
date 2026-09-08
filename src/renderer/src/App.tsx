@@ -1,7 +1,9 @@
-import { useState, type ReactElement } from 'react'
-import { Hinweise } from './components/Hinweis'
+import { useEffect, useState, type ReactElement } from 'react'
+import { AUSZEICHNUNGEN } from '@shared/auszeichnungen'
+import { Hinweise, hinweisZeigen } from './components/Hinweis'
 import { Kopfzeile } from './components/Kopfzeile'
 import { Navigation, type ScreenId } from './components/Navigation'
+import { RangAufstieg } from './components/RangAufstieg'
 import { NutzerProvider, useNutzer } from './nutzer'
 import { SymbolProvider } from './symbole'
 import { LoginScreen } from './screens/LoginScreen'
@@ -26,6 +28,16 @@ function Oberflaeche(): ReactElement {
   const [aktiv, setAktiv] = useState<ScreenId>('heute')
   const Screen = SCREENS[aktiv]
 
+  // Neue Auszeichnungen kurz unten einblenden, egal auf welchem Screen.
+  useEffect(() => {
+    if (!window.api) return
+    return window.api.auszeichnungen.onNeu((neue) => {
+      if (!neue.length) return
+      const titel = neue.map((a) => AUSZEICHNUNGEN[a.typ].titel).join(', ')
+      hinweisZeigen(`Auszeichnung freigeschaltet: ${titel}`)
+    })
+  }, [])
+
   return (
     <div className="flex h-full flex-col">
       <Kopfzeile />
@@ -36,6 +48,7 @@ function Oberflaeche(): ReactElement {
       </main>
       <Navigation aktiv={aktiv} onWechsel={setAktiv} />
       <Hinweise />
+      <RangAufstieg />
     </div>
   )
 }

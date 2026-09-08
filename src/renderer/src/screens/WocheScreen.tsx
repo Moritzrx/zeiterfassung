@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { Block, Ziel } from '@shared/typen'
+import type { Auszeichnung, Block, Ziel } from '@shared/typen'
+import { wochenstatistik } from '@shared/auszeichnungen'
 import { taetigkeitSchluessel } from '@shared/regeln'
 import {
   MAX_RANG,
@@ -13,8 +14,17 @@ import {
   verbleibendeArbeitstage,
   zielRang
 } from '@shared/rang'
-import { berlinDatum, datumVerschieben, datumZuTagesanfang, kalenderwoche, wochenanfang } from '@shared/zeit'
+import {
+  berlinDatum,
+  berlinTeile,
+  datumVerschieben,
+  datumZuTagesanfang,
+  kalenderwoche,
+  wochenanfang,
+  wochentag
+} from '@shared/zeit'
 import { AnimierteZahl } from '../components/AnimierteZahl'
+import { Auszeichnungen } from '../components/Auszeichnungen'
 import { BlockDialog } from '../components/BlockDialog'
 import { hinweisZeigen } from '../components/Hinweis'
 import { Karte } from '../components/Karte'
@@ -23,6 +33,7 @@ import { RangRing } from '../components/RangRing'
 import { RangUebersicht } from '../components/RangUebersicht'
 import { TaetigkeitenListe, type TaetigkeitEintrag } from '../components/TaetigkeitenListe'
 import { WochenBalken, type TagesWerte } from '../components/WochenBalken'
+import { Wochenzusammenfassung } from '../components/Wochenzusammenfassung'
 import { useErfassung } from '../erfassung'
 import { datumText, kurzDatum, stundenText } from '../format'
 import { useTaetigkeiten } from '../taetigkeiten'
@@ -45,6 +56,7 @@ export function WocheScreen(): ReactElement {
   const [wochenStart, setWochenStart] = useState(() => wochenanfang(new Date()))
   const [bloecke, setBloecke] = useState<Block[]>([])
   const [ziele, setZiele] = useState<Ziel[]>([])
+  const [auszeichnungen, setAuszeichnungen] = useState<Auszeichnung[]>([])
   const [durchgehen, setDurchgehen] = useState<{ liste: Block[]; index: number } | null>(null)
   const [uebersichtOffen, setUebersichtOffen] = useState(false)
 
@@ -58,26 +70,53 @@ export function WocheScreen(): ReactElement {
   const wochenEnde = useMemo(() => datumZuTagesanfang(datumVerschieben(startDatum, 7)), [startDatum])
   const aktuelleWoche = wochenStart.getTime() === wochenanfang(new Date(jetzt)).getTime()
 
+  // Montags gehört die Zusammenfassung der Vorwoche noch dazu, deshalb wird sie mitgeladen.
+  const heuteWochentag = wochentag(new Date(jetzt))
+  const vorwocheZeigen = aktuelleWoche && heuteWochentag === 1
+  const sonntagAbend = aktuelleWoche && heuteWochentag === 0 && berlinTeile(new Date(jetzt)).stunde >= 18
+  const ladeStart = useMemo(
+    () => (vorwocheZeigen ? datumZuTagesanfang(datumVerschieben(startDatum, -7)) : wochenStart),
+    [vorwocheZeigen, startDatum, wochenStart]
+  )
+
   const laden = useCallback(async () => {
     if (!window.api) return
-    const [liste, eigeneZiele] = await Promise.all([
-      window.api.bloecke.zeitraum(wochenStart.toISOString(), wochenEnde.toISOString()),
-      window.api.ziele.eigene()
+    const [liste, eigeneZiele, eigeneAuszeichnungen] = await Promise.all([
+      window.api.bloecke.zeitraum(ladeStart.toISOString(), wochenEnde.toISOString()),
+      window.api.ziele.eigene(),
+      window.api.auszeichnungen.liste()
     ])
     setBloecke(liste)
     setZiele(eigeneZiele)
-  }, [wochenStart, wochenEnde])
+    setAuszeichnungen(eigeneAuszeichnungen)
+  }, [ladeStart, wochenEnde])
 
   useEffect(() => {
     void laden()
     if (!window.api) return
     const abmelden = window.api.bloecke.onAenderung(() => void laden())
+    const abmeldenNeu = window.api.auszeichnungen.onNeu(() => void laden())
     const timer = setInterval(() => void laden(), 30_000)
     return () => {
       abmelden()
+      abmeldenNeu()
       clearInterval(timer)
     }
   }, [laden])
+
+  // Die Zusammenfassung: für vergangene Wochen immer, montags die Vorwoche, sonntags ab 18 Uhr der Zwischenstand.
+  const zusammenfassung = useMemo(() => {
+    let stat: ReturnType<typeof wochenstatistik> | null = null
+    let zwischenstand = false
+    if (!aktuelleWoche) stat = wochenstatistik(bloecke, startDatum)
+    else if (vorwocheZeigen) stat = wochenstatistik(bloecke, datumVerschieben(startDatum, -7))
+    else if (sonntagAbend) {
+      stat = wochenstatistik(bloecke, startDatum)
+      zwischenstand = true
+    }
+    if (!stat || stat.leer) return null
+    return { stat, zwischenstand, neue: auszeichnungen.filter((a) => a.wocheStart === stat.start) }
+  }, [aktuelleWoche, vorwocheZeigen, sonntagAbend, bloecke, startDatum, auszeichnungen])
 
   // Tageswerte für die Balken
   const tage = useMemo<TagesWerte[]>(() => {
@@ -166,10 +205,11 @@ export function WocheScreen(): ReactElement {
             b.quelle === 'auto' &&
             !b.manuellGeprueft &&
             b.id !== status.laufenderBlock?.id &&
+            Date.parse(b.ende) > ladeStart.getTime() &&
             (b.bewertung === 'ungeklaert' || Date.parse(b.ende) - Date.parse(b.start) > AUFFAELLIG_MS)
         )
         .sort((a, b) => a.start.localeCompare(b.start)),
-    [bloecke, status.laufenderBlock?.id]
+    [bloecke, status.laufenderBlock?.id, ladeStart]
   )
 
   function weiterDurchgehen(): void {
@@ -213,6 +253,16 @@ export function WocheScreen(): ReactElement {
           <ChevronRight size={20} strokeWidth={1.5} />
         </button>
       </section>
+
+      {zusammenfassung && (
+        <Wochenzusammenfassung
+          stat={zusammenfassung.stat}
+          ziele={ziele}
+          zwischenstand={zusammenfassung.zwischenstand}
+          neueAuszeichnungen={zusammenfassung.neue}
+          onDurchgehen={auffaellige.length > 0 ? () => setDurchgehen({ liste: auffaellige, index: 0 }) : undefined}
+        />
+      )}
 
       <section className="flex flex-col items-center">
         <RangRing produktivSekunden={produktiv} zielRang={ziel}>
@@ -260,6 +310,8 @@ export function WocheScreen(): ReactElement {
         </div>
         <TaetigkeitenListe eintraege={eintraege} />
       </Karte>
+
+      <Auszeichnungen liste={auszeichnungen} />
 
       {durchgehen && (
         <BlockDialog

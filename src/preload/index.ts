@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { Api } from '@shared/api'
-import type { ErfassungsStatus } from '@shared/typen'
+import type { Auszeichnung, ErfassungsStatus } from '@shared/typen'
 
 // Die Brücke zwischen Fenster und Hintergrundprozess. Nur diese Funktionen
 // kann das Fenster aufrufen, alles andere bleibt im Hintergrund.
@@ -57,6 +57,17 @@ const api: Api = {
   system: {
     info: () => ipcRenderer.invoke('system:info'),
     autostartSetzen: (an) => ipcRenderer.invoke('system:autostartSetzen', an)
+  },
+  auszeichnungen: {
+    liste: () => ipcRenderer.invoke('auszeichnungen:liste'),
+    onNeu: (rueckruf) => {
+      const handler = (_e: IpcRendererEvent, neue: Auszeichnung[]): void => rueckruf(neue)
+      ipcRenderer.on('auszeichnungen:neu', handler)
+      return () => ipcRenderer.removeListener('auszeichnungen:neu', handler)
+    }
+  },
+  rang: {
+    gefeiert: (rang) => ipcRenderer.invoke('rang:gefeiert', rang)
   },
   team: {
     stand: () => ipcRenderer.invoke('team:stand'),

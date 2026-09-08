@@ -3,6 +3,7 @@
  * Wird vom Preload-Skript als window.api bereitgestellt.
  */
 import type {
+  Auszeichnung,
   Block,
   BlockAenderung,
   ErfassungsStatus,
@@ -101,6 +102,16 @@ export interface Api {
     info: () => Promise<SystemInfo>
     /** Autostart ein- oder ausschalten; wirkt nur in der installierten App. */
     autostartSetzen: (an: boolean) => Promise<boolean>
+  }
+  auszeichnungen: {
+    /** Die eigenen freigeschalteten Auszeichnungen. */
+    liste: () => Promise<Auszeichnung[]>
+    /** Wird aufgerufen, wenn gerade eine neue Auszeichnung dazugekommen ist. */
+    onNeu: (rueckruf: (neue: Auszeichnung[]) => void) => Abmelden
+  }
+  rang: {
+    /** Meldet, dass die Aufstiegs-Einblendung für diesen Rang gezeigt wurde. */
+    gefeiert: (rang: number) => Promise<void>
   }
   team: {
     /** Produktive Wochenstunden aller aktiven Personen, eigene live. */

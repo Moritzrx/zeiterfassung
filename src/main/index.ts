@@ -1,7 +1,8 @@
-import { app, BrowserWindow, ipcMain, powerMonitor, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, Notification, powerMonitor, shell } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import type {
+  Auszeichnung,
   Block,
   BlockAenderung,
   ErfassungsStatus,
@@ -17,14 +18,24 @@ import type {
   TeamWoche,
   Ziel
 } from '@shared/typen'
-import { rang } from '@shared/rang'
+import { rang, rangName } from '@shared/rang'
 import { regelnAnwenden } from '@shared/regeln'
 import { tagessummenAusBloecken } from '@shared/summen'
-import { berlinDatum, datumZuTagesanfang, naechsterTagesanfang, tagesanfang, wochenanfang } from '@shared/zeit'
+import {
+  berlinDatum,
+  berlinTeile,
+  datumZuTagesanfang,
+  naechsterTagesanfang,
+  tagesanfang,
+  wochenanfang,
+  wochentag
+} from '@shared/zeit'
 import { authIpcRegistrieren, authStatus } from './auth'
+import { Auszeichnungen } from './auszeichnungen'
 import { blockAendern, eintragAnlegen } from './bearbeiten'
 import { alleNeuBewerten } from './bewertung'
 import { Erfassung } from './erfassung'
+import { Feier } from './feier'
 import { Profil } from './profil'
 import { istSystemUeberlagerung } from './programme'
 import { Regelwerk } from './regelwerk'
@@ -48,7 +59,12 @@ interface Sitzung {
   taetigkeiten: Taetigkeiten
   ziele: Ziele
   profil: Profil
+  auszeichnungen: Auszeichnungen
+  feier: Feier
   regelTimer: NodeJS.Timeout
+  auszeichnungTimer: NodeJS.Timeout
+  minutenTimer: NodeJS.Timeout
+  pruefungAusstehend: NodeJS.Timeout | null
 }
 
 let fenster: BrowserWindow | null = null
@@ -134,15 +150,18 @@ function statusBerechnen(): ErfassungsStatus {
       heuteProduktivSekunden: 0,
       wocheProduktivSekunden: 0,
       rang: 0,
+      neuerRang: null,
       unsynchronisiert: 0,
       letzterSync: null,
       syncFehler: null
     }
   }
   const jetzt = new Date()
-  const { speicher, erfassung, sync } = sitzung
+  const { speicher, erfassung, sync, feier } = sitzung
   const heute = speicher.produktiveSekunden(tagesanfang(jetzt), naechsterTagesanfang(jetzt))
   const woche = speicher.produktiveSekunden(wochenanfang(jetzt), jetzt)
+  const aktuellerRang = rang(woche)
+  const gefeiert = feier.gefeierterRang(berlinDatum(wochenanfang(jetzt)))
   const e = erfassung.status()
   return {
     zustand: e.zustand,
@@ -151,7 +170,8 @@ function statusBerechnen(): ErfassungsStatus {
     pausiertSeit: e.pausiertSeit,
     heuteProduktivSekunden: heute,
     wocheProduktivSekunden: woche,
-    rang: rang(woche),
+    rang: aktuellerRang,
+    neuerRang: aktuellerRang >= 1 && aktuellerRang > gefeiert ? aktuellerRang : null,
     unsynchronisiert: speicher.anzahlAusstehend(),
     letzterSync: sync.letzterSync?.toISOString() ?? null,
     syncFehler: sync.fehler
@@ -171,6 +191,43 @@ function statusVerteilen(): void {
 
 function bloeckeGeaendert(): void {
   if (fenster && !fenster.isDestroyed()) fenster.webContents.send('bloecke:aenderung')
+}
+
+/** Neue Auszeichnungen prüfen, speichern und dem Fenster melden. */
+async function auszeichnungenPruefen(s: Sitzung): Promise<void> {
+  try {
+    const neue = await s.auszeichnungen.pruefenUndSpeichern(s.speicher.alle(), s.ziele.eigene(), new Date())
+    if (neue.length && fenster && !fenster.isDestroyed()) fenster.webContents.send('auszeichnungen:neu', neue)
+  } catch (fehler) {
+    console.error('Auszeichnungen:', fehler)
+  }
+}
+
+/** Nach Änderungen an Blöcken: Prüfung gebündelt, frühestens 30 Sekunden später. */
+function auszeichnungenBaldPruefen(s: Sitzung): void {
+  if (s.pruefungAusstehend) return
+  s.pruefungAusstehend = setTimeout(() => {
+    s.pruefungAusstehend = null
+    void auszeichnungenPruefen(s)
+  }, 30_000)
+}
+
+/** Sonntags ab 18 Uhr einmal eine Systemmeldung, dass die Wochenzusammenfassung bereitsteht. */
+function sonntagsMeldung(s: Sitzung): void {
+  const jetzt = new Date()
+  if (wochentag(jetzt) !== 0 || berlinTeile(jetzt).stunde < 18) return
+  const woche = berlinDatum(wochenanfang(jetzt))
+  if (s.feier.istBenachrichtigt(woche)) return
+  s.feier.benachrichtigt(woche)
+  if (!Notification.isSupported()) return
+  const sekunden = s.speicher.produktiveSekunden(wochenanfang(jetzt), jetzt)
+  const r = rang(sekunden)
+  const meldung = new Notification({
+    title: 'Wochenzusammenfassung',
+    body: `Rang ${r} · ${rangName(r)}, ${(sekunden / 3600).toFixed(1).replace('.', ',')} h produktiv. Zum Ansehen Fenster öffnen.`
+  })
+  meldung.on('click', fensterZeigen)
+  meldung.show()
 }
 
 /** Persönliche Einstellungen auf die Erfassung anwenden. */
@@ -202,6 +259,8 @@ function sitzungStarten(userId: string): void {
   const taetigkeiten = new Taetigkeiten(userId)
   const ziele = new Ziele(userId)
   const profil = new Profil(userId)
+  const auszeichnungen = new Auszeichnungen(userId)
+  const feier = new Feier(userId)
   taetigkeiten.ausBloecken(speicher.alle())
   const erfassung = new Erfassung(speicher, userId, (programm, titel) =>
     regelnAnwenden(programm, titel, regelwerk.liste(), userId)
@@ -225,15 +284,23 @@ function sitzungStarten(userId: string): void {
     taetigkeiten,
     ziele,
     profil,
-    regelTimer: setInterval(() => void regelnAktualisieren(s), REGELN_TAKT_MS)
+    auszeichnungen,
+    feier,
+    regelTimer: setInterval(() => void regelnAktualisieren(s), REGELN_TAKT_MS),
+    auszeichnungTimer: setInterval(() => void auszeichnungenPruefen(s), 10 * 60_000),
+    minutenTimer: setInterval(() => sonntagsMeldung(s), 60_000),
+    pruefungAusstehend: null
   }
   sitzung = s
   profilAnwenden(s)
   erfassung.on('status', statusVerteilen)
-  erfassung.on('bloecke', bloeckeGeaendert)
+  erfassung.on('bloecke', () => {
+    bloeckeGeaendert()
+    auszeichnungenBaldPruefen(s)
+  })
   erfassung.start()
   sync.start()
-  void regelnAktualisieren(s)
+  void regelnAktualisieren(s).then(() => auszeichnungenPruefen(s))
   void taetigkeiten.laden()
   statusVerteilen()
 }
@@ -243,6 +310,9 @@ function sitzungBeenden(): void {
   const alt = sitzung
   sitzung = null
   clearInterval(alt.regelTimer)
+  clearInterval(alt.auszeichnungTimer)
+  clearInterval(alt.minutenTimer)
+  if (alt.pruefungAusstehend) clearTimeout(alt.pruefungAusstehend)
   alt.erfassung.stop()
   alt.sync.stop()
   alt.speicher.speichern()
@@ -304,6 +374,7 @@ function ipcRegistrieren(): void {
     const block = blockAendern(sitzung.speicher, sitzung.taetigkeiten, id, aenderung)
     bloeckeGeaendert()
     statusVerteilen()
+    auszeichnungenBaldPruefen(sitzung)
     return block
   })
   ipcMain.handle('bloecke:mehrereAendern', (_ereignis, ids: string[], aenderung: BlockAenderung): number => {
@@ -379,6 +450,16 @@ function ipcRegistrieren(): void {
     if (!sitzung) throw new Error('Nicht angemeldet.')
     await sitzung.ziele.loeschen(id)
     bloeckeGeaendert()
+  })
+
+  ipcMain.handle('auszeichnungen:liste', async (): Promise<Auszeichnung[]> => {
+    if (!sitzung) return []
+    if (sitzung.auszeichnungen.liste.length === 0) await sitzung.auszeichnungen.laden()
+    return sitzung.auszeichnungen.liste
+  })
+  ipcMain.handle('rang:gefeiert', (_ereignis, r: number): void => {
+    sitzung?.feier.feiern(berlinDatum(wochenanfang(new Date())), r)
+    statusVerteilen()
   })
 
   ipcMain.handle('system:info', (): SystemInfo => ({
