@@ -24,6 +24,8 @@ const api: Api = {
   bloecke: {
     tag: (datum) => ipcRenderer.invoke('bloecke:tag', datum),
     zeitraum: (von, bis) => ipcRenderer.invoke('bloecke:zeitraum', von, bis),
+    manuellAnlegen: (eintrag) => ipcRenderer.invoke('bloecke:manuellAnlegen', eintrag),
+    manuelleListe: (maximal) => ipcRenderer.invoke('bloecke:manuelleListe', maximal),
     ungeklaert: () => ipcRenderer.invoke('bloecke:ungeklaert'),
     ungeklaerteListe: () => ipcRenderer.invoke('bloecke:ungeklaerteListe'),
     aendern: (id, aenderung) => ipcRenderer.invoke('bloecke:aendern', id, aenderung),

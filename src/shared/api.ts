@@ -2,7 +2,7 @@
  * Schnittstelle zwischen Fenster (Renderer) und Hintergrundprozess (Main).
  * Wird vom Preload-Skript als window.api bereitgestellt.
  */
-import type { Block, BlockAenderung, ErfassungsStatus, NeueRegel, Regel, Ziel } from './typen'
+import type { Block, BlockAenderung, ErfassungsStatus, NeueRegel, NeuerEintrag, Regel, Ziel } from './typen'
 
 export interface AuthStatus {
   /** false, wenn die Supabase-Zugangsdaten beim Bauen gefehlt haben */
@@ -43,6 +43,10 @@ export interface Api {
     ungeklaert: () => Promise<number>
     /** Die nicht eingeordneten Blöcke, neueste zuerst. */
     ungeklaerteListe: () => Promise<Block[]>
+    /** Einen Block von Hand eintragen (Dreh, Termin, Fahrt). Wirft bei ungültigen Angaben. */
+    manuellAnlegen: (eintrag: NeuerEintrag) => Promise<Block>
+    /** Die zuletzt von Hand eingetragenen Blöcke, neueste zuerst. */
+    manuelleListe: (maximal?: number) => Promise<Block[]>
     /** Einen Block von Hand ändern. Wirft bei ungültigen Zeiten. */
     aendern: (id: string, aenderung: BlockAenderung) => Promise<Block | null>
     /** Mehrere Blöcke auf einmal ändern. Liefert die Anzahl. */

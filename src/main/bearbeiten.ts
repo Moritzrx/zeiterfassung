@@ -1,6 +1,52 @@
-import type { Block, BlockAenderung } from '@shared/typen'
+import { randomUUID } from 'crypto'
+import { hostname } from 'os'
+import type { Block, BlockAenderung, NeuerEintrag } from '@shared/typen'
 import type { Speicher } from './speicher'
 import type { Taetigkeiten } from './taetigkeiten'
+
+const MAX_EINTRAG_MS = 24 * 3600_000
+
+/**
+ * Legt einen Block von Hand an. Er gilt als produktiv und als von Hand geprüft,
+ * bleibt aber wie jeder Block änderbar.
+ */
+export function eintragAnlegen(
+  speicher: Speicher,
+  taetigkeiten: Taetigkeiten,
+  userId: string,
+  eintrag: NeuerEintrag
+): Block {
+  const start = new Date(eintrag.start)
+  const ende = new Date(eintrag.ende)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(ende.getTime())) {
+    throw new Error('Bitte Datum und Uhrzeiten angeben.')
+  }
+  if (ende <= start) throw new Error('Das Ende muss nach dem Anfang liegen.')
+  if (ende.getTime() - start.getTime() > MAX_EINTRAG_MS) throw new Error('Ein Eintrag darf nicht länger als einen Tag sein.')
+  const taetigkeit = taetigkeiten.merken(eintrag.taetigkeit)
+  if (!taetigkeit) throw new Error('Bitte eine Tätigkeit angeben.')
+
+  const jetzt = new Date().toISOString()
+  const block: Block = {
+    id: randomUUID(),
+    userId,
+    start: start.toISOString(),
+    ende: ende.toISOString(),
+    quelle: 'manuell',
+    programm: null,
+    programmRoh: null,
+    fenstertitel: null,
+    taetigkeit,
+    bewertung: 'produktiv',
+    notiz: eintrag.notiz?.trim() || null,
+    manuellGeprueft: true,
+    geraet: hostname(),
+    geaendertAm: jetzt,
+    geloeschtAm: null
+  }
+  speicher.hinzufuegen(block)
+  return block
+}
 
 /**
  * Ändert einen Block von Hand. Danach gilt er als "von Hand geprüft" und wird

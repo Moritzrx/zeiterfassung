@@ -79,6 +79,14 @@ export class Speicher {
     return this.daten.bloecke
   }
 
+  /** Von Hand eingetragene Blöcke, neueste zuerst. */
+  manuelleListe(maximal = 10): Block[] {
+    return this.daten.bloecke
+      .filter((b) => !b.geloeschtAm && b.quelle === 'manuell')
+      .sort((a, b) => b.start.localeCompare(a.start))
+      .slice(0, maximal)
+  }
+
   /** Nicht eingeordnete automatische Blöcke, neueste zuerst, ohne den laufenden. */
   ungeklaerteListe(maximal = 300): Block[] {
     const grenze = new Date(Date.now() - 15_000).toISOString()

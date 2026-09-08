@@ -1,11 +1,11 @@
 import { app, BrowserWindow, ipcMain, powerMonitor, shell } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import type { Block, BlockAenderung, ErfassungsStatus, NeueRegel, Regel, Ziel } from '@shared/typen'
+import type { Block, BlockAenderung, ErfassungsStatus, NeueRegel, NeuerEintrag, Regel, Ziel } from '@shared/typen'
 import { regelnAnwenden } from '@shared/regeln'
 import { datumZuTagesanfang, naechsterTagesanfang, tagesanfang, wochenanfang } from '@shared/zeit'
 import { authIpcRegistrieren, authStatus } from './auth'
-import { blockAendern } from './bearbeiten'
+import { blockAendern, eintragAnlegen } from './bearbeiten'
 import { alleNeuBewerten } from './bewertung'
 import { Erfassung } from './erfassung'
 import { istSystemUeberlagerung } from './programme'
@@ -239,6 +239,16 @@ function ipcRegistrieren(): void {
     if (!sitzung) return []
     return sitzung.speicher.imZeitraum(new Date(von), new Date(bis))
   })
+  ipcMain.handle('bloecke:manuellAnlegen', (_ereignis, eintrag: NeuerEintrag): Block => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    const block = eintragAnlegen(sitzung.speicher, sitzung.taetigkeiten, sitzung.userId, eintrag)
+    bloeckeGeaendert()
+    statusVerteilen()
+    return block
+  })
+  ipcMain.handle('bloecke:manuelleListe', (_ereignis, maximal?: number): Block[] =>
+    sitzung?.speicher.manuelleListe(maximal) ?? []
+  )
   ipcMain.handle('bloecke:ungeklaert', (): number => sitzung?.speicher.anzahlUngeklaert() ?? 0)
   ipcMain.handle('bloecke:ungeklaerteListe', (): Block[] => sitzung?.speicher.ungeklaerteListe() ?? [])
 

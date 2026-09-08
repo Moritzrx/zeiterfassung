@@ -53,6 +53,14 @@ export interface Ziel {
   stundenProWoche: number
 }
 
+/** Ein neuer Eintrag von Hand: Dreh, Kundentermin, Telefonat, Fahrt. */
+export interface NeuerEintrag {
+  start: string
+  ende: string
+  taetigkeit: string
+  notiz: string | null
+}
+
 /** Was sich an einem Block von Hand ändern lässt. */
 export interface BlockAenderung {
   taetigkeit?: string | null

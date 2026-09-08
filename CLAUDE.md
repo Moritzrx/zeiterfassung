@@ -55,7 +55,8 @@ Tailwind-Farbnamen: bg-ground, bg-panel, text-ink, text-mute, text-dim, produkti
   Der laufende Block lässt sich nicht bearbeiten. Untätigkeit wird rückwirkend höchstens bis zum Start der Erfassung, zum Fortsetzen oder zum letzten Aufwachen gebucht (`zeitgrenze`), sonst entstehen überlappende Inaktiv-Blöcke bei Neustarts.
   Noch offen aus Schritt 5: "Woche durchgehen" mit auffälligen Blöcken (über 2 h, unbekanntes Programm) kommt mit dem Wochen-Screen in Schritt 6; Regeln bearbeiten/löschen kommt in den Einstellungen (Schritt 10).
 - Schritt 6 (Ziele, Level, Wochen-Screen): gebaut am 8. September 2026. `src/shared/level.ts` ist die eine Level-Rechnung für alle (5 h = 1 Level, Ziel-Level = Gesamtziel/5 aufgerundet, Tagesrichtwert = Gesamtziel/5, verbleibende Arbeitstage Mo–Fr inkl. heute). `src/main/ziele.ts` lädt alle Ziele (Cache `ziele.json`, Neuladen mit den Regeln alle 5 min). Fenster: `LevelRing` (SVG, ein Abschnitt je Level, Orange), `WochenBalken` (Recharts, vier Anteile, Richtwert-Linie), `TaetigkeitenListe` (Balken mit Zielmarke), `WocheScreen` (Blättern per Woche, Restlaufzeit-Satz, "Woche durchgehen" = ungeklärt oder über 2 h, nicht geprüft).
-- Schritte 7 bis 12: offen. Reihenfolge laut `docs/auftrag.md`.
+- Schritt 7 (Zeiten von Hand eintragen): gebaut am 9. September 2026. `eintragAnlegen` in `src/main/bearbeiten.ts` (quelle manuell, produktiv, manuellGeprueft, max. 24 h), IPC `bloecke:manuellAnlegen` und `bloecke:manuelleListe`. `EintragenScreen`: Datum/Von/Bis/Tätigkeit/Notiz, Dauer live, Überschneidungsprüfung mit automatischen Blöcken (300 ms verzögert) und Häkchen zum Löschen dieser Blöcke, "Speichern und nächsten" setzt Von auf das alte Bis. Darunter die letzten zehn Hand-Einträge, Klick öffnet den BlockDialog.
+- Schritte 8 bis 12: offen. Reihenfolge laut `docs/auftrag.md`.
 
 ## Befehle
 - `npm run dev` startet die App zum Entwickeln. Unter Windows ohne PATH: `scripts\dev-windows.cmd`.
