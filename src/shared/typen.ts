@@ -1,6 +1,7 @@
 /** Gemeinsame Datentypen für Hintergrundprozess und Fenster. */
 
 export type Bewertung = 'produktiv' | 'unproduktiv' | 'ungeklaert' | 'inaktiv'
+export type RegelBewertung = Exclude<Bewertung, 'inaktiv'>
 export type Quelle = 'auto' | 'manuell'
 
 /** Ein Zeitblock. Zeiten als ISO-Text in UTC (immer aus Date.toISOString()). */
@@ -22,6 +23,38 @@ export interface Block {
   geloeschtAm: string | null
 }
 
+/** Eine Regel: Programm oder Fenstertitel enthält ein Muster, dann Tätigkeit und Bewertung. */
+export interface Regel {
+  id: string
+  muster: string
+  feld: 'programm' | 'titel'
+  taetigkeit: string | null
+  bewertung: RegelBewertung
+  /** null = Team-Regel für alle, sonst die Nutzer-Kennung */
+  giltFuer: string | null
+  prioritaet: number
+  aktiv: boolean
+  erstelltVon: string | null
+}
+
+export interface NeueRegel {
+  muster: string
+  feld: 'programm' | 'titel'
+  taetigkeit: string | null
+  bewertung: RegelBewertung
+  fuerAlle: boolean
+}
+
+/** Was sich an einem Block von Hand ändern lässt. */
+export interface BlockAenderung {
+  taetigkeit?: string | null
+  bewertung?: Bewertung
+  start?: string
+  ende?: string
+  notiz?: string | null
+  loeschen?: boolean
+}
+
 export type ErfassungsZustand =
   | 'laeuft'
   | 'inaktiv'
@@ -31,9 +64,11 @@ export type ErfassungsZustand =
   | 'nicht-angemeldet'
 
 export interface LaufenderBlock {
+  id: string
   start: string
   programm: string | null
   fenstertitel: string | null
+  taetigkeit: string | null
   bewertung: Bewertung
 }
 

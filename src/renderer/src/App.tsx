@@ -1,4 +1,5 @@
 import { useState, type ReactElement } from 'react'
+import { Hinweise } from './components/Hinweis'
 import { Kopfzeile } from './components/Kopfzeile'
 import { Navigation, type ScreenId } from './components/Navigation'
 import { NutzerProvider, useNutzer } from './nutzer'
@@ -33,6 +34,7 @@ function Oberflaeche(): ReactElement {
         </div>
       </main>
       <Navigation aktiv={aktiv} onWechsel={setAktiv} />
+      <Hinweise />
     </div>
   )
 }

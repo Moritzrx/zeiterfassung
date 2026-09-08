@@ -1,23 +1,32 @@
 import { app, BrowserWindow, ipcMain, powerMonitor, shell } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import type { Block, ErfassungsStatus } from '@shared/typen'
+import type { Block, BlockAenderung, ErfassungsStatus, NeueRegel, Regel } from '@shared/typen'
+import { regelnAnwenden } from '@shared/regeln'
 import { datumZuTagesanfang, naechsterTagesanfang, tagesanfang, wochenanfang } from '@shared/zeit'
 import { authIpcRegistrieren, authStatus } from './auth'
+import { blockAendern } from './bearbeiten'
+import { alleNeuBewerten } from './bewertung'
 import { Erfassung } from './erfassung'
+import { Regelwerk } from './regelwerk'
 import { Speicher } from './speicher'
 import { Sync } from './sync'
+import { Taetigkeiten } from './taetigkeiten'
 import { TrayLeiste } from './tray'
 
 const APP_ID = 'com.wessamedia.zeit'
 const HINTERGRUND = '#0B0B0C'
 const SEKUNDEN_PRO_LEVEL = 5 * 3600
+const REGELN_TAKT_MS = 5 * 60_000
 
 interface Sitzung {
   userId: string
   speicher: Speicher
   erfassung: Erfassung
   sync: Sync
+  regelwerk: Regelwerk
+  taetigkeiten: Taetigkeiten
+  regelTimer: NodeJS.Timeout
 }
 
 let fenster: BrowserWindow | null = null
@@ -142,18 +151,52 @@ function bloeckeGeaendert(): void {
   if (fenster && !fenster.isDestroyed()) fenster.webContents.send('bloecke:aenderung')
 }
 
+/** Regeln neu laden und alle nicht geprüften Blöcke danach bewerten. */
+async function regelnAktualisieren(s: Sitzung): Promise<number> {
+  const ok = await s.regelwerk.laden()
+  if (!ok) return 0
+  const geaendert = alleNeuBewerten(s.speicher, s.regelwerk.liste(), s.userId)
+  if (geaendert) {
+    bloeckeGeaendert()
+    statusVerteilen()
+  }
+  return geaendert
+}
+
 function sitzungStarten(userId: string): void {
   if (sitzung?.userId === userId) return
   sitzungBeenden()
   const speicher = new Speicher(userId)
   speicher.aufraeumen()
-  const erfassung = new Erfassung(speicher, userId)
-  const sync = new Sync(speicher, userId)
-  sitzung = { userId, speicher, erfassung, sync }
+  const regelwerk = new Regelwerk(userId)
+  const taetigkeiten = new Taetigkeiten(userId)
+  taetigkeiten.ausBloecken(speicher.alle())
+  const erfassung = new Erfassung(speicher, userId, (programm, titel) =>
+    regelnAnwenden(programm, titel, regelwerk.liste(), userId)
+  )
+  const sync = new Sync(speicher, userId, () => {
+    // Aus der Datenbank geholte Blöcke nach den aktuellen Regeln bewerten.
+    taetigkeiten.ausBloecken(speicher.alle())
+    alleNeuBewerten(speicher, regelwerk.liste(), userId)
+    bloeckeGeaendert()
+    statusVerteilen()
+  })
+  const s: Sitzung = {
+    userId,
+    speicher,
+    erfassung,
+    sync,
+    regelwerk,
+    taetigkeiten,
+    regelTimer: setInterval(() => void regelnAktualisieren(s), REGELN_TAKT_MS)
+  }
+  sitzung = s
   erfassung.on('status', statusVerteilen)
   erfassung.on('bloecke', bloeckeGeaendert)
   erfassung.start()
   sync.start()
+  void regelnAktualisieren(s)
+  void taetigkeiten.laden()
   statusVerteilen()
 }
 
@@ -161,6 +204,7 @@ function sitzungBeenden(): void {
   if (!sitzung) return
   const alt = sitzung
   sitzung = null
+  clearInterval(alt.regelTimer)
   alt.erfassung.stop()
   alt.sync.stop()
   alt.speicher.speichern()
@@ -175,13 +219,54 @@ function ipcRegistrieren(): void {
   ipcMain.handle('erfassung:fortsetzen', () => {
     sitzung?.erfassung.fortsetzen()
   })
+
   ipcMain.handle('bloecke:tag', (_ereignis, datum: string): Block[] => {
     if (!sitzung) return []
     const von = datumZuTagesanfang(datum)
     const bis = naechsterTagesanfang(von)
     return sitzung.speicher.imZeitraum(von, bis)
   })
+  ipcMain.handle('bloecke:zeitraum', (_ereignis, von: string, bis: string): Block[] => {
+    if (!sitzung) return []
+    return sitzung.speicher.imZeitraum(new Date(von), new Date(bis))
+  })
   ipcMain.handle('bloecke:ungeklaert', (): number => sitzung?.speicher.anzahlUngeklaert() ?? 0)
+  ipcMain.handle('bloecke:ungeklaerteListe', (): Block[] => sitzung?.speicher.ungeklaerteListe() ?? [])
+
+  ipcMain.handle('bloecke:aendern', (_ereignis, id: string, aenderung: BlockAenderung): Block | null => {
+    if (!sitzung) return null
+    if (sitzung.erfassung.laufendeId() === id) throw new Error('Der laufende Block lässt sich erst ändern, wenn er beendet ist.')
+    const block = blockAendern(sitzung.speicher, sitzung.taetigkeiten, id, aenderung)
+    bloeckeGeaendert()
+    statusVerteilen()
+    return block
+  })
+  ipcMain.handle('bloecke:mehrereAendern', (_ereignis, ids: string[], aenderung: BlockAenderung): number => {
+    if (!sitzung) return 0
+    let n = 0
+    for (const id of ids) {
+      if (sitzung.erfassung.laufendeId() === id) continue
+      if (blockAendern(sitzung.speicher, sitzung.taetigkeiten, id, aenderung)) n++
+    }
+    bloeckeGeaendert()
+    statusVerteilen()
+    return n
+  })
+
+  ipcMain.handle('regeln:liste', (): Regel[] => sitzung?.regelwerk.liste() ?? [])
+  ipcMain.handle('regeln:anlegen', async (_ereignis, neu: NeueRegel): Promise<{ regel: Regel; neuBewertet: number }> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    const regel = await sitzung.regelwerk.anlegen({
+      ...neu,
+      taetigkeit: neu.taetigkeit ? sitzung.taetigkeiten.merken(neu.taetigkeit) || null : null
+    })
+    const neuBewertet = alleNeuBewerten(sitzung.speicher, sitzung.regelwerk.liste(), sitzung.userId)
+    bloeckeGeaendert()
+    statusVerteilen()
+    return { regel, neuBewertet }
+  })
+
+  ipcMain.handle('taetigkeiten:liste', (): string[] => sitzung?.taetigkeiten.liste() ?? [])
 }
 
 /** In der fertigen App startet sie mit dem Rechner, versteckt im Symbol. */

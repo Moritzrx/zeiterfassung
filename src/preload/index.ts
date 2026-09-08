@@ -23,12 +23,23 @@ const api: Api = {
   },
   bloecke: {
     tag: (datum) => ipcRenderer.invoke('bloecke:tag', datum),
+    zeitraum: (von, bis) => ipcRenderer.invoke('bloecke:zeitraum', von, bis),
     ungeklaert: () => ipcRenderer.invoke('bloecke:ungeklaert'),
+    ungeklaerteListe: () => ipcRenderer.invoke('bloecke:ungeklaerteListe'),
+    aendern: (id, aenderung) => ipcRenderer.invoke('bloecke:aendern', id, aenderung),
+    mehrereAendern: (ids, aenderung) => ipcRenderer.invoke('bloecke:mehrereAendern', ids, aenderung),
     onAenderung: (rueckruf) => {
       const handler = (): void => rueckruf()
       ipcRenderer.on('bloecke:aenderung', handler)
       return () => ipcRenderer.removeListener('bloecke:aenderung', handler)
     }
+  },
+  regeln: {
+    liste: () => ipcRenderer.invoke('regeln:liste'),
+    anlegen: (neu) => ipcRenderer.invoke('regeln:anlegen', neu)
+  },
+  taetigkeiten: {
+    liste: () => ipcRenderer.invoke('taetigkeiten:liste')
   }
 }
 

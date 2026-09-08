@@ -74,6 +74,27 @@ export class Speicher {
     return this.daten.bloecke.find((b) => b.id === id)
   }
 
+  /** Alle Blöcke, auch gelöschte. Nur für Neubewertung und Aufräumen. */
+  alle(): Block[] {
+    return this.daten.bloecke
+  }
+
+  /** Nicht eingeordnete automatische Blöcke, neueste zuerst, ohne den laufenden. */
+  ungeklaerteListe(maximal = 300): Block[] {
+    const grenze = new Date(Date.now() - 15_000).toISOString()
+    return this.daten.bloecke
+      .filter(
+        (b) =>
+          !b.geloeschtAm &&
+          b.quelle === 'auto' &&
+          b.bewertung === 'ungeklaert' &&
+          !b.manuellGeprueft &&
+          b.ende <= grenze
+      )
+      .sort((a, b) => b.start.localeCompare(a.start))
+      .slice(0, maximal)
+  }
+
   hinzufuegen(block: Block): void {
     this.daten.bloecke.push(block)
     this.ausstehend.add(block.id)

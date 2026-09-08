@@ -77,7 +77,9 @@ export class Sync {
 
   constructor(
     private readonly speicher: Speicher,
-    private readonly userId: string
+    private readonly userId: string,
+    /** Wird aufgerufen, wenn Blöcke aus der Datenbank übernommen wurden. */
+    private readonly nachAbgleich: (anzahl: number) => void = () => {}
   ) {}
 
   start(): void {
@@ -148,7 +150,10 @@ export class Sync {
         if (zeilen.length < SEITE) break
         ab += SEITE
       }
-      if (uebernommen) console.log(`Sync: ${uebernommen} Blöcke aus der Datenbank übernommen`)
+      if (uebernommen) {
+        console.log(`Sync: ${uebernommen} Blöcke aus der Datenbank übernommen`)
+        this.nachAbgleich(uebernommen)
+      }
       this.fehler = null
     } catch (e) {
       this.fehler = e instanceof Error ? e.message : String(e)

@@ -4,6 +4,7 @@ import { hostname } from 'os'
 import { powerMonitor } from 'electron'
 import { activeWindow } from 'get-windows'
 import type { Bewertung, Block, ErfassungsZustand, LaufenderBlock } from '@shared/typen'
+import type { Zuordnung } from '@shared/regeln'
 import { naechsterTagesanfang } from '@shared/zeit'
 import { istSchreibtisch, programmNormalisieren } from './programme'
 import type { Speicher } from './speicher'
@@ -32,21 +33,31 @@ export class Erfassung extends EventEmitter {
   private inaktiv: Block | null = null
   private kurz: Block | null = null // fertiger Block unter 60 s, wartet auf den Anschlussblock
   private letzterTakt = 0
+  /** Vor diesen Zeitpunkt darf Untätigkeit nie rückwirkend gebucht werden (Start, Aufwachen, Fortsetzen). */
+  private zeitgrenze = 0
   private timer: NodeJS.Timeout | null = null
   private taktLaeuft = false
   private readonly geraet = hostname()
 
   constructor(
     private readonly speicher: Speicher,
-    private readonly userId: string
+    private readonly userId: string,
+    /** Bewertet Programm und Fenstertitel nach den Regeln; null = ungeklärt. */
+    private readonly bewerter: (programm: string | null, titel: string | null) => Zuordnung | null
   ) {
     super()
+  }
+
+  /** Kennung des gerade laufenden Blocks, falls einer läuft. */
+  laufendeId(): string | null {
+    return this.aktuell?.id ?? null
   }
 
   start(): void {
     if (this.timer) return
     this.zustand = 'laeuft'
     this.letzterTakt = 0
+    this.zeitgrenze = Date.now()
     this.timer = setInterval(() => void this.takt(), TAKT_MS)
     void this.takt()
   }
@@ -72,6 +83,7 @@ export class Erfassung extends EventEmitter {
     this.zustand = 'laeuft'
     this.pausiertSeit = null
     this.letzterTakt = 0
+    this.zeitgrenze = Date.now()
     this.melden()
     void this.takt()
   }
@@ -80,12 +92,14 @@ export class Erfassung extends EventEmitter {
   unterbrechen(): void {
     this.alleSchliessen(new Date())
     this.letzterTakt = 0
+    this.zeitgrenze = Date.now()
     this.melden()
   }
 
-  /** Nach dem Aufwachen: nächster Takt beginnt sauber neu. */
+  /** Nach dem Aufwachen: nächster Takt beginnt sauber neu, nichts wird rückwirkend gebucht. */
   weiter(): void {
     this.letzterTakt = 0
+    this.zeitgrenze = Date.now()
   }
 
   status(): {
@@ -98,7 +112,14 @@ export class Erfassung extends EventEmitter {
     return {
       zustand: this.zustand,
       laufenderBlock: b
-        ? { start: b.start, programm: b.programm, fenstertitel: b.fenstertitel, bewertung: b.bewertung }
+        ? {
+            id: b.id,
+            start: b.start,
+            programm: b.programm,
+            fenstertitel: b.fenstertitel,
+            taetigkeit: b.taetigkeit,
+            bewertung: b.bewertung
+          }
         : null,
       inaktivSeit: this.inaktivSeit?.toISOString() ?? null,
       pausiertSeit: this.pausiertSeit?.toISOString() ?? null
@@ -127,6 +148,7 @@ export class Erfassung extends EventEmitter {
     // Lücke ohne Ereignis (z. B. Zuklappen): alles zum letzten bekannten Zeitpunkt beenden.
     if (this.letzterTakt && jetzt.getTime() - this.letzterTakt > LUECKE_MS) {
       this.alleSchliessen(new Date(this.letzterTakt))
+      this.zeitgrenze = jetzt.getTime()
     }
     this.letzterTakt = jetzt.getTime()
 
@@ -193,8 +215,9 @@ export class Erfassung extends EventEmitter {
   }
 
   private inaktivVerarbeiten(jetzt: Date, idleSekunden: number): void {
-    // Die Untätigkeit begann beim letzten Tastendruck, nicht erst jetzt.
-    const inaktivStart = new Date(jetzt.getTime() - idleSekunden * 1000)
+    // Die Untätigkeit begann beim letzten Tastendruck, nicht erst jetzt,
+    // aber nie vor dem Start der Erfassung oder dem letzten Aufwachen.
+    const inaktivStart = new Date(Math.max(jetzt.getTime() - idleSekunden * 1000, this.zeitgrenze))
     if (this.aktuell) {
       this.schliessen(this.aktuell, inaktivStart)
       this.aktuell = null
@@ -252,6 +275,8 @@ export class Erfassung extends EventEmitter {
       this.kurz = null
     }
     const jetzt = new Date().toISOString()
+    // Arbeitsblöcke werden sofort nach den Regeln bewertet; inaktive bleiben inaktiv.
+    const zuordnung = bewertung === 'inaktiv' ? null : this.bewerter(programm, fenstertitel)
     const block: Block = {
       id: randomUUID(),
       userId: this.userId,
@@ -261,8 +286,8 @@ export class Erfassung extends EventEmitter {
       programm,
       programmRoh,
       fenstertitel,
-      taetigkeit: null,
-      bewertung,
+      taetigkeit: zuordnung?.taetigkeit ?? null,
+      bewertung: bewertung === 'inaktiv' ? 'inaktiv' : (zuordnung?.bewertung ?? 'ungeklaert'),
       notiz: null,
       manuellGeprueft: false,
       geraet: this.geraet,

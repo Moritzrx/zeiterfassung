@@ -2,7 +2,7 @@
  * Schnittstelle zwischen Fenster (Renderer) und Hintergrundprozess (Main).
  * Wird vom Preload-Skript als window.api bereitgestellt.
  */
-import type { Block, ErfassungsStatus } from './typen'
+import type { Block, BlockAenderung, ErfassungsStatus, NeueRegel, Regel } from './typen'
 
 export interface AuthStatus {
   /** false, wenn die Supabase-Zugangsdaten beim Bauen gefehlt haben */
@@ -37,9 +37,26 @@ export interface Api {
   bloecke: {
     /** Alle Blöcke eines Berliner Kalendertags ("JJJJ-MM-TT"). */
     tag: (datum: string) => Promise<Block[]>
+    /** Alle Blöcke zwischen zwei Zeitpunkten (ISO). */
+    zeitraum: (von: string, bis: string) => Promise<Block[]>
     /** Wie viele automatische Blöcke noch nicht eingeordnet sind. */
     ungeklaert: () => Promise<number>
+    /** Die nicht eingeordneten Blöcke, neueste zuerst. */
+    ungeklaerteListe: () => Promise<Block[]>
+    /** Einen Block von Hand ändern. Wirft bei ungültigen Zeiten. */
+    aendern: (id: string, aenderung: BlockAenderung) => Promise<Block | null>
+    /** Mehrere Blöcke auf einmal ändern. Liefert die Anzahl. */
+    mehrereAendern: (ids: string[], aenderung: BlockAenderung) => Promise<number>
     /** Wird aufgerufen, wenn sich die Blockliste geändert hat. */
     onAenderung: (rueckruf: () => void) => Abmelden
+  }
+  regeln: {
+    liste: () => Promise<Regel[]>
+    /** Legt eine Regel an und bewertet alle nicht geprüften Blöcke neu. */
+    anlegen: (neu: NeueRegel) => Promise<{ regel: Regel; neuBewertet: number }>
+  }
+  taetigkeiten: {
+    /** Alle bekannten Tätigkeitsnamen des Teams, alphabetisch. */
+    liste: () => Promise<string[]>
   }
 }
