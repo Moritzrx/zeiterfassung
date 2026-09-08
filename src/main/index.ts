@@ -181,6 +181,7 @@ function ipcRegistrieren(): void {
     const bis = naechsterTagesanfang(von)
     return sitzung.speicher.imZeitraum(von, bis)
   })
+  ipcMain.handle('bloecke:ungeklaert', (): number => sitzung?.speicher.anzahlUngeklaert() ?? 0)
 }
 
 /** In der fertigen App startet sie mit dem Rechner, versteckt im Symbol. */

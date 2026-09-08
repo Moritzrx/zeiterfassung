@@ -1,6 +1,12 @@
-import { ZEITZONE } from '@shared/zeit'
+import { ZEITZONE, datumZuTagesanfang } from '@shared/zeit'
 
 const UHRZEIT = new Intl.DateTimeFormat('de-DE', { timeZone: ZEITZONE, hour: '2-digit', minute: '2-digit' })
+const DATUM = new Intl.DateTimeFormat('de-DE', {
+  timeZone: ZEITZONE,
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short'
+})
 
 /** Stunden mit einer Nachkommastelle und Komma, z. B. "7,4". */
 export function stundenText(sekunden: number): string {
@@ -31,4 +37,10 @@ export function laufzeitText(sekunden: number): string {
 /** Uhrzeit in Berlin, z. B. "09:12". */
 export function uhrzeit(iso: string): string {
   return UHRZEIT.format(new Date(iso))
+}
+
+/** Kalendertag "JJJJ-MM-TT" als "Mo., 8. Sept.". */
+export function datumText(datum: string): string {
+  const mittag = new Date(datumZuTagesanfang(datum).getTime() + 12 * 3600_000)
+  return DATUM.format(mittag)
 }

@@ -18,6 +18,7 @@ const TABELLE: Record<string, string> = {
   'visual studio code': 'Visual Studio Code',
   explorer: 'Windows Explorer',
   'windows explorer': 'Windows Explorer',
+  'windows-explorer': 'Windows Explorer',
   finder: 'Finder',
   outlook: 'Microsoft Outlook',
   olk: 'Microsoft Outlook',
@@ -69,6 +70,12 @@ const TABELLE: Record<string, string> = {
   'windows terminal': 'Terminal',
   windowsterminal: 'Terminal',
   applicationframehost: 'Windows-App'
+}
+
+/** Leerer Schreibtisch oder Taskleiste im Fokus: das ist kein Arbeitsfenster. */
+export function istSchreibtisch(programm: string | null, titel: string | null | undefined): boolean {
+  if (programm !== 'Windows Explorer') return false
+  return !titel || titel === 'Program Manager' || titel === 'Programmmanager'
 }
 
 /**

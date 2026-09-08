@@ -23,6 +23,7 @@ const api: Api = {
   },
   bloecke: {
     tag: (datum) => ipcRenderer.invoke('bloecke:tag', datum),
+    ungeklaert: () => ipcRenderer.invoke('bloecke:ungeklaert'),
     onAenderung: (rueckruf) => {
       const handler = (): void => rueckruf()
       ipcRenderer.on('bloecke:aenderung', handler)

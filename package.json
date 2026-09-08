@@ -20,7 +20,8 @@
     "get-windows": "9.3.0",
     "lucide-react": "1.43.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "recharts": "3.10.1"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "2.0.0",

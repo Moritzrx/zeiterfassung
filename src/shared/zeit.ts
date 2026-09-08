@@ -100,3 +100,9 @@ export function datumZuTagesanfang(datum: string): Date {
   const [jahr, monat, tag] = datum.split('-').map(Number)
   return berlinZuUtc(jahr, monat, tag)
 }
+
+/** "JJJJ-MM-TT" um eine Anzahl Tage verschieben (negativ = zurück). */
+export function datumVerschieben(datum: string, tage: number): string {
+  const [jahr, monat, tag] = datum.split('-').map(Number)
+  return berlinDatum(berlinZuUtc(jahr, monat, tag + tage, 12))
+}

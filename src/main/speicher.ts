@@ -129,6 +129,18 @@ export class Speicher {
     return Math.round(summe)
   }
 
+  /** Automatische Blöcke, die noch niemand eingeordnet hat (ohne den gerade laufenden). */
+  anzahlUngeklaert(): number {
+    const grenze = new Date(Date.now() - 15_000).toISOString()
+    let n = 0
+    for (const b of this.daten.bloecke) {
+      if (b.geloeschtAm || b.quelle !== 'auto' || b.bewertung !== 'ungeklaert' || b.manuellGeprueft) continue
+      if (b.ende > grenze) continue
+      n++
+    }
+    return n
+  }
+
   ausstehende(): Block[] {
     const liste: Block[] = []
     for (const id of this.ausstehend) {

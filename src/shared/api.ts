@@ -37,6 +37,8 @@ export interface Api {
   bloecke: {
     /** Alle Blöcke eines Berliner Kalendertags ("JJJJ-MM-TT"). */
     tag: (datum: string) => Promise<Block[]>
+    /** Wie viele automatische Blöcke noch nicht eingeordnet sind. */
+    ungeklaert: () => Promise<number>
     /** Wird aufgerufen, wenn sich die Blockliste geändert hat. */
     onAenderung: (rueckruf: () => void) => Abmelden
   }

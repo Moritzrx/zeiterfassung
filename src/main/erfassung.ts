@@ -5,7 +5,7 @@ import { powerMonitor } from 'electron'
 import { activeWindow } from 'get-windows'
 import type { Bewertung, Block, ErfassungsZustand, LaufenderBlock } from '@shared/typen'
 import { naechsterTagesanfang } from '@shared/zeit'
-import { programmNormalisieren } from './programme'
+import { istSchreibtisch, programmNormalisieren } from './programme'
 import type { Speicher } from './speicher'
 
 const TAKT_MS = 5_000 // alle 5 Sekunden das aktive Fenster abfragen
@@ -157,7 +157,7 @@ export class Erfassung extends EventEmitter {
     const titel = this.fenstertitelSpeichern && fenster?.title ? fenster.title : null
 
     // Kein Fenster mit Fokus (Schreibtisch, Sperrbildschirm): kein Arbeitsblock.
-    if (!programm) {
+    if (!programm || istSchreibtisch(programm, fenster?.title)) {
       if (this.aktuell) {
         this.schliessen(this.aktuell, jetzt)
         this.aktuell = null

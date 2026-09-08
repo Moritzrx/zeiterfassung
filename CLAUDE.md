@@ -50,7 +50,8 @@ Tailwind-Farbnamen: bg-ground, bg-panel, text-ink, text-mute, text-dim, produkti
   Bausteine: `src/main/erfassung.ts` (Takt 5 s, Untätigkeit rückwirkend, Lückenprüfung 30 s, Mitternacht- und 4-h-Teilung, Kurzblock-Regel 60 s, Inaktiv-Block max 60 min), `src/main/speicher.ts` (JSON je Konto unter `%APPDATA%\wessamedia Zeit\bloecke-<userId>.json`, atomar mit .bak), `src/main/sync.ts` (alle 60 s Upsert, Anfangsabgleich 13 Wochen mit Seiten à 1000), `src/main/tray.ts`, `src/main/programme.ts` (Namens-Tabelle), `src/shared/zeit.ts` (Berlin-Zeitrechnung ohne Zusatzpaket).
   Entscheidung: Ein Block endet auch bei Wechsel des Fenstertitels, nicht nur des Programms, sonst wären Titel-Regeln (Google Ads gegen YouTube im selben Chrome) wirkungslos; die 60-s-Regel hält die Liste ruhig. In der Entwicklungsversion heißt das eigene Fenster "Electron", in der gebauten App "wessamedia Zeit".
   Bewertung ist bis Schritt 5 immer "ungeklaert" (außer inaktiv), deshalb bleibt "Heute produktiv" vorerst 0,0.
-- Schritte 4 bis 12: offen. Reihenfolge laut `docs/auftrag.md`.
+- Schritt 4 (Heute-Screen mit echten Daten): gebaut am 8. September 2026. Tages-Ring (Recharts, vier Anteile inkl. ungeklärt), große Zahl mit `AnimierteZahl` (600 ms, respektiert "Bewegung reduzieren"), Blättern zu früheren Tagen (Pfeile, Klick auf das Datum springt zu heute), Ungeklärt-Hinweis mit Anzahl über alle Tage, Tagesliste (heute neueste zuerst, sonst chronologisch). Diagramme animieren nur beim ersten Aufbau. `DiagrammTooltip` ist der gemeinsame dunkle Tooltip für alle Diagramme. Leerer Schreibtisch (Windows Explorer ohne Fenstertitel) erzeugt keinen Block mehr.
+- Schritte 5 bis 12: offen. Reihenfolge laut `docs/auftrag.md`.
 
 ## Befehle
 - `npm run dev` startet die App zum Entwickeln. Unter Windows ohne PATH: `scripts\dev-windows.cmd`.
