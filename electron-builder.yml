@@ -1,0 +1,92 @@
+# Einstellungen für electron-builder: Windows-Installer (.exe) und Mac-Abbild (.dmg).
+# Beide unsigniert, siehe README ("Warnung beim ersten Start").
+appId: com.wessamedia.zeit
+productName: wessamedia Zeit
+copyright: Copyright © 2026 wessamedia
+
+directories:
+  buildResources: build
+  output: dist
+
+# Was in die App kommt: der gebaute Ordner out/, package.json und die Laufzeit-Abhängigkeiten.
+# Alles, was nur zum Entwickeln gehört, bleibt draußen.
+# Wichtig: Diese Liste nur hier pflegen. Eine eigene "files"-Liste unter win: oder mac: ersetzt
+# die globale Liste komplett (dann landen sogar .git und dist im Paket, geprüft am 9. September 2026).
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!docs/*'
+  - '!supabase/*'
+  - '!scripts/*'
+  - '!build/*'
+  - '!.github/*'
+  - '!.claude/*'
+  - '!electron.vite.config.ts'
+  - '!.env'
+  - '!.env.*'
+  - '!.npmrc'
+  - '!.gitignore'
+  - '!.prettierrc'
+  - '!.editorconfig'
+  - '!tsconfig.json'
+  - '!tsconfig.node.json'
+  - '!tsconfig.web.json'
+  - '!CLAUDE.md'
+  - '!README.md'
+  - '!node_modules/get-windows/Sources/**'
+  # Auf dem Mac nutzt get-windows nur das Hilfsprogramm "main", nie die .node-Dateien für darwin.
+  # Die würden beim Zusammenführen von Intel und Apple Silicon stören, deshalb raus.
+  - '!node_modules/get-windows/lib/binding/napi-*-darwin-*/**'
+  # Werkzeuge zum Kompilieren, die nur beim Installieren von get-windows eine Rolle spielen
+  - '!node_modules/node-gyp/**'
+  - '!node_modules/node-addon-api/**'
+  # Electron selbst gehört nie ins Paket (kommt sonst über peerDependencies herein)
+  - '!node_modules/electron/**'
+
+# get-windows bringt fertige Programmteile mit (Windows: .node-Datei, Mac: Hilfsprogramm "main").
+# Die müssen als echte Dateien neben dem Archiv liegen, sonst kann das System sie nicht ausführen.
+asarUnpack:
+  - node_modules/get-windows/**
+
+# Nicht neu kompilieren: die mitgelieferten Programmteile passen (N-API), und ein Neubau bräuchte Build-Werkzeuge.
+npmRebuild: false
+nodeGypRebuild: false
+
+win:
+  target: nsis
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: wessamedia Zeit
+  uninstallDisplayName: wessamedia Zeit
+  language: '1031'
+  deleteAppDataOnUninstall: false
+  artifactName: wessamedia-Zeit-${version}-Windows.${ext}
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - universal
+  icon: build/icon.png
+  category: public.app-category.productivity
+  darkModeSupport: true
+  # Keine Apple-Entwicklersignatur. Die Ad-hoc-Signatur für Apple Silicon setzt der GitHub-Ablauf.
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  notarize: false
+  # Das Hilfsprogramm ist schon für Intel und Apple Silicon gebaut und in beiden Teilbauten gleich.
+  x64ArchFiles: '**/get-windows/main'
+  artifactName: wessamedia-Zeit-${version}-Mac.${ext}
+
+dmg:
+  title: wessamedia Zeit
+  artifactName: wessamedia-Zeit-${version}-Mac.${ext}
+
+publish: null

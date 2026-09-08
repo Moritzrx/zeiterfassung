@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, Notification, powerMonitor, shell } from 'electron'
+import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import type {
@@ -126,6 +127,8 @@ function fensterAnlegen(): BrowserWindow {
   } else {
     void neu.loadFile(join(__dirname, '../renderer/index.html'))
   }
+  // Zur Fehlersuche in der fertigen App: Start mit "--devtools" öffnet die Entwicklerwerkzeuge.
+  if (process.argv.includes('--devtools')) neu.webContents.openDevTools({ mode: 'detach' })
   return neu
 }
 
@@ -537,11 +540,19 @@ function ipcRegistrieren(): void {
   })
 }
 
-/** In der fertigen App startet sie mit dem Rechner, versteckt im Symbol. */
+/**
+ * Die fertige App schaltet beim allerersten Start den Autostart ein (mit dem Rechner, versteckt im Symbol).
+ * Danach entscheidet allein der Schalter in den Einstellungen; eine Marke im Datenordner merkt sich das.
+ */
 function autostartEinrichten(): void {
   if (!app.isPackaged) return
-  if (!app.getLoginItemSettings().openAtLogin) {
-    app.setLoginItemSettings({ openAtLogin: true, args: ['--hidden'] })
+  const marke = join(app.getPath('userData'), 'autostart-eingerichtet')
+  if (existsSync(marke)) return
+  app.setLoginItemSettings({ openAtLogin: true, args: ['--hidden'] })
+  try {
+    writeFileSync(marke, new Date().toISOString())
+  } catch (fehler) {
+    console.error('Autostart-Marke:', fehler)
   }
 }
 

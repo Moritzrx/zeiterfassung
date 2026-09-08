@@ -56,6 +56,12 @@ Damit die Auswertung auch 6 oder 12 Monate zeigen kann, braucht die Datenbank ei
 - `supabase/05_auswertung.sql` genauso ausführen wie die anderen Skripte: **SQL Editor** → **New query** → einfügen → **Run**.
 - Solange das Skript nicht gelaufen ist, zeigt die App für Zeiträume über zwölf Wochen einen Hinweis statt Zahlen. Alles bis zwölf Wochen funktioniert auch ohne.
 
+## 6c. Team-Verlauf und Rangliste (Skript 6)
+
+Für den Verlauf über mehrere Wochen und die Rangliste auf dem Team-Screen:
+
+- `supabase/06_team.sql` genauso ausführen: **SQL Editor** → **New query** → einfügen → **Run**.
+
 ## 7. Zugangsdaten in die App bringen
 
 1. Links unten **"Project Settings"** (Zahnrad) → **"API Keys"**.
