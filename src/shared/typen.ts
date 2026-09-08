@@ -62,6 +62,14 @@ export interface TeamMitglied {
   istIch: boolean
 }
 
+/** Produktive Sekunden einer Person in einer Woche, für den Team-Verlauf. */
+export interface TeamWoche {
+  userId: string
+  name: string
+  wocheStart: string
+  produktiveSekunden: number
+}
+
 /** Die persönlichen Einstellungen aus der Tabelle profile. */
 export interface Profil {
   name: string

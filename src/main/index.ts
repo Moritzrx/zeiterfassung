@@ -12,6 +12,7 @@ import type {
   SymbolInfo,
   Tagessumme,
   TeamMitglied,
+  TeamWoche,
   Ziel
 } from '@shared/typen'
 import { regelnAnwenden } from '@shared/regeln'
@@ -366,6 +367,32 @@ function ipcRegistrieren(): void {
         istIch
       }
     })
+  })
+
+  ipcMain.handle('team:wochen', async (_ereignis, vonDatum: string, bisDatum: string): Promise<TeamWoche[]> => {
+    if (!sitzung) return []
+    if (!supabaseKonfiguriert()) throw new Error('Keine Datenbank konfiguriert.')
+    const { data, error } = await supabase().rpc('team_wochen', { von: vonDatum, bis: bisDatum })
+    if (error) {
+      if (/team_wochen/.test(error.message)) {
+        throw new Error('Für den Team-Verlauf muss in Supabase einmal das Skript 6 (06_team.sql) ausgeführt werden.')
+      }
+      throw new Error('Datenbank nicht erreichbar: ' + error.message)
+    }
+    const jetzt = new Date()
+    const laufendeWoche = berlinDatum(wochenanfang(jetzt))
+    const eigeneSekunden = sitzung.speicher.produktiveSekunden(wochenanfang(jetzt), jetzt)
+    const eigeneId = sitzung.userId
+    return ((data ?? []) as Array<{ user_id: string; name: string; woche_start: string; produktive_sekunden: number | string }>).map(
+      (z) => ({
+        userId: z.user_id,
+        name: z.name,
+        wocheStart: z.woche_start,
+        // Die laufende Woche der eigenen Person live vom Rechner.
+        produktiveSekunden:
+          z.user_id === eigeneId && z.woche_start === laufendeWoche ? eigeneSekunden : Number(z.produktive_sekunden)
+      })
+    )
   })
 
   ipcMain.handle('profil:eigenes', (): ProfilDaten | null => sitzung?.profil.daten ?? null)

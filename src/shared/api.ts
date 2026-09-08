@@ -13,6 +13,7 @@ import type {
   SymbolInfo,
   Tagessumme,
   TeamMitglied,
+  TeamWoche,
   Ziel
 } from './typen'
 
@@ -90,6 +91,8 @@ export interface Api {
   team: {
     /** Produktive Wochenstunden aller aktiven Personen, eigene live. */
     stand: () => Promise<TeamMitglied[]>
+    /** Produktive Sekunden je Person und Woche zwischen zwei Kalendertagen ("JJJJ-MM-TT"). */
+    wochen: (vonDatum: string, bisDatum: string) => Promise<TeamWoche[]>
   }
   profil: {
     /** Die eigenen Einstellungen. */

@@ -1,10 +1,22 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
-import { STANDARD_GESAMTZIEL, level } from '@shared/level'
-import type { TeamMitglied, Ziel } from '@shared/typen'
+import { STANDARD_GESAMTZIEL, level, zielLevel } from '@shared/level'
+import type { TeamMitglied, TeamWoche, Ziel } from '@shared/typen'
+import { berlinDatum, datumVerschieben, datumZuTagesanfang, kalenderwoche, wochenanfang } from '@shared/zeit'
 import { Karte } from '../components/Karte'
 import { TeamBalken, type Teamwert } from '../components/TeamBalken'
+import { TeamVerlauf, type Verlaufsperson, type Verlaufswoche } from '../components/TeamVerlauf'
 import { useErfassung } from '../erfassung'
-import { stundenText, uhrzeit } from '../format'
+import { kurzDatum, stundenText, uhrzeit } from '../format'
+
+const ZEITRAEUME = [
+  { wochen: 4, label: '4 Wochen' },
+  { wochen: 12, label: '12 Wochen' },
+  { wochen: 26, label: '6 Monate' },
+  { wochen: 52, label: '12 Monate' }
+] as const
+const SPEICHER_SCHLUESSEL = 'team.zeitraum'
+/** Linienfarben für die anderen, die eigene Linie ist weiß. */
+const FARBEN = ['#38BDF8', '#A78BFA', '#FBBF24', '#2DD4BF']
 
 function initialen(name: string): string {
   return name
@@ -15,13 +27,25 @@ function initialen(name: string): string {
     .join('')
 }
 
-/** Screen 4: Team. Alle drei nebeneinander, sortiert nach Level, plus der Vergleich als Balken. Kein Firlefanz. */
+function gespeicherterZeitraum(): number {
+  try {
+    const wert = Number(localStorage.getItem(SPEICHER_SCHLUESSEL))
+    return ZEITRAEUME.some((z) => z.wochen === wert) ? wert : 12
+  } catch {
+    return 12
+  }
+}
+
+/** Screen 4: Team. Stand der laufenden Woche, dazu Verlauf und Rangliste über einen wählbaren Zeitraum. */
 export function TeamScreen(): ReactElement {
   const status = useErfassung()
   const [mitglieder, setMitglieder] = useState<TeamMitglied[]>([])
   const [ziele, setZiele] = useState<Ziel[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [stand, setStand] = useState<string | null>(null)
+  const [wochenAnzahl, setWochenAnzahl] = useState<number>(gespeicherterZeitraum)
+  const [teamWochen, setTeamWochen] = useState<TeamWoche[]>([])
+  const [verlaufFehler, setVerlaufFehler] = useState<string | null>(null)
 
   const laden = useCallback(async () => {
     if (!window.api) return
@@ -36,11 +60,39 @@ export function TeamScreen(): ReactElement {
     }
   }, [])
 
+  const verlaufLaden = useCallback(async () => {
+    if (!window.api) return
+    const heute = berlinDatum(new Date())
+    const von = datumVerschieben(berlinDatum(wochenanfang(new Date())), -7 * (wochenAnzahl - 1))
+    try {
+      setTeamWochen(await window.api.team.wochen(von, heute))
+      setVerlaufFehler(null)
+    } catch (e) {
+      setTeamWochen([])
+      setVerlaufFehler(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : String(e))
+    }
+  }, [wochenAnzahl])
+
   useEffect(() => {
     void laden()
     const timer = setInterval(() => void laden(), 60_000)
     return () => clearInterval(timer)
   }, [laden])
+
+  useEffect(() => {
+    void verlaufLaden()
+    const timer = setInterval(() => void verlaufLaden(), 5 * 60_000)
+    return () => clearInterval(timer)
+  }, [verlaufLaden])
+
+  function zeitraumWaehlen(neu: number): void {
+    setWochenAnzahl(neu)
+    try {
+      localStorage.setItem(SPEICHER_SCHLUESSEL, String(neu))
+    } catch {
+      // Merken ist optional
+    }
+  }
 
   const zeilen = useMemo(() => {
     return mitglieder
@@ -60,6 +112,42 @@ export function TeamScreen(): ReactElement {
     ziel: z.gesamtziel,
     istIch: z.istIch
   }))
+
+  // Verlauf: eine Zeile je Woche, Spalten je Person
+  const { verlauf, personen, rangliste } = useMemo(() => {
+    const namen = new Map<string, { name: string; istIch: boolean; gesamt: number; zielWochen: number }>()
+    const eigeneId = mitglieder.find((m) => m.istIch)?.userId
+    for (const w of teamWochen) {
+      const e = namen.get(w.userId) ?? { name: w.name, istIch: w.userId === eigeneId, gesamt: 0, zielWochen: 0 }
+      e.gesamt += w.produktiveSekunden
+      const gesamtziel = ziele.find((z) => z.userId === w.userId && z.taetigkeit === null)?.stundenProWoche ?? STANDARD_GESAMTZIEL
+      if (level(w.produktiveSekunden) >= zielLevel(gesamtziel)) e.zielWochen++
+      namen.set(w.userId, e)
+    }
+    const personenListe: Verlaufsperson[] = []
+    let farbe = 0
+    for (const e of namen.values()) {
+      personenListe.push({ name: e.name, istIch: e.istIch, farbe: e.istIch ? '#F2F2F3' : FARBEN[farbe++ % FARBEN.length] })
+    }
+    const wochenMap = new Map<string, Verlaufswoche>()
+    for (const w of teamWochen) {
+      const zeile =
+        wochenMap.get(w.wocheStart) ??
+        ({
+          label: `KW ${kalenderwoche(datumZuTagesanfang(w.wocheStart))}`,
+          titel: `KW ${kalenderwoche(datumZuTagesanfang(w.wocheStart))} · ${kurzDatum(w.wocheStart)} bis ${kurzDatum(datumVerschieben(w.wocheStart, 6))}`
+        } as Verlaufswoche)
+      zeile[w.name] = w.produktiveSekunden / 3600
+      wochenMap.set(w.wocheStart, zeile)
+    }
+    const verlaufListe = [...wochenMap.entries()].sort((a, b) => a[0].localeCompare(b[0])).map((e) => e[1])
+    const rang = [...namen.values()].sort((a, b) => b.gesamt - a.gesamt)
+    return { verlauf: verlaufListe, personen: personenListe, rangliste: rang }
+  }, [teamWochen, mitglieder, ziele])
+
+  const anzahlWochen = verlauf.length
+  const zielStunden = zeilen[0]?.gesamtziel ?? STANDARD_GESAMTZIEL
+  const zeitraumLabel = ZEITRAEUME.find((z) => z.wochen === wochenAnzahl)?.label ?? `${wochenAnzahl} Wochen`
 
   return (
     <div className="flex flex-col gap-4 pt-6">
@@ -85,7 +173,7 @@ export function TeamScreen(): ReactElement {
               </div>
               <p className="mt-3 text-base">{z.name}</p>
               <p className="mt-3 text-[40px] leading-none font-light">{z.level}</p>
-              <p className="text-xs text-mute">Level</p>
+              <p className="text-xs text-mute">Level diese Woche</p>
               <p className="mt-3 text-sm">
                 {stundenText(z.sekunden)} h <span className="text-mute">von {stundenText(z.gesamtziel * 3600)} h</span>
               </p>
@@ -105,11 +193,73 @@ export function TeamScreen(): ReactElement {
 
       {zeilen.length > 0 && (
         <Karte>
-          <p className="text-xs tracking-wide text-mute uppercase">Wochenstunden im Vergleich</p>
+          <p className="text-xs tracking-wide text-mute uppercase">Diese Woche im Vergleich</p>
           <div className="mt-3">
             <TeamBalken werte={balken} />
           </div>
         </Karte>
+      )}
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-light">Verlauf und Rangliste</h2>
+        <div className="flex gap-1 rounded-chip bg-panel p-1">
+          {ZEITRAEUME.map((z) => (
+            <button
+              key={z.wochen}
+              type="button"
+              onClick={() => zeitraumWaehlen(z.wochen)}
+              className={`rounded-chip px-3 py-1.5 text-sm transition-colors ${
+                wochenAnzahl === z.wochen ? 'bg-panel-2 text-ink' : 'text-mute hover:text-ink'
+              }`}
+            >
+              {z.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {verlaufFehler ? (
+        <p className="rounded-card bg-panel p-4 text-sm text-mute">{verlaufFehler}</p>
+      ) : (
+        <>
+          <Karte>
+            <p className="text-xs tracking-wide text-mute uppercase">Produktive Stunden je Woche, letzte {zeitraumLabel}</p>
+            <div className="mt-3">
+              <TeamVerlauf wochen={verlauf} personen={personen} ziel={zielStunden} />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-4 text-xs text-mute">
+              {personen.map((p) => (
+                <span key={p.name} className="flex items-center gap-2">
+                  <span className="inline-block h-2 w-4 rounded-full" style={{ background: p.farbe }} />
+                  {p.name}
+                </span>
+              ))}
+            </div>
+          </Karte>
+
+          <Karte>
+            <p className="text-xs tracking-wide text-mute uppercase">Rangliste, letzte {zeitraumLabel}</p>
+            <div className="mt-2 divide-y divide-panel-2">
+              {rangliste.map((r, i) => (
+                <div key={r.name} className="flex items-center gap-4 py-3">
+                  <span className={`w-6 text-lg font-light ${i === 0 ? 'text-orange' : 'text-mute'}`}>{i + 1}.</span>
+                  <span
+                    className={`flex h-9 w-9 items-center justify-center rounded-full text-sm ${
+                      r.istIch ? 'bg-ink text-ground' : 'bg-panel-2 text-ink'
+                    }`}
+                  >
+                    {initialen(r.name)}
+                  </span>
+                  <span className="flex-1 text-sm">{r.name}</span>
+                  <span className="text-sm text-mute">
+                    {r.zielWochen} von {anzahlWochen} Wochen auf Ziel
+                  </span>
+                  <span className="w-24 text-right text-sm">{stundenText(r.gesamt)} h</span>
+                </div>
+              ))}
+            </div>
+          </Karte>
+        </>
       )}
     </div>
   )

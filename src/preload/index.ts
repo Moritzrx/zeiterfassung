@@ -51,7 +51,8 @@ const api: Api = {
     alle: () => ipcRenderer.invoke('ziele:alle')
   },
   team: {
-    stand: () => ipcRenderer.invoke('team:stand')
+    stand: () => ipcRenderer.invoke('team:stand'),
+    wochen: (vonDatum, bisDatum) => ipcRenderer.invoke('team:wochen', vonDatum, bisDatum)
   },
   profil: {
     eigenes: () => ipcRenderer.invoke('profil:eigenes'),
