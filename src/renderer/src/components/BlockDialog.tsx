@@ -65,6 +65,7 @@ export function BlockDialog({
 }: Props): ReactElement {
   const istInaktiv = block.bewertung === 'inaktiv'
   const istManuell = block.quelle === 'manuell'
+  const istBrowser = BROWSER.includes(block.programm ?? '')
   const [taetigkeit, setTaetigkeit] = useState(block.taetigkeit ?? '')
   const [bewertung, setBewertung] = useState<Bewertung>(
     block.bewertung === 'ungeklaert' ? 'produktiv' : block.bewertung
@@ -73,9 +74,7 @@ export function BlockDialog({
   const [bis, setBis] = useState(zeitFeld(block.ende))
   const [notiz, setNotiz] = useState(block.notiz ?? '')
   const [immer, setImmer] = useState(false)
-  const [feld, setFeld] = useState<'programm' | 'titel'>(
-    block.fenstertitel && BROWSER.includes(block.programm ?? '') ? 'titel' : 'programm'
-  )
+  const [feld, setFeld] = useState<'programm' | 'titel'>(block.fenstertitel && istBrowser ? 'titel' : 'programm')
   const [muster, setMuster] = useState(musterVorschlag(block.fenstertitel))
   const [fuerAlle, setFuerAlle] = useState(false)
   const [loeschenBestaetigen, setLoeschenBestaetigen] = useState(false)
@@ -244,6 +243,11 @@ export function BlockDialog({
                   <input type="radio" checked={feld === 'programm'} onChange={() => setFeld('programm')} />
                   <span>
                     Immer wenn das Programm <span className="text-ink">{block.programm}</span> ist
+                    {istBrowser && (
+                      <span className="ml-2 text-xs text-unproduktiv">
+                        Vorsicht: damit würde alles im Browser so eingeordnet
+                      </span>
+                    )}
                   </span>
                 </label>
                 {block.fenstertitel && (
