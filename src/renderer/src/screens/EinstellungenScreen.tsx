@@ -1,17 +1,210 @@
-import type { ReactElement } from 'react'
+import { useCallback, useEffect, useState, type ReactElement, type ReactNode } from 'react'
+import { Trash2 } from 'lucide-react'
+import { STANDARD_GESAMTZIEL } from '@shared/rang'
+import { taetigkeitSchluessel } from '@shared/regeln'
+import type { Profil, Regel, RegelBewertung, SymbolInfo, SystemInfo, Ziel } from '@shared/typen'
+import { hinweisZeigen } from '../components/Hinweis'
 import { Karte } from '../components/Karte'
+import { SymbolWahl } from '../components/SymbolWahl'
 import { useErfassung } from '../erfassung'
 import { uhrzeit } from '../format'
 import { useNutzer } from '../nutzer'
+import { SymbolBild, useSymbolZuordnung } from '../symbole'
+import { useTaetigkeiten } from '../taetigkeiten'
 
+const FELD =
+  'rounded-chip bg-panel-2 px-3 py-2 text-sm text-ink outline-none placeholder:text-dim focus:ring-1 focus:ring-dim'
+const KLEIN = `${FELD} w-24 text-right`
+
+function fehlerText(e: unknown): string {
+  return e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : String(e)
+}
+
+function Schalter({ an, onChange, disabled = false }: { an: boolean; onChange: (an: boolean) => void; disabled?: boolean }): ReactElement {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={an}
+      disabled={disabled}
+      onClick={() => onChange(!an)}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-40 ${an ? 'bg-produktiv' : 'bg-inaktiv'}`}
+    >
+      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-ink transition-[left] ${an ? 'left-[22px]' : 'left-0.5'}`} />
+    </button>
+  )
+}
+
+function Zeile({ titel, hinweis, children }: { titel: string; hinweis?: string; children: ReactNode }): ReactElement {
+  return (
+    <div className="flex items-center justify-between gap-6 py-3">
+      <div className="min-w-0">
+        <p className="text-sm">{titel}</p>
+        {hinweis && <p className="mt-0.5 text-xs text-dim">{hinweis}</p>}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">{children}</div>
+    </div>
+  )
+}
+
+/** Zahlenfeld, das erst beim Verlassen oder mit Enter speichert. */
+function Zahl({ wert, onSpeichern, min, max, schritt = 1 }: { wert: number; onSpeichern: (n: number) => void; min: number; max: number; schritt?: number }): ReactElement {
+  const [text, setText] = useState(String(wert))
+  useEffect(() => setText(String(wert)), [wert])
+  function abschicken(): void {
+    const n = Number(text.replace(',', '.'))
+    if (Number.isNaN(n) || n < min || n > max) {
+      setText(String(wert))
+      hinweisZeigen(`Bitte einen Wert zwischen ${min} und ${max} eingeben.`)
+      return
+    }
+    if (n !== wert) onSpeichern(n)
+  }
+  return (
+    <input
+      className={KLEIN}
+      value={text}
+      inputMode="decimal"
+      step={schritt}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={abschicken}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+      }}
+    />
+  )
+}
+
+/** Screen 6: Einstellungen. Erfassung, Ziele, Regeln, Symbole, Hochrechnung, System, Konto. */
 export function EinstellungenScreen(): ReactElement {
   const { status, neuLaden } = useNutzer()
   const erfassung = useErfassung()
+  const taetigkeiten = useTaetigkeiten()
+  const zuordnung = useSymbolZuordnung()
+  const [profil, setProfil] = useState<Profil | null>(null)
+  const [system, setSystem] = useState<SystemInfo | null>(null)
+  const [ziele, setZiele] = useState<Ziel[]>([])
+  const [regeln, setRegeln] = useState<Regel[]>([])
+  const [symbolFuer, setSymbolFuer] = useState<string | null>(null)
+  const [neuesZiel, setNeuesZiel] = useState({ taetigkeit: '', stunden: '5' })
+  const [neueRegel, setNeueRegel] = useState({ muster: '', feld: 'titel' as 'programm' | 'titel', taetigkeit: '', bewertung: 'produktiv' as RegelBewertung, fuerAlle: false })
+  const [loeschenId, setLoeschenId] = useState<string | null>(null)
+
+  const laden = useCallback(async () => {
+    if (!window.api) return
+    const [p, s, z, r] = await Promise.all([
+      window.api.profil.eigenes(),
+      window.api.system.info(),
+      window.api.ziele.eigene(),
+      window.api.regeln.liste()
+    ])
+    setProfil(p)
+    setSystem(s)
+    setZiele(z)
+    setRegeln(r)
+  }, [])
+
+  useEffect(() => {
+    void laden()
+  }, [laden])
+
+  async function profilSpeichern(aenderung: Partial<Profil>): Promise<void> {
+    try {
+      setProfil(await window.api.profil.aendern(aenderung))
+      hinweisZeigen('Gespeichert.')
+    } catch (e) {
+      hinweisZeigen(fehlerText(e))
+    }
+  }
+
+  async function zielSpeichern(taetigkeit: string | null, stunden: number): Promise<void> {
+    try {
+      await window.api.ziele.setzen(taetigkeit, stunden)
+      await laden()
+      hinweisZeigen('Ziel gespeichert.')
+    } catch (e) {
+      hinweisZeigen(fehlerText(e))
+    }
+  }
+
+  async function zielLoeschen(id: string): Promise<void> {
+    try {
+      await window.api.ziele.loeschen(id)
+      await laden()
+      hinweisZeigen('Ziel entfernt.')
+    } catch (e) {
+      hinweisZeigen(fehlerText(e))
+    }
+  }
+
+  async function regelSpeichern(id: string, aenderung: Parameters<typeof window.api.regeln.aendern>[1]): Promise<void> {
+    try {
+      const { neuBewertet } = await window.api.regeln.aendern(id, aenderung)
+      await laden()
+      hinweisZeigen(neuBewertet ? `Regel geändert, ${neuBewertet} Blöcke neu bewertet.` : 'Regel geändert.')
+    } catch (e) {
+      hinweisZeigen(fehlerText(e))
+      await laden()
+    }
+  }
+
+  async function regelLoeschen(id: string): Promise<void> {
+    if (loeschenId !== id) {
+      setLoeschenId(id)
+      return
+    }
+    setLoeschenId(null)
+    try {
+      const neuBewertet = await window.api.regeln.loeschen(id)
+      await laden()
+      hinweisZeigen(neuBewertet ? `Regel gelöscht, ${neuBewertet} Blöcke neu bewertet.` : 'Regel gelöscht.')
+    } catch (e) {
+      hinweisZeigen(fehlerText(e))
+    }
+  }
+
+  async function regelAnlegen(): Promise<void> {
+    try {
+      const { neuBewertet } = await window.api.regeln.anlegen({
+        muster: neueRegel.muster,
+        feld: neueRegel.feld,
+        taetigkeit: neueRegel.taetigkeit.trim() || null,
+        bewertung: neueRegel.bewertung,
+        fuerAlle: neueRegel.fuerAlle
+      })
+      setNeueRegel({ muster: '', feld: 'titel', taetigkeit: '', bewertung: 'produktiv', fuerAlle: false })
+      await laden()
+      hinweisZeigen(neuBewertet ? `Regel angelegt, ${neuBewertet} Blöcke neu bewertet.` : 'Regel angelegt.')
+    } catch (e) {
+      hinweisZeigen(fehlerText(e))
+    }
+  }
+
+  async function symbolSetzen(name: string, symbol: SymbolInfo): Promise<void> {
+    try {
+      await window.api.taetigkeiten.symbolSetzen(name, symbol)
+      setSymbolFuer(null)
+      hinweisZeigen('Symbol gespeichert.')
+    } catch (e) {
+      hinweisZeigen(fehlerText(e))
+    }
+  }
+
+  async function autostartSetzen(an: boolean): Promise<void> {
+    const ergebnis = await window.api.system.autostartSetzen(an)
+    setSystem((s) => (s ? { ...s, autostart: ergebnis } : s))
+  }
 
   async function abmelden(): Promise<void> {
     await window.api.auth.abmelden()
     await neuLaden()
   }
+
+  const gesamtziel = ziele.find((z) => z.taetigkeit === null)
+  const taetigkeitsZiele = ziele.filter((z) => z.taetigkeit !== null).sort((a, b) => b.stundenProWoche - a.stundenProWoche)
+  const sichtbareRegeln = regeln
+    .filter((r) => r.giltFuer === null || r.giltFuer === status?.userId)
+    .sort((a, b) => (a.giltFuer ? 0 : 1) - (b.giltFuer ? 0 : 1) || a.feld.localeCompare(b.feld) || a.muster.localeCompare(b.muster, 'de'))
 
   let abgleich = 'Noch kein Abgleich in dieser Sitzung.'
   if (erfassung.syncFehler) abgleich = `Datenbank nicht erreichbar: ${erfassung.syncFehler}`
@@ -20,32 +213,257 @@ export function EinstellungenScreen(): ReactElement {
   return (
     <div className="flex flex-col gap-4 pt-6">
       <h1 className="text-2xl font-light">Einstellungen</h1>
-      <p className="text-sm text-mute">
-        Regeln, Ziele, Symbole, Untätigkeit und Urlaubswochen kommen in Schritt 10.
-      </p>
 
-      <Karte className="mt-4">
+      <Karte>
+        <p className="text-xs tracking-wide text-mute uppercase">Erfassung</p>
+        <div className="mt-1 divide-y divide-panel-2">
+          <Zeile titel="Untätigkeit nach" hinweis="Minuten ohne Maus und Tastatur, bis die Zeit als inaktiv zählt. Standard 3.">
+            {profil && (
+              <Zahl
+                wert={Math.round(profil.idleSchwelleSekunden / 60)}
+                min={1}
+                max={60}
+                onSpeichern={(n) => void profilSpeichern({ idleSchwelleSekunden: n * 60 })}
+              />
+            )}
+            <span className="text-sm text-mute">min</span>
+          </Zeile>
+          <Zeile
+            titel="Fenstertitel speichern"
+            hinweis="Aus: nur der Programmname wird gespeichert. Regeln auf den Fenstertitel greifen dann nicht mehr, Browserzeit landet meist in Ungeklärt."
+          >
+            <Schalter an={profil?.fenstertitelSpeichern ?? true} onChange={(an) => void profilSpeichern({ fenstertitelSpeichern: an })} />
+          </Zeile>
+          <Zeile
+            titel="Beim Anmelden am Rechner starten"
+            hinweis={system?.gepackt ? 'Die App startet versteckt im Symbol.' : 'Nur in der installierten App, nicht in der Entwicklungsversion.'}
+          >
+            <Schalter an={system?.autostart ?? false} disabled={!system?.gepackt} onChange={(an) => void autostartSetzen(an)} />
+          </Zeile>
+        </div>
+      </Karte>
+
+      <Karte>
+        <p className="text-xs tracking-wide text-mute uppercase">Wochenziele</p>
+        <div className="mt-1 divide-y divide-panel-2">
+          <Zeile titel="Arbeitszeit gesamt" hinweis="Bestimmt, ab welchem Rang die Woche geschafft ist. 50 Stunden sind Rang 10.">
+            <Zahl
+              wert={gesamtziel?.stundenProWoche ?? STANDARD_GESAMTZIEL}
+              min={1}
+              max={168}
+              schritt={0.5}
+              onSpeichern={(n) => void zielSpeichern(null, n)}
+            />
+            <span className="text-sm text-mute">h</span>
+          </Zeile>
+          {taetigkeitsZiele.map((z) => (
+            <Zeile key={z.id} titel={z.taetigkeit ?? ''}>
+              <Zahl wert={z.stundenProWoche} min={0.5} max={168} schritt={0.5} onSpeichern={(n) => void zielSpeichern(z.taetigkeit, n)} />
+              <span className="text-sm text-mute">h</span>
+              <button type="button" onClick={() => void zielLoeschen(z.id)} className="rounded-chip p-1.5 text-mute hover:text-unproduktiv" title="Ziel entfernen">
+                <Trash2 size={16} strokeWidth={1.5} />
+              </button>
+            </Zeile>
+          ))}
+          <div className="flex flex-wrap items-center gap-2 py-3">
+            <input
+              className={`${FELD} min-w-0 flex-1`}
+              list="taetigkeiten-ziele"
+              placeholder="Neues Ziel: Tätigkeit"
+              value={neuesZiel.taetigkeit}
+              onChange={(e) => setNeuesZiel((z) => ({ ...z, taetigkeit: e.target.value }))}
+            />
+            <datalist id="taetigkeiten-ziele">
+              {taetigkeiten.map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+            <input className={KLEIN} value={neuesZiel.stunden} onChange={(e) => setNeuesZiel((z) => ({ ...z, stunden: e.target.value }))} />
+            <span className="text-sm text-mute">h</span>
+            <button
+              type="button"
+              disabled={!neuesZiel.taetigkeit.trim() || !(Number(neuesZiel.stunden.replace(',', '.')) > 0)}
+              onClick={() => {
+                void zielSpeichern(neuesZiel.taetigkeit.trim(), Number(neuesZiel.stunden.replace(',', '.')))
+                setNeuesZiel({ taetigkeit: '', stunden: '5' })
+              }}
+              className="rounded-chip bg-ink px-3 py-2 text-sm text-ground disabled:opacity-40"
+            >
+              Hinzufügen
+            </button>
+          </div>
+        </div>
+      </Karte>
+
+      <Karte>
+        <p className="text-xs tracking-wide text-mute uppercase">Regeln</p>
+        <p className="mt-1 text-xs text-dim">
+          Erst wird das Programm geprüft, dann der Fenstertitel. Persönliche Regeln gewinnen gegen Team-Regeln. Änderungen wirken
+          sofort auf alle nicht von Hand geprüften Blöcke.
+        </p>
+        <div className="mt-2 divide-y divide-panel-2">
+          {sichtbareRegeln.map((r) => (
+            <div key={r.id} className={`py-3 ${r.aktiv ? '' : 'opacity-50'}`}>
+              <div className="flex items-center gap-2">
+                <select className={`${FELD} w-36 shrink-0`} value={r.feld} onChange={(e) => void regelSpeichern(r.id, { feld: e.target.value as 'programm' | 'titel' })}>
+                  <option value="programm">Programm</option>
+                  <option value="titel">Titel enthält</option>
+                </select>
+                <input
+                  className={`${FELD} min-w-0 flex-1`}
+                  defaultValue={r.muster}
+                  onBlur={(e) => {
+                    if (e.target.value.trim() !== r.muster) void regelSpeichern(r.id, { muster: e.target.value })
+                  }}
+                />
+                <Schalter an={r.aktiv} onChange={(an) => void regelSpeichern(r.id, { aktiv: an })} />
+                <button
+                  type="button"
+                  onClick={() => void regelLoeschen(r.id)}
+                  className={`shrink-0 rounded-chip px-2 py-1.5 text-xs ${loeschenId === r.id ? 'bg-unproduktiv text-ink' : 'text-mute hover:text-unproduktiv'}`}
+                  title="Regel löschen"
+                >
+                  {loeschenId === r.id ? 'Wirklich?' : <Trash2 size={16} strokeWidth={1.5} />}
+                </button>
+              </div>
+              <div className="mt-2 flex items-center gap-2 pl-[9.5rem]">
+                <span className="text-xs text-dim">→</span>
+                <input
+                  className={`${FELD} min-w-0 flex-1`}
+                  list="taetigkeiten-regeln"
+                  placeholder="Tätigkeit (leer bei unproduktiv oder ungeklärt)"
+                  defaultValue={r.taetigkeit ?? ''}
+                  onBlur={(e) => {
+                    if ((e.target.value.trim() || null) !== r.taetigkeit) void regelSpeichern(r.id, { taetigkeit: e.target.value.trim() || null })
+                  }}
+                />
+                <select className={`${FELD} w-32 shrink-0`} value={r.bewertung} onChange={(e) => void regelSpeichern(r.id, { bewertung: e.target.value as RegelBewertung })}>
+                  <option value="produktiv">produktiv</option>
+                  <option value="unproduktiv">unproduktiv</option>
+                  <option value="ungeklaert">ungeklärt</option>
+                </select>
+                <select className={`${FELD} w-28 shrink-0`} value={r.giltFuer ? 'ich' : 'alle'} onChange={(e) => void regelSpeichern(r.id, { fuerAlle: e.target.value === 'alle' })}>
+                  <option value="alle">alle drei</option>
+                  <option value="ich">nur ich</option>
+                </select>
+              </div>
+            </div>
+          ))}
+          <datalist id="taetigkeiten-regeln">
+            {taetigkeiten.map((t) => (
+              <option key={t} value={t} />
+            ))}
+          </datalist>
+          <div className="py-3">
+            <p className="mb-2 text-xs tracking-wide text-mute uppercase">Neue Regel</p>
+            <div className="flex items-center gap-2">
+              <select className={`${FELD} w-36 shrink-0`} value={neueRegel.feld} onChange={(e) => setNeueRegel((n) => ({ ...n, feld: e.target.value as 'programm' | 'titel' }))}>
+                <option value="programm">Programm</option>
+                <option value="titel">Titel enthält</option>
+              </select>
+              <input
+                className={`${FELD} min-w-0 flex-1`}
+                placeholder="Muster, z. B. Asana oder Adobe Premiere Pro"
+                value={neueRegel.muster}
+                onChange={(e) => setNeueRegel((n) => ({ ...n, muster: e.target.value }))}
+              />
+            </div>
+            <div className="mt-2 flex items-center gap-2 pl-[9.5rem]">
+              <span className="text-xs text-dim">→</span>
+              <input
+                className={`${FELD} min-w-0 flex-1`}
+                list="taetigkeiten-regeln"
+                placeholder="Tätigkeit"
+                value={neueRegel.taetigkeit}
+                onChange={(e) => setNeueRegel((n) => ({ ...n, taetigkeit: e.target.value }))}
+              />
+              <select className={`${FELD} w-32 shrink-0`} value={neueRegel.bewertung} onChange={(e) => setNeueRegel((n) => ({ ...n, bewertung: e.target.value as RegelBewertung }))}>
+                <option value="produktiv">produktiv</option>
+                <option value="unproduktiv">unproduktiv</option>
+                <option value="ungeklaert">ungeklärt</option>
+              </select>
+              <select className={`${FELD} w-28 shrink-0`} value={neueRegel.fuerAlle ? 'alle' : 'ich'} onChange={(e) => setNeueRegel((n) => ({ ...n, fuerAlle: e.target.value === 'alle' }))}>
+                <option value="ich">nur ich</option>
+                <option value="alle">alle drei</option>
+              </select>
+              <button
+                type="button"
+                disabled={!neueRegel.muster.trim()}
+                onClick={() => void regelAnlegen()}
+                className="shrink-0 rounded-chip bg-ink px-3 py-2 text-sm text-ground disabled:opacity-40"
+              >
+                Anlegen
+              </button>
+            </div>
+          </div>
+        </div>
+      </Karte>
+
+      <Karte>
+        <p className="text-xs tracking-wide text-mute uppercase">Tätigkeiten und Symbole</p>
+        <p className="mt-1 text-xs text-dim">Auf ein Symbol klicken, um es zu ändern. Gilt für alle drei.</p>
+        <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
+          {taetigkeiten.map((t) => {
+            const symbol = zuordnung[taetigkeitSchluessel(t)] ?? { typ: 'lucide', name: 'tag' }
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setSymbolFuer(t)}
+                className="flex items-center gap-3 rounded-chip px-2 py-2 text-left text-sm transition-colors hover:bg-panel-2"
+              >
+                <SymbolBild symbol={symbol} groesse={18} />
+                <span className="truncate">{t}</span>
+              </button>
+            )
+          })}
+        </div>
+      </Karte>
+
+      <Karte>
+        <p className="text-xs tracking-wide text-mute uppercase">Hochrechnung</p>
+        <div className="mt-1">
+          <Zeile titel="Urlaubswochen pro Jahr" hinweis="Jahr = Wochenwert mal (52 minus Urlaubswochen). Standard 6.">
+            {profil && <Zahl wert={profil.urlaubswochen} min={0} max={52} onSpeichern={(n) => void profilSpeichern({ urlaubswochen: n })} />}
+            <span className="text-sm text-mute">Wochen</span>
+          </Zeile>
+        </div>
+      </Karte>
+
+      <Karte>
+        <p className="text-xs tracking-wide text-mute uppercase">System</p>
+        <div className="mt-1 divide-y divide-panel-2">
+          <Zeile titel="Systemrechte" hinweis={system?.plattform === 'mac' ? 'Bildschirmaufnahme wird bewusst nicht genutzt. Es werden nur Programmnamen erfasst, keine Fenstertitel.' : 'Unter Windows sind keine Sonderrechte nötig.'}>
+            <span className="text-sm text-produktiv">in Ordnung</span>
+          </Zeile>
+          <Zeile titel="Datenbank" hinweis={abgleich}>
+            <span className="text-sm text-mute">
+              {erfassung.unsynchronisiert === 0 ? 'alles übertragen' : `${erfassung.unsynchronisiert} warten`}
+            </span>
+          </Zeile>
+          <Zeile titel="Version" hinweis={system ? `${system.plattform === 'mac' ? 'Mac' : system.plattform === 'windows' ? 'Windows' : 'Linux'} · ${system.gepackt ? 'installierte App' : 'Entwicklungsversion'}` : undefined}>
+            <span className="text-sm text-mute">{system?.version ?? ''}</span>
+          </Zeile>
+        </div>
+      </Karte>
+
+      <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">Konto</p>
         <p className="mt-2 text-sm">{status?.name ?? 'Unbekannt'}</p>
         <p className="text-sm text-mute">{status?.email ?? ''}</p>
-        <button
-          type="button"
-          onClick={abmelden}
-          className="mt-4 rounded-chip bg-panel-2 px-4 py-2 text-sm text-ink transition-colors hover:bg-inaktiv"
-        >
+        <button type="button" onClick={abmelden} className="mt-4 rounded-chip bg-panel-2 px-4 py-2 text-sm text-ink transition-colors hover:bg-inaktiv">
           Abmelden
         </button>
       </Karte>
 
-      <Karte>
-        <p className="text-xs tracking-wide text-mute uppercase">Datenbank</p>
-        <p className="mt-2 text-sm">{abgleich}</p>
-        <p className="text-sm text-mute">
-          {erfassung.unsynchronisiert === 0
-            ? 'Alle Blöcke sind in der Datenbank.'
-            : `${erfassung.unsynchronisiert} Block${erfassung.unsynchronisiert === 1 ? '' : 'e'} warten auf den nächsten Abgleich (alle 60 Sekunden).`}
-        </p>
-      </Karte>
+      {symbolFuer && (
+        <SymbolWahl
+          name={symbolFuer}
+          aktuell={zuordnung[taetigkeitSchluessel(symbolFuer)] ?? { typ: 'lucide', name: 'tag' }}
+          onWahl={(s) => void symbolSetzen(symbolFuer, s)}
+          onSchliessen={() => setSymbolFuer(null)}
+        />
+      )}
     </div>
   )
 }

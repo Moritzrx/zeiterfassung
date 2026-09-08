@@ -45,6 +45,25 @@ export interface NeueRegel {
   fuerAlle: boolean
 }
 
+/** Was sich an einer Regel ändern lässt. */
+export interface RegelAenderung {
+  muster?: string
+  feld?: 'programm' | 'titel'
+  taetigkeit?: string | null
+  bewertung?: RegelBewertung
+  aktiv?: boolean
+  fuerAlle?: boolean
+}
+
+/** Angaben zu App und System für die Einstellungen. */
+export interface SystemInfo {
+  version: string
+  plattform: 'windows' | 'mac' | 'linux'
+  /** true in der installierten App, false in der Entwicklungsversion */
+  gepackt: boolean
+  autostart: boolean
+}
+
 /** Sekunden je Tag, Tätigkeit und Bewertung. Gleiche Form wie die Datenbankfunktion tages_summen. */
 export interface Tagessumme {
   datum: string

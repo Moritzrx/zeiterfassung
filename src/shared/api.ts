@@ -10,7 +10,9 @@ import type {
   NeuerEintrag,
   Profil,
   Regel,
+  RegelAenderung,
   SymbolInfo,
+  SystemInfo,
   Tagessumme,
   TeamMitglied,
   TeamWoche,
@@ -73,6 +75,10 @@ export interface Api {
     liste: () => Promise<Regel[]>
     /** Legt eine Regel an und bewertet alle nicht geprüften Blöcke neu. */
     anlegen: (neu: NeueRegel) => Promise<{ regel: Regel; neuBewertet: number }>
+    /** Ändert eine Regel und bewertet neu. */
+    aendern: (id: string, aenderung: RegelAenderung) => Promise<{ regel: Regel; neuBewertet: number }>
+    /** Löscht eine Regel und bewertet neu. Liefert die Anzahl neu bewerteter Blöcke. */
+    loeschen: (id: string) => Promise<number>
   }
   taetigkeiten: {
     /** Alle bekannten Tätigkeitsnamen des Teams, alphabetisch. */
@@ -87,6 +93,14 @@ export interface Api {
     eigene: () => Promise<Ziel[]>
     /** Die Wochenziele aller drei (für den Team-Screen). */
     alle: () => Promise<Ziel[]>
+    /** Eigenes Ziel setzen oder anlegen; taetigkeit null = Arbeitszeit gesamt. */
+    setzen: (taetigkeit: string | null, stundenProWoche: number) => Promise<Ziel>
+    loeschen: (id: string) => Promise<void>
+  }
+  system: {
+    info: () => Promise<SystemInfo>
+    /** Autostart ein- oder ausschalten; wirkt nur in der installierten App. */
+    autostartSetzen: (an: boolean) => Promise<boolean>
   }
   team: {
     /** Produktive Wochenstunden aller aktiven Personen, eigene live. */

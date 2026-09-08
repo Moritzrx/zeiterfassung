@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
-import type { NeueRegel, Regel } from '@shared/typen'
+import type { NeueRegel, Regel, RegelAenderung } from '@shared/typen'
 import { supabase, supabaseKonfiguriert } from './supabase'
 
 interface Zeile {
@@ -84,6 +84,44 @@ export class Regelwerk {
     this.regeln.push(regel)
     this.speichern()
     return regel
+  }
+
+  /** Ändert eine Regel. Team-Regeln darf jeder ändern, persönliche nur die eigene Person (RLS). */
+  async aendern(id: string, aenderung: RegelAenderung): Promise<Regel> {
+    const alt = this.regeln.find((r) => r.id === id)
+    if (!alt) throw new Error('Regel nicht gefunden.')
+    const neu: Regel = {
+      ...alt,
+      muster: (aenderung.muster ?? alt.muster).trim(),
+      feld: aenderung.feld ?? alt.feld,
+      taetigkeit: aenderung.taetigkeit === undefined ? alt.taetigkeit : aenderung.taetigkeit,
+      bewertung: aenderung.bewertung ?? alt.bewertung,
+      aktiv: aenderung.aktiv ?? alt.aktiv,
+      giltFuer: aenderung.fuerAlle === undefined ? alt.giltFuer : aenderung.fuerAlle ? null : this.userId
+    }
+    if (!neu.muster) throw new Error('Das Muster darf nicht leer sein.')
+    const { error } = await supabase()
+      .from('regel')
+      .update({
+        muster: neu.muster,
+        feld: neu.feld,
+        taetigkeit: neu.taetigkeit,
+        bewertung: neu.bewertung,
+        aktiv: neu.aktiv,
+        gilt_fuer: neu.giltFuer
+      })
+      .eq('id', id)
+    if (error) throw new Error('Regel konnte nicht geändert werden: ' + error.message)
+    this.regeln = this.regeln.map((r) => (r.id === id ? neu : r))
+    this.speichern()
+    return neu
+  }
+
+  async loeschen(id: string): Promise<void> {
+    const { error } = await supabase().from('regel').delete().eq('id', id)
+    if (error) throw new Error('Regel konnte nicht gelöscht werden: ' + error.message)
+    this.regeln = this.regeln.filter((r) => r.id !== id)
+    this.speichern()
   }
 
   private speichern(): void {

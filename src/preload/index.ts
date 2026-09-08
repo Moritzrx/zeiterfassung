@@ -39,7 +39,9 @@ const api: Api = {
   },
   regeln: {
     liste: () => ipcRenderer.invoke('regeln:liste'),
-    anlegen: (neu) => ipcRenderer.invoke('regeln:anlegen', neu)
+    anlegen: (neu) => ipcRenderer.invoke('regeln:anlegen', neu),
+    aendern: (id, aenderung) => ipcRenderer.invoke('regeln:aendern', id, aenderung),
+    loeschen: (id) => ipcRenderer.invoke('regeln:loeschen', id)
   },
   taetigkeiten: {
     liste: () => ipcRenderer.invoke('taetigkeiten:liste'),
@@ -48,7 +50,13 @@ const api: Api = {
   },
   ziele: {
     eigene: () => ipcRenderer.invoke('ziele:eigene'),
-    alle: () => ipcRenderer.invoke('ziele:alle')
+    alle: () => ipcRenderer.invoke('ziele:alle'),
+    setzen: (taetigkeit, stunden) => ipcRenderer.invoke('ziele:setzen', taetigkeit, stunden),
+    loeschen: (id) => ipcRenderer.invoke('ziele:loeschen', id)
+  },
+  system: {
+    info: () => ipcRenderer.invoke('system:info'),
+    autostartSetzen: (an) => ipcRenderer.invoke('system:autostartSetzen', an)
   },
   team: {
     stand: () => ipcRenderer.invoke('team:stand'),

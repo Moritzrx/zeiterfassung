@@ -9,7 +9,9 @@ import type {
   NeuerEintrag,
   Profil as ProfilDaten,
   Regel,
+  RegelAenderung,
   SymbolInfo,
+  SystemInfo,
   Tagessumme,
   TeamMitglied,
   TeamWoche,
@@ -329,6 +331,31 @@ function ipcRegistrieren(): void {
     return { regel, neuBewertet }
   })
 
+  ipcMain.handle('regeln:aendern', async (_ereignis, id: string, aenderung: RegelAenderung): Promise<{ regel: Regel; neuBewertet: number }> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    const regel = await sitzung.regelwerk.aendern(id, {
+      ...aenderung,
+      taetigkeit:
+        aenderung.taetigkeit === undefined
+          ? undefined
+          : aenderung.taetigkeit
+            ? sitzung.taetigkeiten.merken(aenderung.taetigkeit) || null
+            : null
+    })
+    const neuBewertet = alleNeuBewerten(sitzung.speicher, sitzung.regelwerk.liste(), sitzung.userId)
+    bloeckeGeaendert()
+    statusVerteilen()
+    return { regel, neuBewertet }
+  })
+  ipcMain.handle('regeln:loeschen', async (_ereignis, id: string): Promise<number> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    await sitzung.regelwerk.loeschen(id)
+    const neuBewertet = alleNeuBewerten(sitzung.speicher, sitzung.regelwerk.liste(), sitzung.userId)
+    bloeckeGeaendert()
+    statusVerteilen()
+    return neuBewertet
+  })
+
   ipcMain.handle('taetigkeiten:liste', (): string[] => sitzung?.taetigkeiten.liste() ?? [])
 
   ipcMain.handle('taetigkeiten:symbole', (): Record<string, SymbolInfo> => sitzung?.taetigkeiten.symbole() ?? {})
@@ -340,6 +367,31 @@ function ipcRegistrieren(): void {
 
   ipcMain.handle('ziele:eigene', (): Ziel[] => sitzung?.ziele.eigene() ?? [])
   ipcMain.handle('ziele:alle', (): Ziel[] => sitzung?.ziele.alle() ?? [])
+  ipcMain.handle('ziele:setzen', async (_ereignis, taetigkeit: string | null, stunden: number): Promise<Ziel> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    const name = taetigkeit ? sitzung.taetigkeiten.merken(taetigkeit) || null : null
+    const ziel = await sitzung.ziele.setzen(name, stunden)
+    bloeckeGeaendert()
+    statusVerteilen()
+    return ziel
+  })
+  ipcMain.handle('ziele:loeschen', async (_ereignis, id: string): Promise<void> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    await sitzung.ziele.loeschen(id)
+    bloeckeGeaendert()
+  })
+
+  ipcMain.handle('system:info', (): SystemInfo => ({
+    version: app.getVersion(),
+    plattform: process.platform === 'darwin' ? 'mac' : process.platform === 'win32' ? 'windows' : 'linux',
+    gepackt: app.isPackaged,
+    autostart: app.isPackaged ? app.getLoginItemSettings().openAtLogin : false
+  }))
+  ipcMain.handle('system:autostartSetzen', (_ereignis, an: boolean): boolean => {
+    if (!app.isPackaged) return false
+    app.setLoginItemSettings({ openAtLogin: an, args: an ? ['--hidden'] : [] })
+    return app.getLoginItemSettings().openAtLogin
+  })
 
   ipcMain.handle('team:stand', async (): Promise<TeamMitglied[]> => {
     if (!sitzung) return []

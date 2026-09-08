@@ -52,6 +52,28 @@ export class Ziele {
     }
   }
 
+  /** Eigenes Ziel setzen oder anlegen. taetigkeit null = Arbeitszeit gesamt. */
+  async setzen(taetigkeit: string | null, stundenProWoche: number): Promise<Ziel> {
+    if (!(stundenProWoche > 0) || stundenProWoche > 168) throw new Error('Bitte eine Stundenzahl zwischen 0,5 und 168 angeben.')
+    const { data, error } = await supabase()
+      .from('ziel')
+      .upsert({ user_id: this.userId, taetigkeit, stunden_pro_woche: stundenProWoche }, { onConflict: 'user_id,taetigkeit' })
+      .select('*')
+      .single()
+    if (error) throw new Error('Ziel konnte nicht gespeichert werden: ' + error.message)
+    const ziel = vonZeile(data as Zeile)
+    this.liste = [...this.liste.filter((z) => z.id !== ziel.id), ziel]
+    this.speichern()
+    return ziel
+  }
+
+  async loeschen(id: string): Promise<void> {
+    const { error } = await supabase().from('ziel').delete().eq('id', id).eq('user_id', this.userId)
+    if (error) throw new Error('Ziel konnte nicht gelöscht werden: ' + error.message)
+    this.liste = this.liste.filter((z) => z.id !== id)
+    this.speichern()
+  }
+
   private speichern(): void {
     try {
       mkdirSync(dirname(this.pfad), { recursive: true })
