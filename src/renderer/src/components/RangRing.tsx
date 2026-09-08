@@ -1,15 +1,14 @@
 import type { ReactElement, ReactNode } from 'react'
-import { level, levelFortschritt } from '@shared/level'
+import { RANG_ZIEL, STUFEN_FARBEN, rang, rangFortschritt, rangStufe } from '@shared/rang'
 
 interface Props {
   produktivSekunden: number
-  /** Anzahl der Abschnitte, ein Abschnitt je Level bis zum Wochenziel (Standard 10) */
-  zielLevel: number
+  /** Anzahl der Abschnitte, ein Abschnitt je Rang bis zum Wochenziel (Standard 10) */
+  zielRang: number
   groesse?: number
   children?: ReactNode
 }
 
-const ORANGE = '#FE5303'
 const LEER = '#1C1C1F'
 
 function polar(cx: number, cy: number, r: number, grad: number): [number, number] {
@@ -25,13 +24,15 @@ function bogen(cx: number, cy: number, r: number, a0: number, a1: number): strin
 }
 
 /**
- * Der Level-Ring: ein Abschnitt je Level. Volle Abschnitte sind geschaffte Level,
- * der aktuelle füllt sich. Ab dem Ziel-Level bleibt der Ring voll.
+ * Der Rang-Ring: ein Abschnitt je Rang bis zum Wochenziel. Volle Abschnitte sind
+ * geschaffte Ränge, der aktuelle füllt sich. Ab dem Ziel bleibt der Ring voll und
+ * wechselt in den Diamant-Rängen die Farbe.
  */
-export function LevelRing({ produktivSekunden, zielLevel, groesse = 260, children }: Props): ReactElement {
-  const abschnitte = Math.max(1, zielLevel)
-  const aktuell = level(produktivSekunden)
-  const fortschritt = levelFortschritt(produktivSekunden)
+export function RangRing({ produktivSekunden, zielRang, groesse = 260, children }: Props): ReactElement {
+  const abschnitte = Math.max(1, Math.min(RANG_ZIEL, zielRang))
+  const aktuell = rang(produktivSekunden)
+  const fortschritt = rangFortschritt(produktivSekunden)
+  const farbe = aktuell > RANG_ZIEL ? STUFEN_FARBEN[rangStufe(aktuell)] : STUFEN_FARBEN.champion
   const mitte = groesse / 2
   const radius = mitte - 9
   const winkel = 360 / abschnitte
@@ -45,7 +46,7 @@ export function LevelRing({ produktivSekunden, zielLevel, groesse = 260, childre
     let anteil = i < aktuell ? 1 : i === aktuell ? fortschritt : 0
     if (aktuell >= abschnitte) anteil = 1
     if (anteil > 0.01) {
-      teile.push(<path key={`v${i}`} d={bogen(mitte, mitte, radius, a0, a0 + (a1 - a0) * anteil)} stroke={ORANGE} />)
+      teile.push(<path key={`v${i}`} d={bogen(mitte, mitte, radius, a0, a0 + (a1 - a0) * anteil)} stroke={farbe} />)
     }
   }
 

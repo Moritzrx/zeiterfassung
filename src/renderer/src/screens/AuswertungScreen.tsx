@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { gleitenderSchnitt, hochrechnungBerechnen } from '@shared/auswertung'
-import { STANDARD_GESAMTZIEL, zielLevel } from '@shared/level'
-import { produktivJeTagAusSummen, verteilungAusSummen, wochenLevelAusSummen } from '@shared/summen'
+import { STANDARD_GESAMTZIEL, zielRang } from '@shared/rang'
+import { produktivJeTagAusSummen, verteilungAusSummen, wochenRangAusSummen } from '@shared/summen'
 import type { Block, Profil, Tagessumme, Ziel } from '@shared/typen'
 import { berlinDatum, datumVerschieben, wochenanfang } from '@shared/zeit'
 import { HochrechnungKarte } from '../components/HochrechnungKarte'
@@ -93,7 +93,7 @@ export function AuswertungScreen(): ReactElement {
   }
 
   const gesamtziel = ziele.find((z) => z.taetigkeit === null)?.stundenProWoche ?? STANDARD_GESAMTZIEL
-  const ziel = zielLevel(gesamtziel)
+  const ziel = zielRang(gesamtziel)
   const urlaubswochen = profil?.urlaubswochen ?? 6
   const verlaufVon = datumVerschieben(heute, -(tage - 1))
 
@@ -113,11 +113,11 @@ export function AuswertungScreen(): ReactElement {
 
   const trend = useMemo<Trendwert[]>(
     () =>
-      wochenLevelAusSummen(summen, new Date(jetzt), wochen).map((w) => ({
+      wochenRangAusSummen(summen, new Date(jetzt), wochen).map((w) => ({
         label: `KW ${w.kw}`,
         titel: `KW ${w.kw} · ${kurzDatum(w.start)} bis ${kurzDatum(datumVerschieben(w.start, 6))}`,
         text: `${stundenText(w.sekunden)} h`,
-        level: w.level,
+        rang: w.rang,
         leer: w.leer
       })),
     [summen, jetzt, wochen]
@@ -162,9 +162,9 @@ export function AuswertungScreen(): ReactElement {
       </Karte>
 
       <Karte>
-        <p className="text-xs tracking-wide text-mute uppercase">Level je Woche, letzte {wochen} Wochen</p>
+        <p className="text-xs tracking-wide text-mute uppercase">Rang je Woche, letzte {wochen} Wochen</p>
         <div className="mt-3">
-          <TrendBalken werte={trend} zielLevel={ziel} />
+          <TrendBalken werte={trend} zielRang={ziel} />
         </div>
       </Karte>
 

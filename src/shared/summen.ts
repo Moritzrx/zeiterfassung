@@ -3,7 +3,7 @@
  * lokalen Blöcken, für lange aus der Datenbankfunktion tages_summen.
  */
 import type { Tageswert, Wochenwert } from './auswertung'
-import { level } from './level'
+import { rang } from './rang'
 import { taetigkeitSchluessel } from './regeln'
 import type { Block, Tagessumme } from './typen'
 import { berlinDatum, datumVerschieben, datumZuTagesanfang, kalenderwoche, wochenanfang } from './zeit'
@@ -62,8 +62,8 @@ export function verteilungAusSummen(summen: Tagessumme[], maxEintraege = 8): Arr
   return [...sortiert.slice(0, maxEintraege - 1), { name: 'Sonstige', sekunden: rest }]
 }
 
-/** Level je abgeschlossener Woche, die letzten `anzahl` Wochen vor der laufenden. */
-export function wochenLevelAusSummen(summen: Tagessumme[], jetzt: Date, anzahl: number): Wochenwert[] {
+/** Rang je abgeschlossener Woche, die letzten `anzahl` Wochen vor der laufenden. */
+export function wochenRangAusSummen(summen: Tagessumme[], jetzt: Date, anzahl: number): Wochenwert[] {
   const produktivJeTag = new Map<string, number>()
   const tageMitDaten = new Set<string>()
   for (const s of summen) {
@@ -81,7 +81,7 @@ export function wochenLevelAusSummen(summen: Tagessumme[], jetzt: Date, anzahl: 
       if (tageMitDaten.has(datum)) leer = false
       sekunden += produktivJeTag.get(datum) ?? 0
     }
-    ergebnis.push({ start, kw: kalenderwoche(datumZuTagesanfang(start)), sekunden, level: level(sekunden), leer })
+    ergebnis.push({ start, kw: kalenderwoche(datumZuTagesanfang(start)), sekunden, rang: rang(sekunden), leer })
   }
   return ergebnis
 }

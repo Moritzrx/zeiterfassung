@@ -8,7 +8,7 @@ const LEER: ErfassungsStatus = {
   pausiertSeit: null,
   heuteProduktivSekunden: 0,
   wocheProduktivSekunden: 0,
-  level: 0,
+  rang: 0,
   unsynchronisiert: 0,
   letzterSync: null,
   syncFehler: null

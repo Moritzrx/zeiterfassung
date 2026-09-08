@@ -15,6 +15,7 @@ import type {
   TeamWoche,
   Ziel
 } from '@shared/typen'
+import { rang } from '@shared/rang'
 import { regelnAnwenden } from '@shared/regeln'
 import { tagessummenAusBloecken } from '@shared/summen'
 import { berlinDatum, datumZuTagesanfang, naechsterTagesanfang, tagesanfang, wochenanfang } from '@shared/zeit'
@@ -34,7 +35,6 @@ import { Ziele } from './ziele'
 
 const APP_ID = 'com.wessamedia.zeit'
 const HINTERGRUND = '#0B0B0C'
-const SEKUNDEN_PRO_LEVEL = 5 * 3600
 const REGELN_TAKT_MS = 5 * 60_000
 
 interface Sitzung {
@@ -131,7 +131,7 @@ function statusBerechnen(): ErfassungsStatus {
       pausiertSeit: null,
       heuteProduktivSekunden: 0,
       wocheProduktivSekunden: 0,
-      level: 0,
+      rang: 0,
       unsynchronisiert: 0,
       letzterSync: null,
       syncFehler: null
@@ -149,7 +149,7 @@ function statusBerechnen(): ErfassungsStatus {
     pausiertSeit: e.pausiertSeit,
     heuteProduktivSekunden: heute,
     wocheProduktivSekunden: woche,
-    level: Math.floor(woche / SEKUNDEN_PRO_LEVEL),
+    rang: rang(woche),
     unsynchronisiert: speicher.anzahlAusstehend(),
     letzterSync: sync.letzterSync?.toISOString() ?? null,
     syncFehler: sync.fehler
@@ -162,7 +162,7 @@ function statusVerteilen(): void {
   tray?.aktualisieren({
     angemeldet: sitzung !== null,
     heuteText: stundenText(status.heuteProduktivSekunden),
-    level: status.level,
+    rang: status.rang,
     pausiert: status.zustand === 'pausiert'
   })
 }

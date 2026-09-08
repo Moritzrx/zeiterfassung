@@ -28,7 +28,7 @@ export function TeamVerlauf({ wochen, personen, ziel }: Props): ReactElement {
   return (
     <div className="h-[240px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={wochen} margin={{ top: 8, right: 56, left: 0, bottom: 0 }}>
+        <LineChart data={wochen} margin={{ top: 8, right: 56, left: 16, bottom: 0 }}>
           <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 11 }} interval={abstand} />
           <YAxis hide domain={[0, 'auto']} />
           <Tooltip content={<DiagrammTooltip format={stundenFormat} />} cursor={{ stroke: '#3A3A3E' }} />

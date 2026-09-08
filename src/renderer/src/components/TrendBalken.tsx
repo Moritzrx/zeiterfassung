@@ -7,18 +7,18 @@ export interface Trendwert {
   titel: string
   /** Stunden als Text für den Tooltip */
   text: string
-  level: number
+  rang: number
   leer: boolean
 }
 
 interface Props {
   werte: Trendwert[]
-  zielLevel: number
+  zielRang: number
 }
 
-/** Erreichtes Level je Woche über die letzten 12 Wochen. Ab Ziel-Level grün, darunter rot, ohne Daten leer. */
-export function TrendBalken({ werte, zielLevel }: Props): ReactElement {
-  const hoechster = Math.max(zielLevel + 1, ...werte.map((w) => w.level))
+/** Erreichter Rang je Woche. Ab Ziel-Rang grün, darunter rot, ohne Daten leer. */
+export function TrendBalken({ werte, zielRang }: Props): ReactElement {
+  const hoechster = Math.max(zielRang + 1, ...werte.map((w) => w.rang))
   return (
     <div className="h-[200px] w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -26,18 +26,18 @@ export function TrendBalken({ werte, zielLevel }: Props): ReactElement {
           <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 11 }} />
           <YAxis hide domain={[0, hoechster]} />
           <Tooltip
-            content={<DiagrammTooltip format={(v) => `Level ${Math.round(v)}`} />}
+            content={<DiagrammTooltip format={(v) => `Rang ${Math.round(v)}`} />}
             cursor={{ fill: 'rgba(255,255,255,0.04)' }}
           />
           <ReferenceLine
-            y={zielLevel}
+            y={zielRang}
             stroke="#5A5A60"
             strokeDasharray="4 4"
-            label={{ value: `Level ${zielLevel}`, position: 'right', fill: '#5A5A60', fontSize: 11 }}
+            label={{ value: `Rang ${zielRang}`, position: 'right', fill: '#5A5A60', fontSize: 11 }}
           />
-          <Bar dataKey="level" name="Level" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+          <Bar dataKey="rang" name="Rang" radius={[4, 4, 0, 0]} isAnimationActive={false}>
             {werte.map((w) => (
-              <Cell key={w.label} fill={w.leer ? '#1C1C1F' : w.level >= zielLevel ? '#00C076' : '#FF4D4D'} />
+              <Cell key={w.label} fill={w.leer ? '#1C1C1F' : w.rang >= zielRang ? '#00C076' : '#FF4D4D'} />
             ))}
           </Bar>
         </BarChart>

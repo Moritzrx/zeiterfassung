@@ -2,7 +2,7 @@
  * Die Rechnungen für den Auswertungs-Screen. Alles leitet sich aus Blöcken ab,
  * die Hochrechnungen aus einer einzigen Basiszahl, dem Tagesschnitt.
  */
-import { level } from './level'
+import { rang } from './rang'
 import { taetigkeitSchluessel } from './regeln'
 import type { Block } from './typen'
 import { berlinDatum, datumVerschieben, datumZuTagesanfang, kalenderwoche, wochenanfang } from './zeit'
@@ -38,7 +38,7 @@ export interface Wochenwert {
   start: string
   kw: number
   sekunden: number
-  level: number
+  rang: number
   /** true, wenn es in dieser Woche gar keine Blöcke gab (vor dem ersten Start) */
   leer: boolean
 }
@@ -119,8 +119,8 @@ export function hochrechnungBerechnen(bloecke: Block[], heute: string, urlaubswo
   }
 }
 
-/** Level je abgeschlossener Woche, die letzten `anzahl` Wochen vor der laufenden. */
-export function wochenLevel(bloecke: Block[], jetzt: Date, anzahl = 12): Wochenwert[] {
+/** Rang je abgeschlossener Woche, die letzten `anzahl` Wochen vor der laufenden. */
+export function wochenRang(bloecke: Block[], jetzt: Date, anzahl = 12): Wochenwert[] {
   const laufende = berlinDatum(wochenanfang(jetzt))
   const ergebnis: Wochenwert[] = []
   for (let i = anzahl; i >= 1; i--) {
@@ -137,7 +137,7 @@ export function wochenLevel(bloecke: Block[], jetzt: Date, anzahl = 12): Wochenw
         if (b.bewertung === 'produktiv') sekunden += a
       }
     }
-    ergebnis.push({ start: startDatum, kw: kalenderwoche(new Date(von)), sekunden, level: level(sekunden), leer })
+    ergebnis.push({ start: startDatum, kw: kalenderwoche(new Date(von)), sekunden, rang: rang(sekunden), leer })
   }
   return ergebnis
 }

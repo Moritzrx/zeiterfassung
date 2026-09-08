@@ -33,7 +33,7 @@ export function TeamBalken({ werte }: { werte: Teamwert[] }): ReactElement {
           />
           <Bar dataKey="stunden" name="produktiv diese Woche" radius={[4, 4, 0, 0]} isAnimationActive={false}>
             {werte.map((w) => (
-              <Cell key={w.name} fill={w.stunden >= w.ziel ? '#00C076' : w.istIch ? '#F2F2F3' : '#8E8E93'} />
+              <Cell key={w.name} fill={w.istIch ? '#00C076' : w.stunden >= w.ziel ? '#34D399' : '#8E8E93'} />
             ))}
           </Bar>
         </BarChart>

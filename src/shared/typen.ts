@@ -135,7 +135,7 @@ export interface ErfassungsStatus {
   pausiertSeit: string | null
   heuteProduktivSekunden: number
   wocheProduktivSekunden: number
-  level: number
+  rang: number
   unsynchronisiert: number
   letzterSync: string | null
   syncFehler: string | null

@@ -13,13 +13,13 @@ export interface TrayAktionen {
 export interface TrayStand {
   angemeldet: boolean
   heuteText: string
-  level: number
+  rang: number
   pausiert: boolean
 }
 
 /**
  * Das Symbol in der Menüleiste (Mac) bzw. im Infobereich (Windows).
- * Zeigt die heutigen Stunden und das Level, bietet Pause und Beenden.
+ * Zeigt die heutigen Stunden und den Rang, bietet Pause und Beenden.
  */
 export class TrayLeiste {
   private readonly tray: Tray
@@ -38,11 +38,11 @@ export class TrayLeiste {
     this.tray = new Tray(this.bild)
     this.tray.setToolTip('wessamedia Zeit')
     this.tray.on('click', () => this.aktionen.oeffnen())
-    this.aktualisieren({ angemeldet: false, heuteText: '0,0 h', level: 0, pausiert: false })
+    this.aktualisieren({ angemeldet: false, heuteText: '0,0 h', rang: 0, pausiert: false })
   }
 
   aktualisieren(stand: TrayStand): void {
-    const zeile = stand.angemeldet ? `Heute ${stand.heuteText} · Level ${stand.level}` : 'Nicht angemeldet'
+    const zeile = stand.angemeldet ? `Heute ${stand.heuteText} · Rang ${stand.rang}` : 'Nicht angemeldet'
     const menue = Menu.buildFromTemplate([
       { label: zeile, enabled: false },
       { type: 'separator' },

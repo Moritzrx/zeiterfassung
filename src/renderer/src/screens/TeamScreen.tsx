@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
-import { STANDARD_GESAMTZIEL, level, zielLevel } from '@shared/level'
+import { STANDARD_GESAMTZIEL, rang, rangName, zielRang } from '@shared/rang'
 import type { TeamMitglied, TeamWoche, Ziel } from '@shared/typen'
 import { berlinDatum, datumVerschieben, datumZuTagesanfang, kalenderwoche, wochenanfang } from '@shared/zeit'
 import { Karte } from '../components/Karte'
+import { RangAbzeichen } from '../components/RangAbzeichen'
 import { TeamBalken, type Teamwert } from '../components/TeamBalken'
 import { TeamVerlauf, type Verlaufsperson, type Verlaufswoche } from '../components/TeamVerlauf'
 import { useErfassung } from '../erfassung'
@@ -15,8 +16,9 @@ const ZEITRAEUME = [
   { wochen: 52, label: '12 Monate' }
 ] as const
 const SPEICHER_SCHLUESSEL = 'team.zeitraum'
-/** Linienfarben für die anderen, die eigene Linie ist weiß. */
-const FARBEN = ['#38BDF8', '#A78BFA', '#FBBF24', '#2DD4BF']
+/** Die eigene Linie ist grün, die der anderen blau und lila. */
+const EIGENE_FARBE = '#00C076'
+const FARBEN = ['#38BDF8', '#A78BFA', '#FBBF24', '#FB7185']
 
 function initialen(name: string): string {
   return name
@@ -36,7 +38,7 @@ function gespeicherterZeitraum(): number {
   }
 }
 
-/** Screen 4: Team. Stand der laufenden Woche, dazu Verlauf und Rangliste über einen wählbaren Zeitraum. */
+/** Screen 4: Team. Stand der laufenden Woche mit Rang-Abzeichen, dazu Verlauf und Rangliste über einen wählbaren Zeitraum. */
 export function TeamScreen(): ReactElement {
   const status = useErfassung()
   const [mitglieder, setMitglieder] = useState<TeamMitglied[]>([])
@@ -100,9 +102,9 @@ export function TeamScreen(): ReactElement {
         const sekunden = m.istIch ? status.wocheProduktivSekunden : m.produktiveSekunden
         const gesamtziel =
           ziele.find((z) => z.userId === m.userId && z.taetigkeit === null)?.stundenProWoche ?? STANDARD_GESAMTZIEL
-        return { ...m, sekunden, level: level(sekunden), gesamtziel }
+        return { ...m, sekunden, rang: rang(sekunden), gesamtziel }
       })
-      .sort((a, b) => b.level - a.level || b.sekunden - a.sekunden)
+      .sort((a, b) => b.rang - a.rang || b.sekunden - a.sekunden)
   }, [mitglieder, ziele, status.wocheProduktivSekunden])
 
   const balken: Teamwert[] = zeilen.map((z) => ({
@@ -113,7 +115,7 @@ export function TeamScreen(): ReactElement {
     istIch: z.istIch
   }))
 
-  // Verlauf: eine Zeile je Woche, Spalten je Person
+  // Verlauf: eine Zeile je Woche, Spalten je Person; Rangliste über den Zeitraum
   const { verlauf, personen, rangliste } = useMemo(() => {
     const namen = new Map<string, { name: string; istIch: boolean; gesamt: number; zielWochen: number }>()
     const eigeneId = mitglieder.find((m) => m.istIch)?.userId
@@ -121,28 +123,29 @@ export function TeamScreen(): ReactElement {
       const e = namen.get(w.userId) ?? { name: w.name, istIch: w.userId === eigeneId, gesamt: 0, zielWochen: 0 }
       e.gesamt += w.produktiveSekunden
       const gesamtziel = ziele.find((z) => z.userId === w.userId && z.taetigkeit === null)?.stundenProWoche ?? STANDARD_GESAMTZIEL
-      if (level(w.produktiveSekunden) >= zielLevel(gesamtziel)) e.zielWochen++
+      if (rang(w.produktiveSekunden) >= zielRang(gesamtziel)) e.zielWochen++
       namen.set(w.userId, e)
     }
     const personenListe: Verlaufsperson[] = []
     let farbe = 0
     for (const e of namen.values()) {
-      personenListe.push({ name: e.name, istIch: e.istIch, farbe: e.istIch ? '#F2F2F3' : FARBEN[farbe++ % FARBEN.length] })
+      personenListe.push({ name: e.name, istIch: e.istIch, farbe: e.istIch ? EIGENE_FARBE : FARBEN[farbe++ % FARBEN.length] })
     }
     const wochenMap = new Map<string, Verlaufswoche>()
     for (const w of teamWochen) {
+      const kw = kalenderwoche(datumZuTagesanfang(w.wocheStart))
       const zeile =
         wochenMap.get(w.wocheStart) ??
         ({
-          label: `KW ${kalenderwoche(datumZuTagesanfang(w.wocheStart))}`,
-          titel: `KW ${kalenderwoche(datumZuTagesanfang(w.wocheStart))} · ${kurzDatum(w.wocheStart)} bis ${kurzDatum(datumVerschieben(w.wocheStart, 6))}`
+          label: `KW ${kw}`,
+          titel: `KW ${kw} · ${kurzDatum(w.wocheStart)} bis ${kurzDatum(datumVerschieben(w.wocheStart, 6))}`
         } as Verlaufswoche)
       zeile[w.name] = w.produktiveSekunden / 3600
       wochenMap.set(w.wocheStart, zeile)
     }
     const verlaufListe = [...wochenMap.entries()].sort((a, b) => a[0].localeCompare(b[0])).map((e) => e[1])
-    const rang = [...namen.values()].sort((a, b) => b.gesamt - a.gesamt)
-    return { verlauf: verlaufListe, personen: personenListe, rangliste: rang }
+    const rangListe = [...namen.values()].sort((a, b) => b.gesamt - a.gesamt)
+    return { verlauf: verlaufListe, personen: personenListe, rangliste: rangListe }
   }, [teamWochen, mitglieder, ziele])
 
   const anzahlWochen = verlauf.length
@@ -165,15 +168,19 @@ export function TeamScreen(): ReactElement {
           return (
             <Karte key={z.userId} className="flex flex-col items-center text-center">
               <div
-                className={`flex h-14 w-14 items-center justify-center rounded-full text-lg ${
-                  z.istIch ? 'bg-ink text-ground' : 'bg-panel-2 text-ink'
+                className={`flex h-12 w-12 items-center justify-center rounded-full text-base ${
+                  z.istIch ? 'bg-produktiv text-ground' : 'bg-panel-2 text-ink'
                 }`}
               >
                 {initialen(z.name)}
               </div>
-              <p className="mt-3 text-base">{z.name}</p>
-              <p className="mt-3 text-[40px] leading-none font-light">{z.level}</p>
-              <p className="text-xs text-mute">Level diese Woche</p>
+              <p className="mt-2 text-base">{z.name}</p>
+              <div className="mt-3">
+                <RangAbzeichen rang={z.rang} groesse={64} />
+              </div>
+              <p className="mt-2 text-sm">
+                Rang {z.rang} <span className="text-mute">· {rangName(z.rang)}</span>
+              </p>
               <p className="mt-3 text-sm">
                 {stundenText(z.sekunden)} h <span className="text-mute">von {stundenText(z.gesamtziel * 3600)} h</span>
               </p>
@@ -245,7 +252,7 @@ export function TeamScreen(): ReactElement {
                   <span className={`w-6 text-lg font-light ${i === 0 ? 'text-orange' : 'text-mute'}`}>{i + 1}.</span>
                   <span
                     className={`flex h-9 w-9 items-center justify-center rounded-full text-sm ${
-                      r.istIch ? 'bg-ink text-ground' : 'bg-panel-2 text-ink'
+                      r.istIch ? 'bg-produktiv text-ground' : 'bg-panel-2 text-ink'
                     }`}
                   >
                     {initialen(r.name)}
