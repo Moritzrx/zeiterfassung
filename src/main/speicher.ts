@@ -202,6 +202,20 @@ export class Speicher {
     return uebernommen
   }
 
+  /** Blendet automatische Blöcke aus, die nur durch ein Systemfenster entstanden sind. */
+  fehlbloeckeAusblenden(istFehlblock: (programmRoh: string | null) => boolean): number {
+    let n = 0
+    const jetzt = new Date().toISOString()
+    for (const b of this.daten.bloecke) {
+      if (b.geloeschtAm || b.quelle !== 'auto' || b.manuellGeprueft || !istFehlblock(b.programmRoh)) continue
+      b.geloeschtAm = jetzt
+      b.fenstertitel = null
+      this.aktualisieren(b)
+      n++
+    }
+    return n
+  }
+
   /** Wirft Blöcke weg, die älter als das Zeitfenster sind und längst gesendet wurden. */
   aufraeumen(): void {
     const grenze = new Date(Date.now() - WOCHEN_VORHALTEN * 7 * 86400000).toISOString()

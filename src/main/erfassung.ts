@@ -6,7 +6,7 @@ import { activeWindow } from 'get-windows'
 import type { Bewertung, Block, ErfassungsZustand, LaufenderBlock } from '@shared/typen'
 import type { Zuordnung } from '@shared/regeln'
 import { naechsterTagesanfang } from '@shared/zeit'
-import { istSchreibtisch, programmNormalisieren } from './programme'
+import { istSchreibtisch, istSystemUeberlagerung, programmNormalisieren } from './programme'
 import type { Speicher } from './speicher'
 
 const TAKT_MS = 5_000 // alle 5 Sekunden das aktive Fenster abfragen
@@ -175,6 +175,17 @@ export class Erfassung extends EventEmitter {
 
     const fenster = await this.aktivesFenster()
     const roh = fenster?.owner?.name ?? null
+
+    // Diktat, Emoji-Fenster, Startmenü und Co.: kein eigener Block, der laufende läuft weiter.
+    if (istSystemUeberlagerung(roh)) {
+      if (this.aktuell) {
+        this.aktuell.ende = jetzt.toISOString()
+        this.speicher.aktualisieren(this.aktuell)
+      }
+      this.melden()
+      return
+    }
+
     const programm = programmNormalisieren(roh)
     const titel = this.fenstertitelSpeichern && fenster?.title ? fenster.title : null
 

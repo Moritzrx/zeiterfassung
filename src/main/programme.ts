@@ -72,6 +72,36 @@ const TABELLE: Record<string, string> = {
   applicationframehost: 'Windows-App'
 }
 
+/**
+ * Unsichtbare Hilfsfenster des Systems, die kurz den Fokus bekommen: Diktat,
+ * Emoji-Auswahl, Bildschirmtastatur, Startmenü, Suche, Sperrbildschirm.
+ * Sie sind keine Tätigkeit; der laufende Block läuft einfach weiter.
+ */
+const SYSTEM_UEBERLAGERUNGEN = new Set([
+  'textinputhost',
+  'windows-eingabeerfahrung',
+  'windows input experience',
+  'shellexperiencehost',
+  'windows shell experience host',
+  'startmenuexperiencehost',
+  'searchhost',
+  'searchapp',
+  'windows-suche',
+  'lockapp',
+  'screenclippinghost',
+  'spotlight',
+  'control center',
+  'kontrollzentrum',
+  'notification center',
+  'mitteilungszentrale',
+  'loginwindow'
+])
+
+export function istSystemUeberlagerung(roh: string | null | undefined): boolean {
+  if (!roh) return false
+  return SYSTEM_UEBERLAGERUNGEN.has(roh.trim().replace(/\.exe$/i, '').toLowerCase())
+}
+
 /** Leerer Schreibtisch oder Taskleiste im Fokus: das ist kein Arbeitsfenster. */
 export function istSchreibtisch(programm: string | null, titel: string | null | undefined): boolean {
   if (programm !== 'Windows Explorer') return false

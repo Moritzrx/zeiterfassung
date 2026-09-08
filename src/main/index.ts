@@ -8,6 +8,7 @@ import { authIpcRegistrieren, authStatus } from './auth'
 import { blockAendern } from './bearbeiten'
 import { alleNeuBewerten } from './bewertung'
 import { Erfassung } from './erfassung'
+import { istSystemUeberlagerung } from './programme'
 import { Regelwerk } from './regelwerk'
 import { Speicher } from './speicher'
 import { Sync } from './sync'
@@ -174,8 +175,11 @@ function sitzungStarten(userId: string): void {
   const erfassung = new Erfassung(speicher, userId, (programm, titel) =>
     regelnAnwenden(programm, titel, regelwerk.liste(), userId)
   )
+  const fehlbloecke = speicher.fehlbloeckeAusblenden(istSystemUeberlagerung)
+  if (fehlbloecke) console.log(`Speicher: ${fehlbloecke} Blöcke von Systemfenstern ausgeblendet`)
   const sync = new Sync(speicher, userId, () => {
     // Aus der Datenbank geholte Blöcke nach den aktuellen Regeln bewerten.
+    speicher.fehlbloeckeAusblenden(istSystemUeberlagerung)
     taetigkeiten.ausBloecken(speicher.alle())
     alleNeuBewerten(speicher, regelwerk.liste(), userId)
     bloeckeGeaendert()
