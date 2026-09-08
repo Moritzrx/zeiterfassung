@@ -1,0 +1,56 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ground: #0b0b0c;
+  --color-panel: #151517;
+  --color-panel-2: #1c1c1f;
+  --color-ink: #f2f2f3;
+  --color-mute: #8e8e93;
+  --color-dim: #5a5a60;
+  --color-produktiv: #00c076;
+  --color-unproduktiv: #ff4d4d;
+  --color-inaktiv: #3a3a3e;
+  --color-ungeklaert: #8a8a8f;
+  --color-orange: #fe5303;
+
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --radius-card: 16px;
+  --radius-chip: 8px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Desktop-App: Text ist nicht markierbar, außer in Eingabefeldern. */
+* {
+  user-select: none;
+}
+input,
+textarea {
+  user-select: text;
+}
+
+/* Schmale, dunkle Bildlaufleiste statt der hellen Systemleiste. */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-inaktiv);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
