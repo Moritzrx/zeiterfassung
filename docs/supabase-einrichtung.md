@@ -5,7 +5,7 @@ Einmalig nötig, dauert etwa 20 Minuten. Alles läuft im Browser auf supabase.co
 ## 1. Konto und Projekt anlegen
 
 1. Auf https://supabase.com gehen, oben rechts **"Start your project"** oder **"Sign in"**.
-2. Konto mit **info@wessamedia.com** anlegen (oder "Continue with GitHub", falls du das GitHub-Konto schon hast).
+2. Konto mit **deiner geschäftlichen E-Mail-Adresse** anlegen (oder "Continue with GitHub", falls du das GitHub-Konto schon hast). Welche Adresse das ist, spielt für die App keine Rolle: Sie ist nur dein Login bei supabase.com. Wichtig ist nur, dass du an dieses Postfach kommst, weil Supabase dorthin schreibt, wenn das Gratis-Projekt nach längerer Pause schlafen gelegt wird.
 3. Nach dem Anmelden: **"New project"** klicken.
 4. Ausfüllen:
    - **Organization:** die vorgeschlagene lassen.
