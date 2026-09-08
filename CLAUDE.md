@@ -46,7 +46,11 @@ Tailwind-Farbnamen: bg-ground, bg-panel, text-ink, text-mute, text-dim, produkti
 - Datenschutz-Entscheidung im Schema: Blöcke sind nur für die eigene Person lesbar; das Team sieht Summen über die Funktion `team_stand(von, bis)`. Weicht vom Auftrag ("jeder darf alle Blöcke lesen") ab, Frage 7 war unbeantwortet. Umstellen = eine RLS-Policy ändern.
 - Tätigkeitsnamen: Startregeln liefern direkt die Zielnamen mit "Learning" (Frage 10, unbeantwortet, Vorschlag umgesetzt).
 - get-windows 9.3 bringt fertige Binärdateien für win32-x64 und darwin arm64/x64 mit; `require('get-windows')` funktioniert unter Node 24. Am 8. September 2026 auf dem Windows-PC erfolgreich getestet.
-- Schritte 3 bis 12: offen. Reihenfolge laut `docs/auftrag.md`.
+- Schritt 3 (automatische Erfassung): gebaut am 8. September 2026, unter Windows geprüft: Fenstererkennung, laufender Block, Pause/Fortsetzen, lokaler Speicher, Abgleich (1.030 Blöcke aus der Datenbank geholt). Vom Auftraggeber noch zu testen: Untätigkeit nach 3 Minuten, Schließen ins Symbol, Sperren/Ruhezustand, Symbol-Menü. Mac-Seite ungetestet.
+  Bausteine: `src/main/erfassung.ts` (Takt 5 s, Untätigkeit rückwirkend, Lückenprüfung 30 s, Mitternacht- und 4-h-Teilung, Kurzblock-Regel 60 s, Inaktiv-Block max 60 min), `src/main/speicher.ts` (JSON je Konto unter `%APPDATA%\wessamedia Zeit\bloecke-<userId>.json`, atomar mit .bak), `src/main/sync.ts` (alle 60 s Upsert, Anfangsabgleich 13 Wochen mit Seiten à 1000), `src/main/tray.ts`, `src/main/programme.ts` (Namens-Tabelle), `src/shared/zeit.ts` (Berlin-Zeitrechnung ohne Zusatzpaket).
+  Entscheidung: Ein Block endet auch bei Wechsel des Fenstertitels, nicht nur des Programms, sonst wären Titel-Regeln (Google Ads gegen YouTube im selben Chrome) wirkungslos; die 60-s-Regel hält die Liste ruhig. In der Entwicklungsversion heißt das eigene Fenster "Electron", in der gebauten App "wessamedia Zeit".
+  Bewertung ist bis Schritt 5 immer "ungeklaert" (außer inaktiv), deshalb bleibt "Heute produktiv" vorerst 0,0.
+- Schritte 4 bis 12: offen. Reihenfolge laut `docs/auftrag.md`.
 
 ## Befehle
 - `npm run dev` startet die App zum Entwickeln. Unter Windows ohne PATH: `scripts\dev-windows.cmd`.

@@ -1,0 +1,63 @@
+import { Menu, nativeImage, Tray } from 'electron'
+import trayWinPfad from '../assets/tray/tray-win.png?asset'
+import trayWinPausePfad from '../assets/tray/tray-win-paused.png?asset'
+import trayMacPfad from '../assets/tray/trayTemplate.png?asset'
+
+export interface TrayAktionen {
+  oeffnen: () => void
+  pause: () => void
+  fortsetzen: () => void
+  beenden: () => void
+}
+
+export interface TrayStand {
+  angemeldet: boolean
+  heuteText: string
+  level: number
+  pausiert: boolean
+}
+
+/**
+ * Das Symbol in der Menüleiste (Mac) bzw. im Infobereich (Windows).
+ * Zeigt die heutigen Stunden und das Level, bietet Pause und Beenden.
+ */
+export class TrayLeiste {
+  private readonly tray: Tray
+  private readonly bild: Electron.NativeImage
+  private readonly bildPause: Electron.NativeImage
+
+  constructor(private readonly aktionen: TrayAktionen) {
+    if (process.platform === 'darwin') {
+      this.bild = nativeImage.createFromPath(trayMacPfad)
+      this.bild.setTemplateImage(true)
+      this.bildPause = this.bild
+    } else {
+      this.bild = nativeImage.createFromPath(trayWinPfad)
+      this.bildPause = nativeImage.createFromPath(trayWinPausePfad)
+    }
+    this.tray = new Tray(this.bild)
+    this.tray.setToolTip('wessamedia Zeit')
+    this.tray.on('click', () => this.aktionen.oeffnen())
+    this.aktualisieren({ angemeldet: false, heuteText: '0,0 h', level: 0, pausiert: false })
+  }
+
+  aktualisieren(stand: TrayStand): void {
+    const zeile = stand.angemeldet ? `Heute ${stand.heuteText} · Level ${stand.level}` : 'Nicht angemeldet'
+    const menue = Menu.buildFromTemplate([
+      { label: zeile, enabled: false },
+      { type: 'separator' },
+      stand.pausiert
+        ? { label: 'Erfassung fortsetzen', click: () => this.aktionen.fortsetzen(), enabled: stand.angemeldet }
+        : { label: 'Pause', click: () => this.aktionen.pause(), enabled: stand.angemeldet },
+      { label: 'Fenster öffnen', click: () => this.aktionen.oeffnen() },
+      { type: 'separator' },
+      { label: 'Beenden', click: () => this.aktionen.beenden() }
+    ])
+    this.tray.setContextMenu(menue)
+    this.tray.setToolTip(stand.pausiert ? 'wessamedia Zeit · Erfassung pausiert' : `wessamedia Zeit · ${zeile}`)
+    this.tray.setImage(stand.pausiert ? this.bildPause : this.bild)
+    if (process.platform === 'darwin') {
+      this.tray.setTitle(stand.angemeldet ? (stand.pausiert ? 'Pause' : stand.heuteText) : '')
+    }
+  }
+}

@@ -2,6 +2,13 @@ import { ipcMain } from 'electron'
 import type { AuthErgebnis, AuthStatus } from '@shared/api'
 import { supabase, supabaseKonfiguriert } from './supabase'
 
+export interface AuthHaken {
+  /** Wird nach erfolgreicher Anmeldung aufgerufen. */
+  onAngemeldet: (userId: string) => void
+  /** Wird nach dem Abmelden aufgerufen. */
+  onAbgemeldet: () => void
+}
+
 /** Übersetzt Fehlermeldungen von Supabase in verständliches Deutsch. */
 function fehlerText(meldung: string): string {
   const m = meldung.toLowerCase()
@@ -44,7 +51,7 @@ export async function authStatus(): Promise<AuthStatus> {
   return { ...leer, angemeldet: true, userId: sitzung.user.id, email: sitzung.user.email ?? null, name }
 }
 
-export function authIpcRegistrieren(): void {
+export function authIpcRegistrieren(haken: AuthHaken): void {
   ipcMain.handle('auth:status', () => authStatus())
 
   ipcMain.handle('auth:anmelden', async (_ereignis, email: string, passwort: string): Promise<AuthErgebnis> => {
@@ -55,8 +62,9 @@ export function authIpcRegistrieren(): void {
       }
     }
     try {
-      const { error } = await supabase().auth.signInWithPassword({ email: email.trim(), password: passwort })
+      const { data, error } = await supabase().auth.signInWithPassword({ email: email.trim(), password: passwort })
       if (error) return { ok: false, fehler: fehlerText(error.message) }
+      if (data.user) haken.onAngemeldet(data.user.id)
       return { ok: true, fehler: null }
     } catch (e) {
       return { ok: false, fehler: fehlerText(e instanceof Error ? e.message : String(e)) }
@@ -64,6 +72,7 @@ export function authIpcRegistrieren(): void {
   })
 
   ipcMain.handle('auth:abmelden', async (): Promise<void> => {
+    haken.onAbgemeldet()
     try {
       // scope 'local' verwirft die Sitzung auch ohne Internet.
       await supabase().auth.signOut({ scope: 'local' })
