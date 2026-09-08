@@ -4,14 +4,14 @@ interface Eintrag {
   name?: string
   value?: number
   color?: string
-  payload?: { farbe?: string; text?: string }
+  payload?: { farbe?: string; text?: string; titel?: string }
 }
 
 interface Props {
   active?: boolean
   payload?: ReadonlyArray<Eintrag>
   label?: string | number
-  /** Formatiert einen Wert, Standard: Stunden mit Komma */
+  /** Formatiert einen Wert, Standard: Sekunden als Stunden mit Komma */
   format?: (wert: number) => string
 }
 
@@ -22,10 +22,12 @@ function standardFormat(wert: number): string {
 /** Schlichter dunkler Tooltip für alle Diagramme: Name und genauer Wert, sonst nichts. */
 export function DiagrammTooltip({ active, payload, label, format = standardFormat }: Props): ReactElement | null {
   if (!active || !payload || payload.length === 0) return null
+  const kopf = payload[0]?.payload?.titel ?? (label !== undefined && label !== '' ? String(label) : null)
+  const zeilen = payload.filter((e) => (e.value ?? 0) > 0)
   return (
     <div className="rounded-chip bg-panel-2 px-3 py-2 text-xs text-ink">
-      {label !== undefined && label !== '' && <div className="mb-1 text-mute">{label}</div>}
-      {payload.map((e, i) => (
+      {kopf && <div className="mb-1 text-mute">{kopf}</div>}
+      {zeilen.map((e, i) => (
         <div key={i} className="flex items-center gap-2">
           <span
             className="inline-block h-2 w-2 rounded-full"

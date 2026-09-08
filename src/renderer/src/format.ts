@@ -39,6 +39,14 @@ export function uhrzeit(iso: string): string {
   return UHRZEIT.format(new Date(iso))
 }
 
+const KURZ = new Intl.DateTimeFormat('de-DE', { timeZone: ZEITZONE, day: 'numeric', month: 'short' })
+
+/** Kalendertag "JJJJ-MM-TT" als "8. Sept." ohne Wochentag. */
+export function kurzDatum(datum: string): string {
+  const mittag = new Date(datumZuTagesanfang(datum).getTime() + 12 * 3600_000)
+  return KURZ.format(mittag)
+}
+
 /** Kalendertag "JJJJ-MM-TT" als "Mo., 8. Sept.". */
 export function datumText(datum: string): string {
   const mittag = new Date(datumZuTagesanfang(datum).getTime() + 12 * 3600_000)

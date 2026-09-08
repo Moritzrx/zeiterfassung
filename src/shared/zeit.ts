@@ -101,6 +101,22 @@ export function datumZuTagesanfang(datum: string): Date {
   return berlinZuUtc(jahr, monat, tag)
 }
 
+/** Kalenderwoche nach ISO (Montag bis Sonntag) für einen Zeitpunkt in Berlin. */
+export function kalenderwoche(zeitpunkt: Date): number {
+  const t = berlinTeile(zeitpunkt)
+  const d = new Date(Date.UTC(t.jahr, t.monat - 1, t.tag))
+  const wochentag = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - wochentag)
+  const jahresanfang = Date.UTC(d.getUTCFullYear(), 0, 1)
+  return Math.ceil(((d.getTime() - jahresanfang) / 86_400_000 + 1) / 7)
+}
+
+/** Wochentag in Berlin: 0 = Sonntag, 1 = Montag, … 6 = Samstag. */
+export function wochentag(zeitpunkt: Date): number {
+  const t = berlinTeile(zeitpunkt)
+  return new Date(Date.UTC(t.jahr, t.monat - 1, t.tag)).getUTCDay()
+}
+
 /** "JJJJ-MM-TT" um eine Anzahl Tage verschieben (negativ = zurück). */
 export function datumVerschieben(datum: string, tage: number): string {
   const [jahr, monat, tag] = datum.split('-').map(Number)

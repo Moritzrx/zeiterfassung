@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, powerMonitor, shell } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import type { Block, BlockAenderung, ErfassungsStatus, NeueRegel, Regel } from '@shared/typen'
+import type { Block, BlockAenderung, ErfassungsStatus, NeueRegel, Regel, Ziel } from '@shared/typen'
 import { regelnAnwenden } from '@shared/regeln'
 import { datumZuTagesanfang, naechsterTagesanfang, tagesanfang, wochenanfang } from '@shared/zeit'
 import { authIpcRegistrieren, authStatus } from './auth'
@@ -14,6 +14,7 @@ import { Speicher } from './speicher'
 import { Sync } from './sync'
 import { Taetigkeiten } from './taetigkeiten'
 import { TrayLeiste } from './tray'
+import { Ziele } from './ziele'
 
 const APP_ID = 'com.wessamedia.zeit'
 const HINTERGRUND = '#0B0B0C'
@@ -27,6 +28,7 @@ interface Sitzung {
   sync: Sync
   regelwerk: Regelwerk
   taetigkeiten: Taetigkeiten
+  ziele: Ziele
   regelTimer: NodeJS.Timeout
 }
 
@@ -152,8 +154,9 @@ function bloeckeGeaendert(): void {
   if (fenster && !fenster.isDestroyed()) fenster.webContents.send('bloecke:aenderung')
 }
 
-/** Regeln neu laden und alle nicht geprüften Blöcke danach bewerten. */
+/** Regeln und Ziele neu laden und alle nicht geprüften Blöcke danach bewerten. */
 async function regelnAktualisieren(s: Sitzung): Promise<number> {
+  void s.ziele.laden()
   const ok = await s.regelwerk.laden()
   if (!ok) return 0
   const geaendert = alleNeuBewerten(s.speicher, s.regelwerk.liste(), s.userId)
@@ -171,6 +174,7 @@ function sitzungStarten(userId: string): void {
   speicher.aufraeumen()
   const regelwerk = new Regelwerk(userId)
   const taetigkeiten = new Taetigkeiten(userId)
+  const ziele = new Ziele(userId)
   taetigkeiten.ausBloecken(speicher.alle())
   const erfassung = new Erfassung(speicher, userId, (programm, titel) =>
     regelnAnwenden(programm, titel, regelwerk.liste(), userId)
@@ -192,6 +196,7 @@ function sitzungStarten(userId: string): void {
     sync,
     regelwerk,
     taetigkeiten,
+    ziele,
     regelTimer: setInterval(() => void regelnAktualisieren(s), REGELN_TAKT_MS)
   }
   sitzung = s
@@ -271,6 +276,9 @@ function ipcRegistrieren(): void {
   })
 
   ipcMain.handle('taetigkeiten:liste', (): string[] => sitzung?.taetigkeiten.liste() ?? [])
+
+  ipcMain.handle('ziele:eigene', (): Ziel[] => sitzung?.ziele.eigene() ?? [])
+  ipcMain.handle('ziele:alle', (): Ziel[] => sitzung?.ziele.alle() ?? [])
 }
 
 /** In der fertigen App startet sie mit dem Rechner, versteckt im Symbol. */

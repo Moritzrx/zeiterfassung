@@ -45,6 +45,14 @@ export interface NeueRegel {
   fuerAlle: boolean
 }
 
+/** Ein Wochenziel. taetigkeit null = Arbeitszeit gesamt. */
+export interface Ziel {
+  id: string
+  userId: string
+  taetigkeit: string | null
+  stundenProWoche: number
+}
+
 /** Was sich an einem Block von Hand ändern lässt. */
 export interface BlockAenderung {
   taetigkeit?: string | null

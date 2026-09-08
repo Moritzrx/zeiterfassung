@@ -40,6 +40,10 @@ const api: Api = {
   },
   taetigkeiten: {
     liste: () => ipcRenderer.invoke('taetigkeiten:liste')
+  },
+  ziele: {
+    eigene: () => ipcRenderer.invoke('ziele:eigene'),
+    alle: () => ipcRenderer.invoke('ziele:alle')
   }
 }
 
