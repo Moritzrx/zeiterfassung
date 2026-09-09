@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { memo, type ReactElement } from 'react'
 import { Check } from 'lucide-react'
 import type { Block } from '@shared/typen'
 import { fensterInfo } from '@shared/fenster'
@@ -29,7 +29,7 @@ interface Props {
 }
 
 /** Eine Zeile in der Blockliste: Zeit, Dauer, Programm, Tätigkeit, farbige Bewertung. */
-export function BlockZeile({ block, laeuft = false, onClick, auswahlModus = false, ausgewaehlt = false }: Props): ReactElement {
+function BlockZeileInnen({ block, laeuft = false, onClick, auswahlModus = false, ausgewaehlt = false }: Props): ReactElement {
   const sekunden = (Date.parse(block.ende) - Date.parse(block.start)) / 1000
   const hauptzeile =
     block.bewertung === 'inaktiv'
@@ -90,3 +90,17 @@ export function BlockZeile({ block, laeuft = false, onClick, auswahlModus = fals
     </div>
   )
 }
+
+/**
+ * Gemerkt, damit lange Listen (Heute-Screen) nicht bei jedem Tick des Bildschirms neu gerendert werden.
+ * Die Klick-Funktion zählt bewusst nicht mit: Aufrufer geben ihr eine stabile Funktion (siehe HeuteScreen).
+ */
+export const BlockZeile = memo(
+  BlockZeileInnen,
+  (a, b) =>
+    a.block === b.block &&
+    a.laeuft === b.laeuft &&
+    a.auswahlModus === b.auswahlModus &&
+    a.ausgewaehlt === b.ausgewaehlt &&
+    !!a.onClick === !!b.onClick
+)

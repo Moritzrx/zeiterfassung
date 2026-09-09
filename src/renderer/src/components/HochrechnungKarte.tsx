@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { memo, type ReactElement } from 'react'
 import { MINDEST_TAGE, ZEITRAUM_TAGE, type Hochrechnung } from '@shared/auswertung'
 import { AnimierteZahl } from './AnimierteZahl'
 import { Karte } from './Karte'
@@ -15,7 +15,7 @@ interface Props {
 }
 
 /** Eine Hochrechnungs-Karte: Tagesschnitt, daraus Woche, Monat und Jahr, plus der Hinweis, worauf sie beruht. */
-export function HochrechnungKarte({ name, werte, erfassteTage, ausreichend, gross = false }: Props): ReactElement {
+function HochrechnungKarteInnen({ name, werte, erfassteTage, ausreichend, gross = false }: Props): ReactElement {
   const hinweis = ausreichend
     ? `Schnitt aus ${erfassteTage} Arbeitstagen der letzten ${ZEITRAUM_TAGE} Tage, × 5 Tage pro Woche.`
     : `Datenlage noch zu dünn: erst ${erfassteTage} von mindestens ${MINDEST_TAGE} erfassten Tagen.`
@@ -45,3 +45,6 @@ export function HochrechnungKarte({ name, werte, erfassteTage, ausreichend, gros
     </Karte>
   )
 }
+
+/** Gemerkt: rendert nur neu, wenn sich die Eingaben ändern; die Statusmeldung alle 5 s rendert sonst jedes Diagramm mit. */
+export const HochrechnungKarte = memo(HochrechnungKarteInnen)

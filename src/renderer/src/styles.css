@@ -136,60 +136,67 @@ body::after {
 
 /*
  * Screen-Wechsel wie am Mac: Der alte Screen gleitet in Klickrichtung hinaus und blendet aus,
- * während der neue von der anderen Seite hereingleitet. Beides läuft gleichzeitig.
+ * während der neue von der anderen Seite hereingleitet. Beides läuft gleichzeitig und nur auf
+ * dem Compositor: jeder Screen ist dauerhaft eine eigene Ebene (will-change), versteckte Screens
+ * bleiben gezeichnet und sind nur durchsichtig, damit beim Wechsel nichts neu gezeichnet werden muss.
  */
+.screen-ebene {
+  will-change: transform, opacity;
+}
+.screen-versteckt {
+  opacity: 0;
+  pointer-events: none;
+}
 @keyframes screen-rein-rechts {
   from {
     opacity: 0;
-    transform: translate3d(36px, 0, 0);
+    transform: translate3d(40px, 0, 0) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 @keyframes screen-rein-links {
   from {
     opacity: 0;
-    transform: translate3d(-36px, 0, 0);
+    transform: translate3d(-40px, 0, 0) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 @keyframes screen-raus-links {
   from {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0) scale(1);
   }
   to {
     opacity: 0;
-    transform: translate3d(-36px, 0, 0);
+    transform: translate3d(-40px, 0, 0) scale(0.985);
   }
 }
 @keyframes screen-raus-rechts {
   from {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0) scale(1);
   }
   to {
     opacity: 0;
-    transform: translate3d(36px, 0, 0);
+    transform: translate3d(40px, 0, 0) scale(0.985);
   }
 }
 .screen-rein-rechts,
 .screen-rein-links {
-  animation: screen-rein-rechts 0.46s var(--ease-federnd) both;
-  will-change: transform, opacity;
+  animation: screen-rein-rechts 0.44s var(--ease-federnd) both;
 }
 .screen-rein-links {
   animation-name: screen-rein-links;
 }
 .screen-raus-links,
 .screen-raus-rechts {
-  animation: screen-raus-links 0.26s cubic-bezier(0.4, 0, 0.6, 1) both;
-  will-change: transform, opacity;
+  animation: screen-raus-links 0.24s cubic-bezier(0.4, 0, 0.6, 1) both;
 }
 .screen-raus-rechts {
   animation-name: screen-raus-rechts;
@@ -283,20 +290,9 @@ body::after {
     transform: rotate(360deg);
   }
 }
-/* Lichtbahnen: ein Funke (Strichstück) wandert die Bahn entlang und wieder zurück. */
-.hintergrund-bahn {
-  stroke-dasharray: 160 2400;
-  stroke-dashoffset: 2560;
-  animation: bahn-zischen var(--dauer, 8s) cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
-  animation-delay: var(--verzoegerung, 0s);
-}
-@keyframes bahn-zischen {
-  0% {
-    stroke-dashoffset: 2560;
-  }
-  100% {
-    stroke-dashoffset: 320;
-  }
+/* Lichtbahnen: der Funke ist eine leuchtende Pille, die Hintergrund.tsx per Web-Animations-API bewegt. */
+.hintergrund-funke {
+  will-change: transform;
 }
 .hintergrund-punkt {
   bottom: -10px;
@@ -326,6 +322,121 @@ body::after {
 /* Dialoge: der dunkle Schleier blendet auf, das Fenster darin federt herein. */
 .animate-aufblenden > * {
   animation: einblenden 0.35s var(--ease-federnd) both;
+}
+
+/*
+ * Rang-Aufstieg (RangAufstieg.tsx): Schleier mit Lichtschein in der Stufenfarbe, drehender
+ * Strahlenkranz, zwei Druckwellen, Funken, die vom Wappen wegfliegen, Lichtbahnen wie im
+ * Hintergrund, die einmal durchs Bild zischen, und das Wappen, das mit Überschwingen landet.
+ * Alles nur transform, opacity und Strichversatz.
+ */
+.aufstieg-schleier {
+  animation: aufblenden 0.4s ease-out both;
+}
+.aufstieg-schleier.aufstieg-raus {
+  animation: aufstieg-ausblenden 0.35s ease-in both;
+}
+@keyframes aufstieg-ausblenden {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.aufstieg-strahlen {
+  background: repeating-conic-gradient(from 0deg, var(--farbe-strahlen) 0deg 4deg, transparent 4deg 13.5deg);
+  mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.5) 30%, transparent 60%);
+  -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.5) 30%, transparent 60%);
+  animation:
+    aufstieg-drehen 60s linear infinite,
+    aufblenden 1.2s ease-out both;
+  will-change: transform;
+}
+@keyframes aufstieg-drehen {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.aufstieg-welle {
+  border: 2px solid var(--farbe);
+  border-radius: 9999px;
+  animation: aufstieg-welle 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  will-change: transform, opacity;
+}
+@keyframes aufstieg-welle {
+  from {
+    transform: scale(0.25);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(3.4);
+    opacity: 0;
+  }
+}
+.aufstieg-funke {
+  animation: aufstieg-funke var(--dauer, 1.2s) cubic-bezier(0.1, 0.7, 0.3, 1) both;
+  animation-delay: var(--verzoegerung, 0s);
+  will-change: transform, opacity;
+}
+@keyframes aufstieg-funke {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--dx), var(--dy), 0) scale(0.2);
+    opacity: 0;
+  }
+}
+.aufstieg-wappen {
+  animation: aufstieg-wappen 0.95s cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
+  animation-delay: 0.1s;
+  will-change: transform, opacity;
+}
+@keyframes aufstieg-wappen {
+  from {
+    transform: translate3d(0, 50px, 0) scale(0.25);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+}
+.aufstieg-schein {
+  animation: aufstieg-schein 2.4s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+@keyframes aufstieg-schein {
+  from {
+    transform: scale(0.9);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(1.18);
+    opacity: 0.95;
+  }
+}
+.aufstieg-text {
+  animation: aufsteigen 0.6s var(--ease-federnd) both;
+}
+.aufstieg-bahn {
+  stroke-dasharray: 240 4000;
+  stroke-dashoffset: 240;
+  animation: aufstieg-bahn 1.5s cubic-bezier(0.35, 0, 0.25, 1) both;
+  animation-delay: var(--verzoegerung, 0s);
+}
+@keyframes aufstieg-bahn {
+  to {
+    stroke-dashoffset: -1600;
+  }
 }
 
 /* Wer im System "Bewegung reduzieren" eingestellt hat, bekommt alles ohne Animation. */

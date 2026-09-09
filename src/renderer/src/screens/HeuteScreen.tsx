@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Bewertung, Block } from '@shared/typen'
 import {
@@ -16,7 +16,7 @@ import { Karte } from '../components/Karte'
 import { Mehrfachleiste } from '../components/Mehrfachleiste'
 import { TagesRing, type RingAnteile } from '../components/TagesRing'
 import { UngeklaertPostfach } from '../components/UngeklaertPostfach'
-import { useErfassung, useSekundentakt } from '../erfassung'
+import { useErfassung, useSekundentakt, useTakt } from '../erfassung'
 import { datumText, laufzeitText, stundenText } from '../format'
 import { useTaetigkeiten } from '../taetigkeiten'
 
@@ -36,7 +36,8 @@ function anteileBerechnen(bloecke: Block[], datum: string): RingAnteile {
 /** Screen 1: Heute. Tages-Ring, laufender Block, Ungeklärt-Postfach, Tagesliste mit Bearbeiten und Mehrfachauswahl. */
 export function HeuteScreen(): ReactElement {
   const status = useErfassung()
-  const jetzt = useSekundentakt()
+  // Nur alle 30 s, damit nicht der ganze Screen samt Liste jede Sekunde neu rendert; der laufende Zähler tickt für sich.
+  const jetzt = useTakt(30_000)
   const taetigkeiten = useTaetigkeiten()
   const heute = berlinDatum(new Date(jetzt))
   const [datum, setDatum] = useState(heute)
@@ -71,7 +72,6 @@ export function HeuteScreen(): ReactElement {
   const anteile = useMemo(() => anteileBerechnen(bloecke, datum), [bloecke, datum])
   const produktiv = istHeute ? status.heuteProduktivSekunden : anteile.produktiv
   const laufend = istHeute ? status.laufenderBlock : null
-  const laufzeit = laufend ? (jetzt - Date.parse(laufend.start)) / 1000 : 0
   const liste = useMemo(() => {
     const sortiert = [...bloecke].sort((a, b) => a.start.localeCompare(b.start))
     return istHeute ? sortiert.reverse() : sortiert
@@ -94,6 +94,27 @@ export function HeuteScreen(): ReactElement {
     }
   }
 
+  // Stabile Klick-Funktionen je Block-Kennung, damit die gemerkten Zeilen (memo) nicht bei jedem Rendern
+  // neu entstehen; sie greifen immer auf die aktuelle Liste und die aktuelle zeileKlick zu.
+  const zeileKlickAktuell = useRef(zeileKlick)
+  zeileKlickAktuell.current = zeileKlick
+  const listeAktuell = useRef(liste)
+  listeAktuell.current = liste
+  const klickFuer = useMemo(() => {
+    const handler = new Map<string, () => void>()
+    return (id: string): (() => void) => {
+      let h = handler.get(id)
+      if (!h) {
+        h = () => {
+          const b = listeAktuell.current.find((x) => x.id === id)
+          if (b) zeileKlickAktuell.current(b)
+        }
+        handler.set(id, h)
+      }
+      return h
+    }
+  }, [])
+
   async function mehrere(aenderung: { taetigkeit?: string; bewertung?: Bewertung; loeschen?: boolean }): Promise<void> {
     if (!window.api || !auswahl || auswahl.size === 0) return
     const n = await window.api.bloecke.mehrereAendern([...auswahl], aenderung)
@@ -105,8 +126,8 @@ export function HeuteScreen(): ReactElement {
     if (!window.api || !auswahl) return
     const erster = liste.find((b) => auswahl.has(b.id))
     if (!erster?.programm) return
-    const von = wochenanfang(new Date(jetzt)).toISOString()
-    const alle = await window.api.bloecke.zeitraum(von, new Date(jetzt).toISOString())
+    const von = wochenanfang(new Date()).toISOString()
+    const alle = await window.api.bloecke.zeitraum(von, new Date().toISOString())
     const neu = new Set(auswahl)
     for (const b of alle) {
       if (b.quelle === 'auto' && b.programm === erster.programm && b.bewertung !== 'inaktiv' && b.id !== laufend?.id) {
@@ -187,7 +208,7 @@ export function HeuteScreen(): ReactElement {
                       : 'border border-ungeklaert'
                 }`}
               />
-              <p className="text-2xl font-light">{laufzeitText(laufzeit)}</p>
+              <Laufzeit start={laufend.start} />
             </div>
           ) : (
             <p className="mt-2 text-sm text-dim">{geradeText}</p>
@@ -229,7 +250,7 @@ export function HeuteScreen(): ReactElement {
                 key={b.id}
                 block={b}
                 laeuft={b.id === laufend?.id}
-                onClick={() => zeileKlick(b)}
+                onClick={klickFuer(b.id)}
                 auswahlModus={auswahl !== null}
                 ausgewaehlt={auswahl?.has(b.id) ?? false}
               />
@@ -287,4 +308,10 @@ export function HeuteScreen(): ReactElement {
       )}
     </div>
   )
+}
+
+/** Der laufende Zähler des aktuellen Blocks; tickt für sich allein, damit nicht der ganze Screen jede Sekunde neu rendert. */
+function Laufzeit({ start }: { start: string }): ReactElement {
+  const jetzt = useSekundentakt()
+  return <p className="text-2xl font-light">{laufzeitText((jetzt - Date.parse(start)) / 1000)}</p>
 }

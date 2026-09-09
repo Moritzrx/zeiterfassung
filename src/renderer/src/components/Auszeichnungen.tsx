@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { memo, type ReactElement } from 'react'
 import { AUSZEICHNUNGEN, AUSZEICHNUNG_REIHENFOLGE } from '@shared/auszeichnungen'
 import type { Auszeichnung } from '@shared/typen'
 import { kurzDatum } from '../format'
@@ -6,7 +6,7 @@ import { AuszeichnungBild } from './AuszeichnungBild'
 import { Karte } from './Karte'
 
 /** Die Reihe der vier Auszeichnungen unten auf dem Wochen-Screen. */
-export function Auszeichnungen({ liste }: { liste: Auszeichnung[] }): ReactElement {
+function AuszeichnungenInnen({ liste }: { liste: Auszeichnung[] }): ReactElement {
   return (
     <Karte>
       <p className="text-xs tracking-wide text-mute uppercase">Auszeichnungen</p>
@@ -29,3 +29,6 @@ export function Auszeichnungen({ liste }: { liste: Auszeichnung[] }): ReactEleme
     </Karte>
   )
 }
+
+/** Gemerkt: rendert nur neu, wenn sich die Eingaben ändern; die Statusmeldung alle 5 s rendert sonst jedes Diagramm mit. */
+export const Auszeichnungen = memo(AuszeichnungenInnen)

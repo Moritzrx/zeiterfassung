@@ -11,6 +11,15 @@ import { kurzDatum, uhrzeit } from '../format'
 import { useNutzer } from '../nutzer'
 import { SymbolBild, useSymbolZuordnung } from '../symbole'
 import { useTaetigkeiten } from '../taetigkeiten'
+import { tonProbe, toneEinstellung, toneEinstellungSetzen, type Ton } from '../toene'
+
+const PROBEN: { ton: Ton; label: string }[] = [
+  { ton: 'tick', label: 'Klick' },
+  { ton: 'wischen', label: 'Wischen' },
+  { ton: 'erfolg', label: 'Gespeichert' },
+  { ton: 'auszeichnung', label: 'Auszeichnung' },
+  { ton: 'aufstieg', label: 'Aufstieg' }
+]
 
 const FELD =
   'rounded-chip bg-panel-2 px-3 py-2 text-sm text-ink outline-none placeholder:text-dim focus:ring-1 focus:ring-dim'
@@ -86,6 +95,7 @@ export function EinstellungenScreen(): ReactElement {
   const [ziele, setZiele] = useState<Ziel[]>([])
   const [regeln, setRegeln] = useState<Regel[]>([])
   const [symbolFuer, setSymbolFuer] = useState<string | null>(null)
+  const [toene, setToene] = useState(toneEinstellung)
   const [neuesZiel, setNeuesZiel] = useState({ taetigkeit: '', stunden: '5' })
   const [urlaube, setUrlaube] = useState<Urlaub[]>([])
   const [urlaubFehler, setUrlaubFehler] = useState<string | null>(null)
@@ -512,6 +522,46 @@ export function EinstellungenScreen(): ReactElement {
           <Zeile titel="Urlaubswochen pro Jahr" hinweis="Jahr = Wochenwert mal (52 minus Urlaubswochen). Standard 6.">
             {profil && <Zahl wert={profil.urlaubswochen} min={0} max={52} onSpeichern={(n) => void profilSpeichern({ urlaubswochen: n })} />}
             <span className="text-sm text-mute">Wochen</span>
+          </Zeile>
+        </div>
+      </Karte>
+
+      <Karte>
+        <p className="text-xs tracking-wide text-mute uppercase">Töne</p>
+        <div className="mt-1 divide-y divide-panel-2">
+          <Zeile
+            titel="Töne abspielen"
+            hinweis="Leiser Klick bei Knöpfen, ein Wischen beim Screen-Wechsel, Klänge bei Aufstieg und Auszeichnungen. Alle Töne entstehen in der App selbst."
+          >
+            <Schalter an={toene.an} onChange={(an) => setToene(toneEinstellungSetzen({ an }))} />
+          </Zeile>
+          <Zeile titel="Lautstärke" hinweis={`${Math.round(toene.lautstaerke * 100)} %`}>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round(toene.lautstaerke * 100)}
+              onChange={(e) => setToene(toneEinstellungSetzen({ lautstaerke: Number(e.target.value) / 100 }))}
+              onPointerUp={() => tonProbe('erfolg', toene.lautstaerke)}
+              data-stumm
+              className="w-40 accent-produktiv"
+              aria-label="Lautstärke"
+            />
+          </Zeile>
+          <Zeile titel="Probehören">
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {PROBEN.map((p) => (
+                <button
+                  key={p.ton}
+                  type="button"
+                  data-stumm
+                  onClick={() => tonProbe(p.ton, toene.lautstaerke)}
+                  className="rounded-chip bg-panel-2 px-3 py-1.5 text-xs text-ink transition-colors hover:bg-inaktiv"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </Zeile>
         </div>
       </Karte>

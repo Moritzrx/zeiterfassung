@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react'
+import { memo, useState, type ReactElement } from 'react'
 import { Cell, Pie, PieChart } from 'recharts'
 import { stundenText } from '../format'
 import { TaetigkeitSymbol, taetigkeitFarbe, useSymbolZuordnung } from '../symbole'
@@ -11,7 +11,7 @@ export interface Verteilungswert {
 const SONSTIGE = '#5A5A60'
 
 /** Anteil jeder Tätigkeit an der produktiven Zeit. Markenfarben oder Palette; beim Überfahren treten die anderen zurück. */
-export function VerteilungsRing({ werte }: { werte: Verteilungswert[] }): ReactElement {
+function VerteilungsRingInnen({ werte }: { werte: Verteilungswert[] }): ReactElement {
   const [aktiv, setAktiv] = useState<number | null>(null)
   const zuordnung = useSymbolZuordnung()
   const gesamt = werte.reduce((s, w) => s + w.sekunden, 0)
@@ -76,3 +76,6 @@ export function VerteilungsRing({ werte }: { werte: Verteilungswert[] }): ReactE
     </div>
   )
 }
+
+/** Gemerkt: rendert nur neu, wenn sich die Eingaben ändern; die Statusmeldung alle 5 s rendert sonst jedes Diagramm mit. */
+export const VerteilungsRing = memo(VerteilungsRingInnen)

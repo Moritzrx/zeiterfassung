@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { memo, type ReactElement } from 'react'
 import { Bar, BarChart, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { DiagrammTooltip } from './DiagrammTooltip'
 
@@ -17,7 +17,7 @@ interface Props {
 }
 
 /** Erreichter Rang je Woche. Ab Ziel-Rang grün, darunter rot, ohne Daten leer. */
-export function TrendBalken({ werte, zielRang }: Props): ReactElement {
+function TrendBalkenInnen({ werte, zielRang }: Props): ReactElement {
   const hoechster = Math.max(zielRang + 1, ...werte.map((w) => w.rang))
   return (
     <div className="h-[200px] w-full">
@@ -45,3 +45,6 @@ export function TrendBalken({ werte, zielRang }: Props): ReactElement {
     </div>
   )
 }
+
+/** Gemerkt: rendert nur neu, wenn sich die Eingaben ändern; die Statusmeldung alle 5 s rendert sonst jedes Diagramm mit. */
+export const TrendBalken = memo(TrendBalkenInnen)

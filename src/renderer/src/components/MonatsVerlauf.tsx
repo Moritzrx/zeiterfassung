@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { memo, type ReactElement } from 'react'
 import { Area, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { DiagrammTooltip } from './DiagrammTooltip'
 
@@ -14,7 +14,7 @@ function stundenFormat(wert: number): string {
 }
 
 /** Produktive Stunden je Tag über den gewählten Zeitraum, darüber der gleitende 7-Tage-Schnitt als dünne Linie. */
-export function MonatsVerlauf({ werte }: { werte: Monatswert[] }): ReactElement {
+function MonatsVerlaufInnen({ werte }: { werte: Monatswert[] }): ReactElement {
   // Höchstens etwa acht Beschriftungen auf der Achse, egal wie lang der Zeitraum ist.
   const abstand = Math.max(0, Math.ceil(werte.length / 8) - 1)
   return (
@@ -48,3 +48,6 @@ export function MonatsVerlauf({ werte }: { werte: Monatswert[] }): ReactElement 
     </div>
   )
 }
+
+/** Gemerkt: rendert nur neu, wenn sich die Eingaben ändern; die Statusmeldung alle 5 s rendert sonst jedes Diagramm mit. */
+export const MonatsVerlauf = memo(MonatsVerlaufInnen)

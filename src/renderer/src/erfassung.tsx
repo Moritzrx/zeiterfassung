@@ -28,12 +28,17 @@ export function useErfassung(): ErfassungsStatus {
   return status
 }
 
-/** Eine Uhr, die jede Sekunde tickt, für laufende Zähler. */
-export function useSekundentakt(): number {
+/** Eine Uhr, die im gegebenen Abstand tickt. Sparsam einsetzen: jeder Tick rendert den Baustein neu. */
+export function useTakt(millisekunden: number): number {
   const [jetzt, setJetzt] = useState(() => Date.now())
   useEffect(() => {
-    const timer = setInterval(() => setJetzt(Date.now()), 1000)
+    const timer = setInterval(() => setJetzt(Date.now()), millisekunden)
     return () => clearInterval(timer)
-  }, [])
+  }, [millisekunden])
   return jetzt
+}
+
+/** Eine Uhr, die jede Sekunde tickt, nur für kleine laufende Zähler (nicht für ganze Screens). */
+export function useSekundentakt(): number {
+  return useTakt(1000)
 }

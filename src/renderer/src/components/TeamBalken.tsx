@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { memo, type ReactElement } from 'react'
 import { Bar, BarChart, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { DiagrammTooltip } from './DiagrammTooltip'
 
@@ -15,7 +15,7 @@ function stundenFormat(wert: number): string {
 }
 
 /** Wochenstunden der drei im Vergleich, mit dem Wochenziel als gestrichelter Linie. */
-export function TeamBalken({ werte }: { werte: Teamwert[] }): ReactElement {
+function TeamBalkenInnen({ werte }: { werte: Teamwert[] }): ReactElement {
   const ziel = Math.max(...werte.map((w) => w.ziel), 1)
   const hoechster = Math.max(ziel * 1.15, ...werte.map((w) => w.stunden))
   return (
@@ -41,3 +41,6 @@ export function TeamBalken({ werte }: { werte: Teamwert[] }): ReactElement {
     </div>
   )
 }
+
+/** Gemerkt: rendert nur neu, wenn sich die Eingaben ändern; die Statusmeldung alle 5 s rendert sonst jedes Diagramm mit. */
+export const TeamBalken = memo(TeamBalkenInnen)

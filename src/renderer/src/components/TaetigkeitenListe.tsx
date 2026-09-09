@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { memo, type ReactElement } from 'react'
 import { stundenText } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
 
@@ -13,7 +13,7 @@ interface Props {
 }
 
 /** Tätigkeiten absteigend nach Stunden, jede mit Balken; das Ziel als helle Markierung im Balken. */
-export function TaetigkeitenListe({ eintraege }: Props): ReactElement {
+function TaetigkeitenListeInnen({ eintraege }: Props): ReactElement {
   if (eintraege.length === 0) {
     return <p className="mt-2 text-sm text-dim">Noch keine produktive Zeit mit Tätigkeit in dieser Woche.</p>
   }
@@ -56,3 +56,6 @@ export function TaetigkeitenListe({ eintraege }: Props): ReactElement {
     </div>
   )
 }
+
+/** Gemerkt: rendert nur neu, wenn sich die Eingaben ändern; die Statusmeldung alle 5 s rendert sonst jedes Diagramm mit. */
+export const TaetigkeitenListe = memo(TaetigkeitenListeInnen)

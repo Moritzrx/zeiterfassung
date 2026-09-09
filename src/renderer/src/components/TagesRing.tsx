@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement, type ReactNode } from 'react'
+import { memo, useEffect, useState, type ReactElement, type ReactNode } from 'react'
 import { Cell, Pie, PieChart, Tooltip } from 'recharts'
 import { DiagrammTooltip } from './DiagrammTooltip'
 
@@ -32,7 +32,7 @@ interface Props {
 }
 
 /** Ringdiagramm eines Tages: produktiv, unproduktiv, inaktiv, ungeklärt. In der Mitte beliebiger Inhalt. */
-export function TagesRing({ anteile, groesse = 240, children }: Props): ReactElement {
+function TagesRingInnen({ anteile, groesse = 240, children }: Props): ReactElement {
   // Nur beim ersten Aufbau animieren, danach ruhig bleiben.
   const [animieren, setAnimieren] = useState(true)
   useEffect(() => {
@@ -87,3 +87,6 @@ export function TagesRing({ anteile, groesse = 240, children }: Props): ReactEle
     </div>
   )
 }
+
+/** Gemerkt: rendert nur neu, wenn sich die Eingaben ändern; die Statusmeldung alle 5 s rendert sonst jedes Diagramm mit. */
+export const TagesRing = memo(TagesRingInnen)

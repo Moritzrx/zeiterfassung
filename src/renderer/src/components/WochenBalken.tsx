@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { memo, type ReactElement } from 'react'
 import { Bar, BarChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { DiagrammTooltip } from './DiagrammTooltip'
 
@@ -22,7 +22,7 @@ function stundenFormat(wert: number): string {
 }
 
 /** Montag bis Sonntag, jeder Balken gestapelt nach produktiv, unproduktiv, ungeklärt, inaktiv. */
-export function WochenBalken({ tage, richtwert }: Props): ReactElement {
+function WochenBalkenInnen({ tage, richtwert }: Props): ReactElement {
   const hoechster = Math.max(richtwert * 1.15, ...tage.map((t) => t.produktiv + t.unproduktiv + t.ungeklaert + t.inaktiv))
   return (
     <div className="h-[220px] w-full">
@@ -46,3 +46,6 @@ export function WochenBalken({ tage, richtwert }: Props): ReactElement {
     </div>
   )
 }
+
+/** Gemerkt: rendert nur neu, wenn sich die Eingaben ändern; die Statusmeldung alle 5 s rendert sonst jedes Diagramm mit. */
+export const WochenBalken = memo(WochenBalkenInnen)

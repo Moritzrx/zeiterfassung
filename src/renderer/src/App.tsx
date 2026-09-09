@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useRef, useState, type ReactElement } from 'react'
+import { memo, startTransition, useEffect, useRef, useState, type ReactElement } from 'react'
 import { AUSZEICHNUNGEN } from '@shared/auszeichnungen'
 import { Hinweise, hinweisZeigen } from './components/Hinweis'
 import { Hintergrund } from './components/Hintergrund'
@@ -7,6 +7,7 @@ import { Navigation, SCREEN_REIHENFOLGE, type ScreenId } from './components/Navi
 import { RangAufstieg } from './components/RangAufstieg'
 import { NutzerProvider, useNutzer } from './nutzer'
 import { SymbolProvider } from './symbole'
+import { klickToeneEinrichten, tonSpielen } from './toene'
 import { LoginScreen } from './screens/LoginScreen'
 import { HeuteScreen } from './screens/HeuteScreen'
 import { WocheScreen } from './screens/WocheScreen'
@@ -25,12 +26,22 @@ const SCREENS: Record<ScreenId, () => ReactElement> = {
 }
 
 /** Wie lange der alte Screen beim Wechsel noch sichtbar hinausgleitet (passend zu styles.css). */
-const RAUS_MS = 260
+const RAUS_MS = 240
+
+/**
+ * Der Inhalt eines Screens, vom Wechsel abgekoppelt: `memo` sorgt dafür, dass ein Klick in der
+ * Navigation nur die Hüllen neu rendert und nicht alle sechs Screens samt Diagrammen.
+ */
+const ScreenInhalt = memo(function ScreenInhalt({ id }: { id: ScreenId }): ReactElement {
+  const Screen = SCREENS[id]
+  return <Screen />
+})
 
 /**
  * Screens bleiben nach dem ersten Besuch geladen und behalten ihre Scroll-Position.
- * Ein Wechsel ist dann nur noch ein Gleiten zwischen zwei fertigen Screens: nichts
- * wird neu aufgebaut, keine Diagramme animieren beim Wechsel.
+ * Nicht aktive Screens werden nur unsichtbar (Deckkraft 0, `inert`), nicht aus dem Layout
+ * genommen: so bleiben sie als fertige Ebene im Grafikspeicher, und ein Wechsel ist reines
+ * Gleiten und Überblenden auf dem Compositor, ohne Layout, Neuzeichnen oder React-Arbeit.
  */
 function Oberflaeche(): ReactElement {
   const [aktiv, setAktiv] = useState<ScreenId>('heute')
@@ -41,6 +52,7 @@ function Oberflaeche(): ReactElement {
 
   function wechseln(ziel: ScreenId): void {
     if (ziel === aktiv) return
+    tonSpielen('wischen')
     const r: 1 | -1 = SCREEN_REIHENFOLGE.indexOf(ziel) > SCREEN_REIHENFOLGE.indexOf(aktiv) ? 1 : -1
     setRichtung(r)
     setAbgang(aktiv)
@@ -59,12 +71,32 @@ function Oberflaeche(): ReactElement {
     return () => window.clearTimeout(timer)
   }, [abgang, aktiv])
 
+  // Klick-Ton für alle Knöpfe und klickbaren Zeilen.
+  useEffect(() => klickToeneEinrichten(), [])
+
+  // Die übrigen Screens kurz nach dem Start im Hintergrund aufbauen (einer nach dem anderen, mit
+  // niedriger Priorität), damit auch der erste Klick auf einen Screen ohne Aufbau-Ruckler gleitet.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setBesucht((alte) => {
+        const naechster = SCREEN_REIHENFOLGE.find((id) => !alte.includes(id))
+        if (!naechster) {
+          window.clearInterval(timer)
+          return alte
+        }
+        return [...alte, naechster]
+      })
+    }, 900)
+    return () => window.clearInterval(timer)
+  }, [])
+
   // Neue Auszeichnungen kurz unten einblenden, egal auf welchem Screen.
   useEffect(() => {
     if (!window.api) return
     return window.api.auszeichnungen.onNeu((neue) => {
       if (!neue.length) return
       const titel = neue.map((a) => AUSZEICHNUNGEN[a.typ].titel).join(', ')
+      tonSpielen('auszeichnung')
       hinweisZeigen(`Auszeichnung freigeschaltet: ${titel}`)
     })
   }, [])
@@ -75,7 +107,6 @@ function Oberflaeche(): ReactElement {
       <Kopfzeile />
       <main className="relative flex-1 overflow-hidden">
         {SCREEN_REIHENFOLGE.filter((id) => besucht.includes(id)).map((id) => {
-          const Screen = SCREENS[id]
           const zustand = id === aktiv ? 'rein' : id === abgang ? 'raus' : 'versteckt'
           const klasse =
             zustand === 'rein'
@@ -86,16 +117,16 @@ function Oberflaeche(): ReactElement {
                 ? richtung === 1
                   ? 'screen-raus-links'
                   : 'screen-raus-rechts'
-                : ''
+                : 'screen-versteckt'
           return (
             <div
               key={id}
-              hidden={zustand === 'versteckt'}
+              inert={zustand === 'versteckt'}
               aria-hidden={zustand !== 'rein' || undefined}
-              className={`${klasse} absolute inset-0 overflow-y-auto ${zustand === 'raus' ? 'pointer-events-none' : ''}`}
+              className={`screen-ebene absolute inset-0 overflow-y-auto ${klasse} ${zustand === 'raus' ? 'pointer-events-none' : ''}`}
             >
               <div className="mx-auto w-full max-w-[800px] px-6 pt-4 pb-10">
-                <Screen />
+                <ScreenInhalt id={id} />
               </div>
             </div>
           )
