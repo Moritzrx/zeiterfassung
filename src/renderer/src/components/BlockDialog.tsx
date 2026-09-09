@@ -80,6 +80,8 @@ export function BlockDialog({
   const [von, setVon] = useState(zeitFeld(block.start))
   const [bis, setBis] = useState(zeitFeld(block.ende))
   const [notiz, setNotiz] = useState(block.notiz ?? '')
+  // In der Gruppe: je Block eine eigene Bewertung oder Tätigkeit, sonst gilt die Vorgabe oben.
+  const [einzeln, setEinzeln] = useState<Record<string, { bewertung?: Bewertung; taetigkeit?: string }>>({})
   const [immer, setImmer] = useState(false)
   const [feld, setFeld] = useState<'programm' | 'titel'>(block.fenstertitel && istBrowser && !istGruppe ? 'titel' : 'programm')
   const [muster, setMuster] = useState(musterVorschlag(block.fenstertitel))
@@ -110,10 +112,24 @@ export function BlockDialog({
         notiz
       }
       if (istGruppe) {
-        // Für die ganze Gruppe: Zeiten bleiben, die Notiz nur, wenn eine eingetragen wurde.
-        const fuerAlle: typeof aenderung = { taetigkeit: aenderung.taetigkeit, bewertung }
-        if (notiz.trim()) fuerAlle.notiz = notiz
-        const n = await window.api.bloecke.mehrereAendern(gruppeIds, fuerAlle)
+        // Für die Gruppe: Vorgabe oben, einzelne Blöcke dürfen abweichen. Zeiten bleiben,
+        // die Notiz nur, wenn eine eingetragen wurde.
+        const buendel = new Map<string, { ids: string[]; taetigkeit: string | null; bewertung: Bewertung }>()
+        for (const b of gruppe ?? []) {
+          const e = einzeln[b.id] ?? {}
+          const t = (e.taetigkeit?.trim() || taetigkeit.trim()) || null
+          const bw = e.bewertung ?? bewertung
+          const schluessel = `${t ?? ''}|${bw}`
+          const eintrag = buendel.get(schluessel) ?? { ids: [], taetigkeit: t, bewertung: bw }
+          eintrag.ids.push(b.id)
+          buendel.set(schluessel, eintrag)
+        }
+        let n = 0
+        for (const e of buendel.values()) {
+          const fuerAlle: typeof aenderung = { taetigkeit: e.taetigkeit, bewertung: e.bewertung }
+          if (notiz.trim()) fuerAlle.notiz = notiz
+          n += await window.api.bloecke.mehrereAendern(e.ids, fuerAlle)
+        }
         hinweisZeigen(`${n} Blöcke zugeordnet.`)
       } else if (von !== zeitFeld(block.start) || bis !== zeitFeld(block.ende)) {
         const [jahr, monat, tag] = berlinDatum(new Date(block.start)).split('-').map(Number)
@@ -191,7 +207,7 @@ export function BlockDialog({
             {istGruppe ? (
               <>
                 <p className="text-sm text-mute">
-                  zusammen {dauerText(gruppeSekunden)} · die Zuordnung gilt für alle {gruppeIds.length} Blöcke
+                  zusammen {dauerText(gruppeSekunden)} · Vorgabe für alle, unten je Block anpassbar
                 </p>
                 {gruppeTitel.length > 0 && (
                   <p className="mt-1 truncate text-xs text-dim">
@@ -273,11 +289,59 @@ export function BlockDialog({
           </label>
         </div>
 
+        {istGruppe && (
+          <div className="mt-5">
+            <p className="text-xs tracking-wide text-mute uppercase">Die {gruppeIds.length} Blöcke im Einzelnen</p>
+            <p className="mt-1 text-xs text-dim">
+              Oben steht die Vorgabe für alle. Wer bei einem Block etwas anderes wählt, überstimmt sie nur für diesen Block.
+            </p>
+            <div className="mt-2 divide-y divide-panel-2">
+              {(gruppe ?? []).map((b) => {
+                const e = einzeln[b.id] ?? {}
+                const sekunden = (Date.parse(b.ende) - Date.parse(b.start)) / 1000
+                const setzen = (aenderung: { bewertung?: Bewertung; taetigkeit?: string }): void =>
+                  setEinzeln((alt) => ({ ...alt, [b.id]: { ...alt[b.id], ...aenderung } }))
+                return (
+                  <div key={b.id} className="py-3">
+                    <div className="flex items-baseline gap-3 text-sm">
+                      <span className="shrink-0 text-mute">
+                        {datumText(berlinDatum(new Date(b.start)))} · {zeitFeld(b.start)} bis {zeitFeld(b.ende)}
+                      </span>
+                      <span className="shrink-0 text-dim">{dauerText(sekunden)}</span>
+                    </div>
+                    <p className="mt-0.5 text-sm break-words text-ink">{b.fenstertitel ?? b.programm ?? 'ohne Fenstertitel'}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <div className="flex gap-1">
+                        <Wahl aktiv={e.bewertung === undefined} onClick={() => setzen({ bewertung: undefined })} farbe="bg-inaktiv">
+                          wie oben
+                        </Wahl>
+                        <Wahl aktiv={e.bewertung === 'produktiv'} onClick={() => setzen({ bewertung: 'produktiv' })} farbe="bg-produktiv">
+                          produktiv
+                        </Wahl>
+                        <Wahl aktiv={e.bewertung === 'unproduktiv'} onClick={() => setzen({ bewertung: 'unproduktiv' })} farbe="bg-unproduktiv">
+                          unproduktiv
+                        </Wahl>
+                      </div>
+                      <input
+                        className={`${FELD} max-w-[220px]`}
+                        list="taetigkeiten-liste"
+                        value={e.taetigkeit ?? ''}
+                        onChange={(ev) => setzen({ taetigkeit: ev.target.value })}
+                        placeholder="Tätigkeit wie oben"
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {regelMoeglich && (
           <div className="mt-5 rounded-card bg-panel-2/60 p-4">
             <label className="flex cursor-pointer items-center gap-3 text-sm">
               <input type="checkbox" checked={immer} onChange={(e) => setImmer(e.target.checked)} className="h-4 w-4" />
-              Diese Zuordnung künftig immer anwenden?
+              {istGruppe ? `Alle künftigen Blöcke von ${block.programm} so wie die Vorgabe oben einordnen?` : 'Diese Zuordnung künftig immer anwenden?'}
             </label>
             {immer && (
               <div className="mt-3 flex flex-col gap-2 pl-7 text-sm">
@@ -347,7 +411,7 @@ export function BlockDialog({
               disabled={laeuft}
               className="rounded-chip bg-ink px-4 py-2 text-sm font-medium text-ground transition-opacity disabled:opacity-40"
             >
-              {istGruppe ? `Für alle ${gruppeIds.length} übernehmen` : fortschritt ? 'Speichern und weiter' : 'Speichern'}
+              {istGruppe ? `${gruppeIds.length} Blöcke speichern` : fortschritt ? 'Speichern und weiter' : 'Speichern'}
             </button>
           </div>
         </div>
