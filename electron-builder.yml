@@ -95,5 +95,5 @@ dmg:
 # publish: never in den Skripten nicht nötig: ohne GH_TOKEN veröffentlicht electron-builder nicht.
 publish:
   provider: github
-  owner: wessamedia
+  owner: Moritzrx
   repo: zeiterfassung

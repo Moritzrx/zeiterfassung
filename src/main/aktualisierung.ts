@@ -12,7 +12,7 @@ import type { UpdateStatus } from '@shared/typen'
  * Einstellungen. In der Entwicklungsversion passiert nichts.
  */
 
-export const REPO_BESITZER = 'wessamedia'
+export const REPO_BESITZER = 'Moritzrx'
 export const REPO_NAME = 'zeiterfassung'
 const RELEASE_SEITE = `https://github.com/${REPO_BESITZER}/${REPO_NAME}/releases/latest`
 const RELEASE_API = `https://api.github.com/repos/${REPO_BESITZER}/${REPO_NAME}/releases/latest`
