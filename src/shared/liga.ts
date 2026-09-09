@@ -9,8 +9,8 @@
 
 /** Erste Woche, die zählt (Montag). */
 export const LIGA_START_DATUM = '2026-09-07'
-/** Damit fängt jeder an: Bronze-Liga III. */
-export const LIGA_START_TROPHAEEN = 400
+/** Damit fängt jeder an: ohne Liga, Bronze III gibt es ab 400. */
+export const LIGA_START_TROPHAEEN = 0
 /** Neutraler Punkt = Gesamtziel minus so viele Stunden. */
 export const LIGA_NEUTRAL_ABSTAND = 10
 /** Trophäen je Stunde über oder unter dem neutralen Punkt. */

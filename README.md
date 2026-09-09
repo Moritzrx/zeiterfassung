@@ -115,7 +115,7 @@ Der Wochenrang fängt jeden Montag bei null an. Die Liga dagegen bleibt, wie die
 - Wochen ohne einen einzigen Block (App aus) zählen nicht. Die laufende Woche zählt erst nach Sonntag; auf dem Wochen-Screen steht schon vorher, was sie bringen würde.
 - **Urlaub** trägt man unter Einstellungen → Urlaub ein (von, bis, Notiz). Urlaubstage von Montag bis Freitag senken die Erwartung der Woche anteilig: Bei zwei Urlaubstagen erwartet die Liga nur drei Fünftel, eine ganze Urlaubswoche kostet nichts. Das gilt genauso für Feiertage und Krankheit. Wer im Urlaub trotzdem arbeitet, bekommt Trophäen dazu.
 - Die Liga läuft dauerhaft weiter und wird nie zurückgesetzt.
-- Jeder startet mit 400 Trophäen in der Bronze-Liga III. Die Ligen: Bronze, Silber, Gold, Kristall, Meister, Champion und Titan mit je drei Stufen (III, II, I), darüber ab 5.000 Trophäen die Legenden-Liga. Alle Schwellen stehen in der App unter "Alle Ligen".
+- Jeder startet bei 0 Trophäen ohne Liga und erreicht mit etwa vier Zielwochen die Bronze-Liga III ab 400. Die Ligen: Bronze, Silber, Gold, Kristall, Meister, Champion und Titan mit je drei Stufen (III, II, I), darüber ab 5.000 Trophäen die Legenden-Liga. Alle Schwellen stehen in der App unter "Alle Ligen".
 - Die Liga-Rangliste des Teams steht oben auf dem Team-Screen.
 
 ### Auszeichnungen
@@ -158,7 +158,7 @@ Die ausführliche Klick-Anleitung mit Bildern steht in [`docs/supabase-einrichtu
 2. Im **SQL Editor** nacheinander die Skripte aus dem Ordner `supabase/` einfügen und mit "Run" ausführen:
    - `01_tabellen.sql` (Tabellen und Zugriffsrechte)
    - `02_startwerte.sql` (Namen, Ziele, Startregeln; vorher die drei E-Mail-Adressen oben im Skript prüfen)
-   - `05_auswertung.sql`, `06_team.sql`, `08_liga.sql` und `09_urlaub.sql` (Funktionen für lange Auswertungen, den Team-Verlauf, die Liga und den Urlaub)
+   - `05_auswertung.sql`, `06_team.sql`, `08_liga.sql`, `09_urlaub.sql` und `10_liga_start_null.sql` (Funktionen für lange Auswertungen, den Team-Verlauf, die Liga und den Urlaub)
    - optional `03_testdaten_einfuegen.sql` zum Anschauen, später `04_testdaten_entfernen.sql`. **Vor dem echten Einsatz Skript 4 ausführen**, sonst stehen die erfundenen Wochen in den Auswertungen.
 3. Unter **Authentication → Sign In / Providers → Email** den Schalter **"Allow new users to sign up"** ausschalten, damit niemand Fremdes ein Konto anlegen kann.
 4. Unter **Project Settings → API Keys** die **Project URL** und den **Publishable key** kopieren. Diese beiden Werte werden beim Bauen fest in die App eingebaut (Abschnitt 7). Den **Secret key** nie verwenden oder weitergeben.

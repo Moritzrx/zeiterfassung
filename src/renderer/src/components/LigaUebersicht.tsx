@@ -46,8 +46,8 @@ export function LigaUebersicht({ trophaeen, gesamtziel, onSchliessen }: Props): 
               dazu oder nimmt welche weg: 10 je Stunde über oder unter {zahlText(neutral, 0)} Stunden (dein Ziel minus{' '}
               {LIGA_NEUTRAL_ABSTAND}). Dein Ziel erreicht heißt +{(gesamtziel - neutral) * 10}, höchstens +{LIGA_MAX_DELTA} und
               höchstens {LIGA_MIN_DELTA} pro Woche. Wochen ohne einen einzigen Block zählen nicht. Hinterlegter Urlaub senkt
-              die Erwartung anteilig, eine ganze Urlaubswoche kostet nichts. Jeder startet mit {LIGA_START_TROPHAEEN} Trophäen,
-              die Liga läuft dauerhaft weiter und wird nie zurückgesetzt.
+              die Erwartung anteilig, eine ganze Urlaubswoche kostet nichts. Jeder startet bei {LIGA_START_TROPHAEEN} Trophäen
+              ohne Liga; ab 400 beginnt die Bronze-Liga III. Die Liga läuft dauerhaft weiter und wird nie zurückgesetzt.
             </p>
           </div>
           <button type="button" onClick={onSchliessen} className="rounded-chip p-1 text-mute hover:text-ink" title="Schließen">

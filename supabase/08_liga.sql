@@ -7,7 +7,7 @@
 --   höchstens +200 und höchstens -120 pro Woche.
 --   Wer sein Ziel von 50 Stunden erreicht, bekommt also +100.
 -- Wochen ohne einen einzigen Block (Urlaub, App aus) zählen nicht.
--- Jeder startet mit 400 Trophäen (Bronze-Liga III). Gezählt wird ab dem
+-- Jeder startet bei 0 Trophäen ("Ohne Liga"), ab 400 beginnt Bronze III. Gezählt wird ab dem
 -- 7. September 2026, der ersten echten Woche. Die laufende Woche zählt
 -- erst nach Sonntag.
 --
@@ -75,7 +75,7 @@ as $$
   select
     p.user_id,
     p.name,
-    (400 + coalesce((select sum(d.delta) from deltas d where d.user_id = p.user_id), 0))::integer as trophaeen,
+    (0 + coalesce((select sum(d.delta) from deltas d where d.user_id = p.user_id), 0))::integer as trophaeen,
     (select count(*) from deltas d where d.user_id = p.user_id)::integer as wochen,
     (select max(d.start) from deltas d where d.user_id = p.user_id) as letzte_woche,
     (select d.delta from deltas d where d.user_id = p.user_id order by d.start desc limit 1) as letztes_delta

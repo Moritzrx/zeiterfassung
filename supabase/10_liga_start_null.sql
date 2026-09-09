@@ -1,50 +1,15 @@
 -- =====================================================================
--- wessamedia Zeit – Skript 9: Urlaub hinterlegen, Liga berücksichtigt ihn
+-- wessamedia Zeit – Skript 10: Liga startet bei 0 Trophäen statt bei 400
 -- =====================================================================
--- Neue Tabelle urlaub: jede Person trägt ihre freien Tage ein (von/bis).
--- In der Liga senken Urlaubstage (Montag bis Freitag) die Erwartung der
--- Woche anteilig: Bei 2 Urlaubstagen zählt nur 3/5 des neutralen Punkts.
--- Eine ganze Urlaubswoche erwartet nichts, kostet also keine Trophäen;
--- wer trotzdem arbeitet, bekommt sogar welche dazu.
---
--- Ersetzt die Funktion liga_stand aus Skript 8 (neue Spalte im_urlaub).
+-- Entscheidung vom 9. September 2026: Jeder beginnt ohne Liga bei 0 und
+-- erarbeitet sich die Bronze-Liga III ab 400 Trophäen (etwa vier Zielwochen).
+-- Ersetzt die Funktion liga_stand aus Skript 9 mit demselben Aufbau, nur der
+-- Startwert ändert sich. Alle Trophäen werden ohnehin aus den Wochen neu
+-- gerechnet, es geht nichts verloren.
 -- So ausführen: Supabase-Dashboard -> SQL Editor -> New query -> einfügen -> Run.
 -- =====================================================================
 
-create table if not exists public.urlaub (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users (id) on delete cascade,
-  von date not null,
-  bis date not null,
-  notiz text,
-  erstellt_am timestamptz not null default now(),
-  constraint urlaub_zeitraum check (bis >= von)
-);
-
-create index if not exists urlaub_user_von on public.urlaub (user_id, von);
-
-alter table public.urlaub enable row level security;
-
-drop policy if exists "urlaub lesen" on public.urlaub;
-create policy "urlaub lesen" on public.urlaub
-  for select to authenticated using (true);
-
-drop policy if exists "urlaub eigenen anlegen" on public.urlaub;
-create policy "urlaub eigenen anlegen" on public.urlaub
-  for insert to authenticated with check (user_id = auth.uid());
-
-drop policy if exists "urlaub eigenen aendern" on public.urlaub;
-create policy "urlaub eigenen aendern" on public.urlaub
-  for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
-
-drop policy if exists "urlaub eigenen loeschen" on public.urlaub;
-create policy "urlaub eigenen loeschen" on public.urlaub
-  for delete to authenticated using (user_id = auth.uid());
-
--- Die Liga-Funktion neu, jetzt mit Urlaub. Der Rückgabetyp ändert sich, deshalb erst löschen.
-drop function if exists public.liga_stand();
-
-create function public.liga_stand()
+create or replace function public.liga_stand()
 returns table (
   user_id uuid,
   name text,
@@ -88,7 +53,6 @@ as $$
     where p.aktiv
     group by p.user_id, g.start
   ),
-  -- Urlaubstage je Person und Woche, nur Montag bis Freitag
   urlaubstage as (
     select u.user_id, g.start, count(distinct d::date) as tage
     from public.urlaub u
@@ -133,5 +97,4 @@ $$;
 revoke execute on function public.liga_stand() from public, anon;
 grant execute on function public.liga_stand() to authenticated;
 
--- Kontrolle (im Dashboard ohne Anmeldung leer, in der App gefüllt):
 select * from public.liga_stand();
