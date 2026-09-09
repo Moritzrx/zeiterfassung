@@ -135,21 +135,18 @@ Der Wochenrang fängt jeden Montag bei null an. Die Liga dagegen bleibt, wie die
 
 ### Auszeichnungen
 
-Vierzehn Medaillen, die man dauerhaft behält. Auf dem Wochen-Screen ganz unten; mit der Maus über eine Medaille fahren zeigt die Bedingung.
+36 Medaillen in acht Gruppen, die man dauerhaft behält (einmal verdient, nie zurückgesetzt). Auf dem Wochen-Screen ganz unten; mit der Maus über eine Medaille fahren zeigt die Bedingung. Sie sind auf eine 50-Stunden-Woche von Montag bis Sonntag ausgelegt.
 
-- **Erster Champion**: zum ersten Mal Rang 10 in einer Woche.
-- **Serie**: drei Wochen hintereinander Rang 10 oder höher.
-- **Dauerbrenner**: vier Wochen in Folge mindestens Rang 5.
-- **Comeback**: direkt nach einer Woche unter Rang 5 eine Woche auf Rang 10 oder höher.
-- **Eternal**: Rang 15 in einer Woche, höher geht es nicht.
-- **Perfekte Woche**: Montag bis Freitag jeden Tag mindestens 8 produktive Stunden.
-- **Alle Lernziele**: alle Lernziele einer Woche erreicht.
-- **Fokus-Woche**: höchstens 2 Stunden unproduktive Zeit in einer Woche, ab Rang 5.
-- **Marathon**: 10 produktive Stunden an einem einzigen Tag.
-- **Sprint**: 3 Stunden am Stück produktiv, ohne Unterbrechung über 5 Minuten.
-- **Frühaufsteher**: in einer Woche mindestens 2 produktive Stunden vor 8 Uhr.
-- **Nachteule**: in einer Woche mindestens 2 produktive Stunden nach 22 Uhr.
-- **Wochenend-Krieger**: 5 produktive Stunden an einem Wochenende.
+- **Besondere**: Erster Champion (zum ersten Mal Rang 10), Comeback (nach einer Woche unter Rang 5 direkt Rang 10), Eternal (Rang 15).
+- **Serien**: Serie (3 Wochen in Folge Rang 10), Lange Serie (6), Eiserne Serie (12), Dauerbrenner (4 Wochen in Folge mindestens Rang 5).
+- **Stunden-Meilensteine**: 100, 500, 1.000, 2.500 und 5.000 produktive Stunden seit dem Start.
+- **Liga**: je eine Medaille beim ersten Erreichen von Bronze-, Silber-, Gold-, Kristall-, Meister-, Champion-, Titan- und Legenden-Liga.
+- **Tage**: Perfekte Woche (alle 7 Tage mindestens 5 h), Durchläufer (7 Tage in Folge mindestens 4 h), Marathon (10 h an einem Tag), Ultra (12 h an einem Tag), Sprint (3 h am Stück).
+- **Team**: Wochensieger (die meisten Stunden im Team in einer abgeschlossenen Woche), Dauersieger (3 Wochen in Folge), Team-Woche (alle drei erreichen in derselben Woche ihr Ziel).
+- **Lernen und Disziplin**: Alle Lernziele, Lernmeister (4 Wochen in Folge alle Lernziele), Fokus-Woche (höchstens 2 h unproduktiv, ab Rang 5), Aufgeräumt (abgeschlossene Woche mit 20 h ohne Ungeklärtes), Blitzsauber (4 solche Wochen in Folge).
+- **Uhrzeit**: Frühaufsteher (2 h vor 8 Uhr in einer Woche), Nachteule (2 h nach 22 Uhr), Wochenend-Krieger (15 h an einem Wochenende).
+
+Die Stunden-Meilensteine und die neuen Typen brauchen einmalig das Skript 13 in Supabase (siehe Abschnitt 5).
 - **Aufgeräumt**: eine abgeschlossene Woche mit mindestens 20 produktiven Stunden und keinem einzigen ungeklärten Block.
 
 ### Wochenzusammenfassung
@@ -183,7 +180,7 @@ Die ausführliche Klick-Anleitung mit Bildern steht in [`docs/supabase-einrichtu
 2. Im **SQL Editor** nacheinander die Skripte aus dem Ordner `supabase/` einfügen und mit "Run" ausführen:
    - `01_tabellen.sql` (Tabellen und Zugriffsrechte)
    - `02_startwerte.sql` (Namen, Ziele, Startregeln; vorher die drei E-Mail-Adressen oben im Skript prüfen)
-   - `05_auswertung.sql`, `06_team.sql`, `08_liga.sql`, `09_urlaub.sql`, `10_liga_start_null.sql`, `11_auszeichnungen.sql` und `12_liga_nicht_unter_null.sql` (Funktionen für lange Auswertungen, den Team-Verlauf, die Liga, den Urlaub und die erweiterten Auszeichnungen)
+   - `05_auswertung.sql`, `06_team.sql`, `08_liga.sql`, `09_urlaub.sql`, `10_liga_start_null.sql`, `11_auszeichnungen.sql`, `12_liga_nicht_unter_null.sql` und `13_auszeichnungen_erweitert.sql` (Funktionen für lange Auswertungen, den Team-Verlauf, die Liga, den Urlaub und die erweiterten Auszeichnungen)
    - optional `03_testdaten_einfuegen.sql` zum Anschauen, später `04_testdaten_entfernen.sql`. **Vor dem echten Einsatz Skript 4 ausführen**, sonst stehen die erfundenen Wochen in den Auswertungen.
 3. Unter **Authentication → Sign In / Providers → Email** den Schalter **"Allow new users to sign up"** ausschalten, damit niemand Fremdes ein Konto anlegen kann.
 4. Unter **Project Settings → API Keys** die **Project URL** und den **Publishable key** kopieren. Diese beiden Werte werden beim Bauen fest in die App eingebaut (Abschnitt 7). Den **Secret key** nie verwenden oder weitergeben.
