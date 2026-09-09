@@ -37,6 +37,15 @@ function melden(aenderung: Partial<UpdateStatus>): void {
   if (fenster && !fenster.isDestroyed()) fenster.webContents.send('update:status', status)
 }
 
+/** Kurzer, verständlicher Text statt des seitenlangen Fehlers von electron-updater (mit allen Kopfzeilen). */
+function fehlerText(e: unknown): string {
+  const roh = e instanceof Error ? e.message : String(e)
+  if (/404/.test(roh)) return 'Auf GitHub gibt es noch keine Veröffentlichung für die App'
+  if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT|net::|fetch failed|EAI_AGAIN/i.test(roh)) return 'Keine Verbindung zu GitHub'
+  const erste = roh.split('\n')[0].trim()
+  return erste.length > 120 ? erste.slice(0, 117) + '…' : erste
+}
+
 /** "1.2.10" > "1.2.9": Versionsnummern zahlenweise vergleichen. */
 function neuer(a: string, b: string): boolean {
   const x = a.replace(/^v/, '').split('.').map(Number)
@@ -60,7 +69,7 @@ async function macPruefen(): Promise<void> {
     if (version && neuer(version, status.aktuelleVersion)) melden({ zustand: 'verfuegbar', neueVersion: version, zuletztGeprueft: jetzt })
     else melden({ zustand: 'aktuell', neueVersion: null, zuletztGeprueft: jetzt })
   } catch (e) {
-    melden({ zustand: 'fehler', fehler: e instanceof Error ? e.message : String(e), zuletztGeprueft: new Date().toISOString() })
+    melden({ zustand: 'fehler', fehler: fehlerText(e), zuletztGeprueft: new Date().toISOString() })
   }
 }
 
@@ -72,7 +81,7 @@ async function pruefen(): Promise<void> {
   try {
     await autoUpdater.checkForUpdates()
   } catch (e) {
-    melden({ zustand: 'fehler', fehler: e instanceof Error ? e.message : String(e), zuletztGeprueft: new Date().toISOString() })
+    melden({ zustand: 'fehler', fehler: fehlerText(e), zuletztGeprueft: new Date().toISOString() })
   }
 }
 
@@ -105,7 +114,7 @@ export function aktualisierungStarten(hauptfenster: BrowserWindow): void {
     autoUpdater.on('update-not-available', () => melden({ zustand: 'aktuell', neueVersion: null, zuletztGeprueft: new Date().toISOString() }))
     autoUpdater.on('download-progress', (p) => melden({ zustand: 'laedt', prozent: Math.round(p.percent) }))
     autoUpdater.on('update-downloaded', (info) => melden({ zustand: 'bereit', neueVersion: info.version, prozent: 100 }))
-    autoUpdater.on('error', (e) => melden({ zustand: 'fehler', fehler: e.message, zuletztGeprueft: new Date().toISOString() }))
+    autoUpdater.on('error', (e) => melden({ zustand: 'fehler', fehler: fehlerText(e), zuletztGeprueft: new Date().toISOString() }))
   }
 
   setTimeout(() => void pruefen(), ERSTE_PRUEFUNG_MS)
