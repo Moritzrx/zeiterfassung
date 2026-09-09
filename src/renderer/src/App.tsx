@@ -3,6 +3,7 @@ import { AUSZEICHNUNGEN } from '@shared/auszeichnungen'
 import { Fehlerschutz } from './components/Fehlerschutz'
 import { Hinweise, hinweisZeigen } from './components/Hinweis'
 import { UpdateHinweis } from './components/UpdateHinweis'
+import { Wochenrueckblick } from './components/Wochenrueckblick'
 import { Hintergrund } from './components/Hintergrund'
 import { Kopfzeile } from './components/Kopfzeile'
 import { Navigation, SCREEN_REIHENFOLGE, type ScreenId } from './components/Navigation'
@@ -172,6 +173,9 @@ function Oberflaeche(): ReactElement {
       <UpdateHinweis />
       <Fehlerschutz bereich="Aufstieg">
         <RangAufstieg />
+      </Fehlerschutz>
+      <Fehlerschutz bereich="Wochenrückblick">
+        <Wochenrueckblick />
       </Fehlerschutz>
     </div>
   )

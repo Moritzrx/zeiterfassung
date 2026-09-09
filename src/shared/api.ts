@@ -131,6 +131,8 @@ export interface Api {
   urlaub: {
     /** Die eigenen Urlaube, neueste zuerst. */
     eigene: () => Promise<Urlaub[]>
+    /** Die Urlaube aller Personen (für die Team-Prognose). */
+    alle: () => Promise<Urlaub[]>
     /** Urlaub eintragen; von und bis als "JJJJ-MM-TT". */
     anlegen: (von: string, bis: string, notiz: string | null) => Promise<Urlaub>
     loeschen: (id: string) => Promise<void>

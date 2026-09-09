@@ -48,7 +48,7 @@ import { supabase, supabaseKonfiguriert } from './supabase'
 import { Sync } from './sync'
 import { Taetigkeiten } from './taetigkeiten'
 import { TrayLeiste } from './tray'
-import { urlaubAnlegen, urlaubListe, urlaubLoeschen } from './urlaub'
+import { alleUrlaube, urlaubAnlegen, urlaubListe, urlaubLoeschen } from './urlaub'
 import { Ziele } from './ziele'
 
 const APP_ID = 'com.wessamedia.zeit'
@@ -550,6 +550,10 @@ function ipcRegistrieren(): void {
   ipcMain.handle('urlaub:eigene', async (): Promise<Urlaub[]> => {
     if (!sitzung) return []
     return urlaubListe(sitzung.userId)
+  })
+  ipcMain.handle('urlaub:alle', async (): Promise<Urlaub[]> => {
+    if (!sitzung) return []
+    return alleUrlaube()
   })
   ipcMain.handle('urlaub:anlegen', async (_ereignis, von: string, bis: string, notiz: string | null): Promise<Urlaub> => {
     if (!sitzung) throw new Error('Nicht angemeldet.')

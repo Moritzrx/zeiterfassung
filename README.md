@@ -113,6 +113,10 @@ Bronze 1 bis 3, Silber 4 bis 6, Gold 7 bis 9, Champion 10, Diamant 11 bis 15. Je
 
 Die App sieht kurz nach dem Start und danach alle vier Stunden auf GitHub nach, ob es eine neue Version gibt. Unter Windows wird sie im Hintergrund geladen und beim nächsten Start eingespielt, eine Leiste über der Navigation bietet den Neustart an. Auf dem Mac öffnet die App die Download-Seite, weil sie ohne Apple-Signatur nicht selbst tauschen darf. Unter Einstellungen → System → Updates steht der Stand, dort lässt sich auch sofort prüfen.
 
+### Wochenrückblick
+
+Jeden Montag, sobald die App sichtbar ist, erscheint einmal ein Wochenrückblick als Vollbild: erreichter Rang mit Wappen, produktive und unproduktive Stunden, bester Tag, Trophäen der Woche, Platz im Team und die neu freigeschalteten Auszeichnungen. Ein Klick auf „Auf in die neue Woche" schließt ihn. In der Liga-Rangliste auf dem Team-Screen steht bei jeder Person außerdem, wie viele Trophäen die laufende Woche voraussichtlich bringt.
+
 ### Töne
 
 Die App klickt leise bei Knöpfen, wischt beim Screen-Wechsel und spielt Klänge bei Aufstieg und Auszeichnungen. Alle Töne entstehen in der App selbst, es werden keine Dateien geladen. Unter Einstellungen → Töne lassen sie sich ausschalten, in der Lautstärke regeln und probehören; für den Klick stehen mehrere Arten zur Wahl (Tock, Pop, Tap, Fein oder kein Klick).

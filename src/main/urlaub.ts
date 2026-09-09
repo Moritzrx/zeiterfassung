@@ -24,6 +24,14 @@ export async function urlaubListe(userId: string): Promise<Urlaub[]> {
   return ((data ?? []) as Zeile[]).map(vonZeile)
 }
 
+/** Die Urlaube aller Personen (die Tabelle ist für alle lesbar), für die Team-Prognose. */
+export async function alleUrlaube(): Promise<Urlaub[]> {
+  if (!supabaseKonfiguriert()) throw new Error('Keine Datenbank konfiguriert.')
+  const { data, error } = await supabase().from('urlaub').select('id, user_id, von, bis, notiz').order('von', { ascending: false })
+  if (error) throw new Error('Datenbank nicht erreichbar: ' + error.message)
+  return ((data ?? []) as Zeile[]).map(vonZeile)
+}
+
 /** Urlaub eintragen. Kalendertage "JJJJ-MM-TT", bis muss von erreichen. */
 export async function urlaubAnlegen(userId: string, von: string, bis: string, notiz: string | null): Promise<Urlaub> {
   if (!supabaseKonfiguriert()) throw new Error('Keine Datenbank konfiguriert.')

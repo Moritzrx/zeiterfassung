@@ -84,6 +84,7 @@ const api: Api = {
   },
   urlaub: {
     eigene: () => ipcRenderer.invoke('urlaub:eigene'),
+    alle: () => ipcRenderer.invoke('urlaub:alle'),
     anlegen: (von, bis, notiz) => ipcRenderer.invoke('urlaub:anlegen', von, bis, notiz),
     loeschen: (id) => ipcRenderer.invoke('urlaub:loeschen', id)
   },

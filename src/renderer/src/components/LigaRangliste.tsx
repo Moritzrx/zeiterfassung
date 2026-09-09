@@ -1,19 +1,36 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
-import { deltaText, liga } from '@shared/liga'
-import type { LigaStand } from '@shared/typen'
+import { deltaText, liga, wirksamesDelta, wochenPrognose } from '@shared/liga'
+import { STANDARD_GESAMTZIEL } from '@shared/rang'
+import type { LigaStand, TeamMitglied, Urlaub, Ziel } from '@shared/typen'
 import { fehlerText, zahlText } from '../format'
 import { Karte } from './Karte'
 import { LigaAbzeichen } from './LigaAbzeichen'
 
-/** Die Liga-Rangliste des Teams: wer steht mit wie vielen Trophäen in welcher Liga. */
+/**
+ * Die Liga-Rangliste des Teams: wer steht mit wie vielen Trophäen in welcher Liga, dazu je Person
+ * die Hochrechnung der laufenden Woche (gleiche Formel wie auf der eigenen Liga-Karte, mit den
+ * Wochenstunden aus team_stand, dem persönlichen Ziel und den hinterlegten Urlauben).
+ */
 export function LigaRangliste(): ReactElement {
   const [stand, setStand] = useState<LigaStand[]>([])
+  const [team, setTeam] = useState<TeamMitglied[]>([])
+  const [ziele, setZiele] = useState<Ziel[]>([])
+  const [urlaube, setUrlaube] = useState<Urlaub[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
 
   const laden = useCallback(async () => {
     if (!window.api) return
     try {
-      setStand(await window.api.liga.stand())
+      const [s, t, z, u] = await Promise.all([
+        window.api.liga.stand(),
+        window.api.team.stand().catch(() => [] as TeamMitglied[]),
+        window.api.ziele.alle().catch(() => [] as Ziel[]),
+        window.api.urlaub.alle().catch(() => [] as Urlaub[])
+      ])
+      setStand(s)
+      setTeam(t)
+      setZiele(z)
+      setUrlaube(u)
       setFehler(null)
     } catch (e) {
       setFehler(fehlerText(e))
@@ -28,6 +45,19 @@ export function LigaRangliste(): ReactElement {
 
   const sortiert = [...stand].sort((a, b) => b.trophaeen - a.trophaeen || a.name.localeCompare(b.name))
 
+  /** Hochrechnung dieser Woche für eine Person: Text und Farbe. */
+  function prognose(s: LigaStand): { text: string; farbe: string } {
+    const sekunden = team.find((m) => m.userId === s.userId)?.produktiveSekunden ?? 0
+    const gesamtziel = ziele.find((z) => z.userId === s.userId && !z.taetigkeit)?.stundenProWoche ?? STANDARD_GESAMTZIEL
+    const eigene = urlaube.filter((u) => u.userId === s.userId)
+    const p = wochenPrognose(sekunden, gesamtziel, eigene)
+    if (p.urlaubstage >= 5) return { text: 'diese Woche Urlaub', farbe: 'text-dim' }
+    if (p.art === 'zu-frueh') return { text: 'Prognose ab Montagmittag', farbe: 'text-dim' }
+    const wirksam = wirksamesDelta(s.trophaeen, p.delta)
+    const wort = p.art === 'stand' ? 'diese Woche' : 'voraussichtlich'
+    return { text: `${wort} ${deltaText(wirksam)}`, farbe: wirksam > 0 ? 'text-produktiv' : wirksam < 0 ? 'text-unproduktiv' : 'text-mute' }
+  }
+
   return (
     <Karte>
       <div className="flex items-baseline justify-between gap-3">
@@ -38,6 +68,7 @@ export function LigaRangliste(): ReactElement {
       <div className="mt-3 flex flex-col gap-1">
         {sortiert.map((s, i) => {
           const l = liga(s.trophaeen)
+          const p = prognose(s)
           return (
             <div
               key={s.userId}
@@ -55,12 +86,9 @@ export function LigaRangliste(): ReactElement {
               </div>
               <div className="text-right">
                 <p className="text-sm">{zahlText(s.trophaeen, 0)}</p>
-                <p
-                  className={`text-xs ${
-                    s.letztesDelta === null ? 'text-dim' : s.letztesDelta > 0 ? 'text-produktiv' : s.letztesDelta < 0 ? 'text-unproduktiv' : 'text-mute'
-                  }`}
-                >
-                  {s.letztesDelta === null ? 'noch keine Woche' : `letzte Woche ${deltaText(s.letztesDelta)}`}
+                <p className={`text-xs ${p.farbe}`}>{p.text}</p>
+                <p className="text-xs text-dim">
+                  {s.letztesDelta === null ? 'noch keine Woche gezählt' : `letzte Woche ${deltaText(s.letztesWirksam ?? s.letztesDelta)}`}
                 </p>
               </div>
             </div>
