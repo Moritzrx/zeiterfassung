@@ -130,7 +130,40 @@ export function Wochenrueckblick(): ReactElement | null {
 
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    ;(window as unknown as { rueckblickTest: () => void }).rueckblickTest = () => void laden(true)
+    const w = window as unknown as { rueckblickTest: () => void; rueckblickDemo: () => void }
+    w.rueckblickTest = () => void laden(true)
+    // Vorschau mit erfundenen Zahlen, um das Aussehen zu zeigen.
+    w.rueckblickDemo = () => {
+      const start = '2026-09-07'
+      const tage = [8.6, 9.4, 7.2, 8.1, 6.9, 3.5, 0].map((h) => h * 3600)
+      const stat: Wochenstatistik = {
+        start,
+        produktiv: tage.reduce((a, b) => a + b, 0),
+        unproduktiv: 1.4 * 3600,
+        ungeklaert: 0,
+        inaktiv: 3 * 3600,
+        jeTaetigkeit: new Map(),
+        tage,
+        frueh: 0,
+        spaet: 0,
+        laengsteStrecke: 3.2 * 3600,
+        leer: false,
+        testdaten: false
+      }
+      setDaten({
+        start,
+        stat,
+        rang: rang(stat.produktiv),
+        ziel: zielRang(50),
+        gesamtziel: 50,
+        neue: [
+          { typ: 'sprint', wocheStart: start, freigeschaltetAm: new Date().toISOString(), testdaten: false },
+          { typ: 'fokus_woche', wocheStart: start, freigeschaltetAm: new Date().toISOString(), testdaten: false }
+        ],
+        liga: { delta: 37, wirksam: 37, trophaeen: 437, liga: ligaVon(437) },
+        team: { platz: 1, anzahl: 3 }
+      })
+    }
   }, [laden])
 
   useEffect(() => {
