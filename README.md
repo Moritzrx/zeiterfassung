@@ -83,7 +83,9 @@ Das **rote X** oben im Fenster schließt nur das Fenster, die Erfassung läuft w
 
 ### Regeln und das Ungeklärt-Postfach
 
-Neue Programme kennt die App nicht, solche Blöcke landen als **ungeklärt** im Postfach auf dem Heute-Screen. Beim Durchgehen legt man Bewertung und Tätigkeit fest. Das Häkchen **"Zuordnung künftig immer anwenden"** macht daraus eine Regel, dann bewertet die App dieses Programm ab sofort und rückwirkend für alle nicht von Hand geprüften Blöcke automatisch.
+Neue Programme kennt die App nicht, solche Blöcke landen als **ungeklärt** im Postfach auf dem Heute-Screen. Dort sind sie **nach Programm gebündelt**: eine Zeile je Programm mit Anzahl und Gesamtdauer. **"Alle 37 zuordnen"** öffnet einen Dialog, dessen Entscheidung für alle Blöcke dieses Programms gilt. Das Häkchen **"Zuordnung künftig immer anwenden"** macht daraus eine Regel, dann bewertet die App dieses Programm ab sofort und rückwirkend für alle nicht von Hand geprüften Blöcke automatisch. Wer lieber jeden Block einzeln sehen will, klappt die Zeile auf oder nimmt "Einzeln durchgehen".
+
+**Kurze Wechsel erben ihre Umgebung.** Wer mitten in der Arbeit für zwei Minuten in Teams, Asana oder den Kalender schaut und dann zurückkommt, bekommt dafür keinen ungeklärten Block: Ein ungeklärter Wechsel bis 5 Minuten zwischen zwei Blöcken derselben Tätigkeit wird dieser Tätigkeit zugeschlagen. Greift eine Regel (etwa YouTube ist unproduktiv), gilt die Regel.
 
 - **Team-Regeln** gelten für alle drei, **persönliche Regeln** nur für einen selbst. Persönliche gehen vor.
 - Regeln nach **Fenstertitel** (zum Beispiel "YouTube" im Browser ist unproduktiv, "Google Ads" produktiv) sind genauer als Regeln nach Programm. Bei Browsern lohnt sich das, weil man dort alles Mögliche machen kann.

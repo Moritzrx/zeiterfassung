@@ -301,6 +301,8 @@ function sitzungStarten(userId: string): void {
   profilAnwenden(s)
   erfassung.on('status', statusVerteilen)
   erfassung.on('bloecke', () => {
+    // Sobald ein Block endet, können kurze Wechsel davor ihre Nachbarn erben.
+    alleNeuBewerten(s.speicher, s.regelwerk.liste(), s.userId)
     bloeckeGeaendert()
     auszeichnungenBaldPruefen(s)
   })

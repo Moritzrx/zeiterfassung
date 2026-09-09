@@ -44,6 +44,7 @@ export function HeuteScreen(): ReactElement {
   const [ungeklaert, setUngeklaert] = useState(0)
   const [stand, setStand] = useState(0)
   const [bearbeiten, setBearbeiten] = useState<Block | null>(null)
+  const [gruppe, setGruppe] = useState<Block[] | null>(null)
   const [durchgehen, setDurchgehen] = useState<{ liste: Block[]; index: number } | null>(null)
   const [auswahl, setAuswahl] = useState<Set<string> | null>(null)
   const istHeute = datum === heute
@@ -198,6 +199,7 @@ export function HeuteScreen(): ReactElement {
         anzahl={ungeklaert}
         stand={stand}
         onOeffnen={setBearbeiten}
+        onGruppe={setGruppe}
         onDurchgehen={(l) => {
           if (l.length) setDurchgehen({ liste: l, index: 0 })
         }}
@@ -250,7 +252,21 @@ export function HeuteScreen(): ReactElement {
         />
       )}
 
-      {dialogBlock && (
+      {gruppe && gruppe.length > 0 && (
+        <BlockDialog
+          key={`gruppe-${gruppe[0].id}`}
+          block={gruppe[0]}
+          gruppe={gruppe}
+          taetigkeiten={taetigkeiten}
+          onSchliessen={() => setGruppe(null)}
+          onGespeichert={() => {
+            void laden()
+            setGruppe(null)
+          }}
+        />
+      )}
+
+      {dialogBlock && !gruppe && (
         <BlockDialog
           key={dialogBlock.id}
           block={dialogBlock}

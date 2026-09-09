@@ -3,11 +3,13 @@ import { X } from 'lucide-react'
 import type { Bewertung, Block, RegelBewertung } from '@shared/typen'
 import { musterVorschlag } from '@shared/regeln'
 import { berlinDatum, berlinTeile, berlinZuUtc } from '@shared/zeit'
-import { datumText } from '../format'
+import { datumText, dauerText } from '../format'
 import { hinweisZeigen } from './Hinweis'
 
 interface Props {
   block: Block
+  /** Mehrere Blöcke desselben Programms auf einmal: die Entscheidung gilt für alle */
+  gruppe?: Block[]
   taetigkeiten: string[]
   /** Beim Durchgehen: Nummer und Gesamtzahl */
   fortschritt?: { nummer: number; gesamt: number }
@@ -57,6 +59,7 @@ function Wahl({
 /** Dialog zum Bearbeiten eines Blocks: Tätigkeit, Bewertung, Zeiten, Notiz, Löschen, Regel anlegen. */
 export function BlockDialog({
   block,
+  gruppe,
   taetigkeiten,
   fortschritt,
   onSchliessen,
@@ -66,6 +69,10 @@ export function BlockDialog({
   const istInaktiv = block.bewertung === 'inaktiv'
   const istManuell = block.quelle === 'manuell'
   const istBrowser = BROWSER.includes(block.programm ?? '')
+  const istGruppe = !!gruppe && gruppe.length > 1
+  const gruppeIds = (gruppe ?? [block]).map((b) => b.id)
+  const gruppeSekunden = (gruppe ?? [block]).reduce((s, b) => s + (Date.parse(b.ende) - Date.parse(b.start)) / 1000, 0)
+  const gruppeTitel = [...new Set((gruppe ?? []).map((b) => b.fenstertitel).filter((t): t is string => !!t))]
   const [taetigkeit, setTaetigkeit] = useState(block.taetigkeit ?? '')
   const [bewertung, setBewertung] = useState<Bewertung>(
     block.bewertung === 'ungeklaert' ? 'produktiv' : block.bewertung
@@ -74,7 +81,7 @@ export function BlockDialog({
   const [bis, setBis] = useState(zeitFeld(block.ende))
   const [notiz, setNotiz] = useState(block.notiz ?? '')
   const [immer, setImmer] = useState(false)
-  const [feld, setFeld] = useState<'programm' | 'titel'>(block.fenstertitel && istBrowser ? 'titel' : 'programm')
+  const [feld, setFeld] = useState<'programm' | 'titel'>(block.fenstertitel && istBrowser && !istGruppe ? 'titel' : 'programm')
   const [muster, setMuster] = useState(musterVorschlag(block.fenstertitel))
   const [fuerAlle, setFuerAlle] = useState(false)
   const [loeschenBestaetigen, setLoeschenBestaetigen] = useState(false)
@@ -102,7 +109,13 @@ export function BlockDialog({
         bewertung,
         notiz
       }
-      if (von !== zeitFeld(block.start) || bis !== zeitFeld(block.ende)) {
+      if (istGruppe) {
+        // Für die ganze Gruppe: Zeiten bleiben, die Notiz nur, wenn eine eingetragen wurde.
+        const fuerAlle: typeof aenderung = { taetigkeit: aenderung.taetigkeit, bewertung }
+        if (notiz.trim()) fuerAlle.notiz = notiz
+        const n = await window.api.bloecke.mehrereAendern(gruppeIds, fuerAlle)
+        hinweisZeigen(`${n} Blöcke zugeordnet.`)
+      } else if (von !== zeitFeld(block.start) || bis !== zeitFeld(block.ende)) {
         const [jahr, monat, tag] = berlinDatum(new Date(block.start)).split('-').map(Number)
         const [vh, vm] = von.split(':').map(Number)
         const [bh, bm] = bis.split(':').map(Number)
@@ -112,7 +125,7 @@ export function BlockDialog({
         aenderung.start = start.toISOString()
         aenderung.ende = ende.toISOString()
       }
-      await window.api.bloecke.aendern(block.id, aenderung)
+      if (!istGruppe) await window.api.bloecke.aendern(block.id, aenderung)
 
       if (immer && regelMoeglich) {
         const ergebnis = await window.api.regeln.anlegen({
@@ -142,12 +155,23 @@ export function BlockDialog({
       return
     }
     if (!window.api) return
-    await window.api.bloecke.aendern(block.id, { loeschen: true })
-    hinweisZeigen('Block gelöscht.')
+    if (istGruppe) {
+      const n = await window.api.bloecke.mehrereAendern(gruppeIds, { loeschen: true })
+      hinweisZeigen(`${n} Blöcke gelöscht.`)
+    } else {
+      await window.api.bloecke.aendern(block.id, { loeschen: true })
+      hinweisZeigen('Block gelöscht.')
+    }
     onGespeichert()
   }
 
-  const titel = istInaktiv ? 'Inaktive Zeit' : istManuell ? (block.taetigkeit ?? 'Von Hand eingetragen') : (block.programm ?? 'Block')
+  const titel = istGruppe
+    ? `${block.programm ?? 'Unbekanntes Programm'} · ${gruppeIds.length} Blöcke`
+    : istInaktiv
+      ? 'Inaktive Zeit'
+      : istManuell
+        ? (block.taetigkeit ?? 'Von Hand eingetragen')
+        : (block.programm ?? 'Block')
 
   return (
     <div className="animate-aufblenden fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={onSchliessen}>
@@ -164,10 +188,26 @@ export function BlockDialog({
               </p>
             )}
             <h2 className="truncate text-xl">{titel}</h2>
-            <p className="text-sm text-mute">
-              {datumText(berlinDatum(new Date(block.start)))} · {zeitFeld(block.start)} bis {zeitFeld(block.ende)}
-            </p>
-            {block.fenstertitel && <p className="mt-1 truncate text-xs text-dim">{block.fenstertitel}</p>}
+            {istGruppe ? (
+              <>
+                <p className="text-sm text-mute">
+                  zusammen {dauerText(gruppeSekunden)} · die Zuordnung gilt für alle {gruppeIds.length} Blöcke
+                </p>
+                {gruppeTitel.length > 0 && (
+                  <p className="mt-1 truncate text-xs text-dim">
+                    {gruppeTitel.slice(0, 3).join(' · ')}
+                    {gruppeTitel.length > 3 && ` · und ${gruppeTitel.length - 3} weitere`}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-mute">
+                  {datumText(berlinDatum(new Date(block.start)))} · {zeitFeld(block.start)} bis {zeitFeld(block.ende)}
+                </p>
+                {block.fenstertitel && <p className="mt-1 truncate text-xs text-dim">{block.fenstertitel}</p>}
+              </>
+            )}
           </div>
           <button type="button" onClick={onSchliessen} className="rounded-chip p-1 text-mute hover:text-ink" title="Schließen">
             <X size={18} strokeWidth={1.5} />
@@ -214,16 +254,18 @@ export function BlockDialog({
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-xs text-mute">
-              Von
-              <input className={FELD} type="time" value={von} onChange={(e) => setVon(e.target.value)} required />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-xs text-mute">
-              Bis
-              <input className={FELD} type="time" value={bis} onChange={(e) => setBis(e.target.value)} required />
-            </label>
-          </div>
+          {!istGruppe && (
+            <div className="flex gap-3">
+              <label className="flex flex-1 flex-col gap-1 text-xs text-mute">
+                Von
+                <input className={FELD} type="time" value={von} onChange={(e) => setVon(e.target.value)} required />
+              </label>
+              <label className="flex flex-1 flex-col gap-1 text-xs text-mute">
+                Bis
+                <input className={FELD} type="time" value={bis} onChange={(e) => setBis(e.target.value)} required />
+              </label>
+            </div>
+          )}
 
           <label className="flex flex-col gap-1 text-xs text-mute">
             Notiz
@@ -250,7 +292,7 @@ export function BlockDialog({
                     )}
                   </span>
                 </label>
-                {block.fenstertitel && (
+                {block.fenstertitel && !istGruppe && (
                   <label className="flex cursor-pointer items-center gap-2">
                     <input type="radio" checked={feld === 'titel'} onChange={() => setFeld('titel')} />
                     <span className="shrink-0">Immer wenn der Fenstertitel enthält</span>
@@ -305,7 +347,7 @@ export function BlockDialog({
               disabled={laeuft}
               className="rounded-chip bg-ink px-4 py-2 text-sm font-medium text-ground transition-opacity disabled:opacity-40"
             >
-              {fortschritt ? 'Speichern und weiter' : 'Speichern'}
+              {istGruppe ? `Für alle ${gruppeIds.length} übernehmen` : fortschritt ? 'Speichern und weiter' : 'Speichern'}
             </button>
           </div>
         </div>
