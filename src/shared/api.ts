@@ -34,7 +34,7 @@ export interface AuthErgebnis {
   fehler: string | null
 }
 
-import type { LigaStand } from './typen'
+import type { LigaStand, Urlaub } from './typen'
 
 /** Abmelden einer Ereignis-Anmeldung. */
 export type Abmelden = () => void
@@ -118,6 +118,13 @@ export interface Api {
   liga: {
     /** Trophäen und Liga aller aktiven Personen, aus abgeschlossenen Wochen. */
     stand: () => Promise<LigaStand[]>
+  }
+  urlaub: {
+    /** Die eigenen Urlaube, neueste zuerst. */
+    eigene: () => Promise<Urlaub[]>
+    /** Urlaub eintragen; von und bis als "JJJJ-MM-TT". */
+    anlegen: (von: string, bis: string, notiz: string | null) => Promise<Urlaub>
+    loeschen: (id: string) => Promise<void>
   }
   team: {
     /** Produktive Wochenstunden aller aktiven Personen, eigene live. */

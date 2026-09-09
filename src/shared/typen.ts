@@ -104,7 +104,18 @@ export interface LigaStand {
   letzteWoche: string | null
   /** Trophäen der zuletzt gezählten Woche */
   letztesDelta: number | null
+  /** heute im hinterlegten Urlaub */
+  imUrlaub: boolean
   istIch: boolean
+}
+
+/** Ein hinterlegter Urlaub (oder freie Tage), Kalendertage "JJJJ-MM-TT" einschließlich. */
+export interface Urlaub {
+  id: string
+  userId: string
+  von: string
+  bis: string
+  notiz: string | null
 }
 
 /** Produktive Sekunden einer Person in einer Woche, für den Team-Verlauf. */

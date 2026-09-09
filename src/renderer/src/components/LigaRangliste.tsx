@@ -49,6 +49,7 @@ export function LigaRangliste(): ReactElement {
                 <p className="truncate text-sm">
                   {s.name}
                   {s.istIch && <span className="text-mute"> · du</span>}
+                  {s.imUrlaub && <span className="ml-2 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute">im Urlaub</span>}
                 </p>
                 <p className="text-xs text-mute">{l.name}</p>
               </div>

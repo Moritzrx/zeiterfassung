@@ -7,6 +7,7 @@ import type {
   Block,
   BlockAenderung,
   LigaStand,
+  Urlaub,
   ErfassungsStatus,
   NeueRegel,
   NeuerEintrag,
@@ -46,6 +47,7 @@ import { supabase, supabaseKonfiguriert } from './supabase'
 import { Sync } from './sync'
 import { Taetigkeiten } from './taetigkeiten'
 import { TrayLeiste } from './tray'
+import { urlaubAnlegen, urlaubListe, urlaubLoeschen } from './urlaub'
 import { Ziele } from './ziele'
 
 const APP_ID = 'com.wessamedia.zeit'
@@ -526,6 +528,7 @@ function ipcRegistrieren(): void {
         wochen: number
         letzte_woche: string | null
         letztes_delta: number | null
+        im_urlaub?: boolean
       }>
     ).map((z) => ({
       userId: z.user_id,
@@ -534,8 +537,22 @@ function ipcRegistrieren(): void {
       wochen: Number(z.wochen),
       letzteWoche: z.letzte_woche,
       letztesDelta: z.letztes_delta === null ? null : Number(z.letztes_delta),
+      imUrlaub: z.im_urlaub === true,
       istIch: z.user_id === eigeneId
     }))
+  })
+
+  ipcMain.handle('urlaub:eigene', async (): Promise<Urlaub[]> => {
+    if (!sitzung) return []
+    return urlaubListe(sitzung.userId)
+  })
+  ipcMain.handle('urlaub:anlegen', async (_ereignis, von: string, bis: string, notiz: string | null): Promise<Urlaub> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    return urlaubAnlegen(sitzung.userId, von, bis, notiz)
+  })
+  ipcMain.handle('urlaub:loeschen', async (_ereignis, id: string): Promise<void> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    await urlaubLoeschen(id)
   })
 
   ipcMain.handle('team:wochen', async (_ereignis, vonDatum: string, bisDatum: string): Promise<TeamWoche[]> => {

@@ -72,6 +72,11 @@ const api: Api = {
   liga: {
     stand: () => ipcRenderer.invoke('liga:stand')
   },
+  urlaub: {
+    eigene: () => ipcRenderer.invoke('urlaub:eigene'),
+    anlegen: (von, bis, notiz) => ipcRenderer.invoke('urlaub:anlegen', von, bis, notiz),
+    loeschen: (id) => ipcRenderer.invoke('urlaub:loeschen', id)
+  },
   team: {
     stand: () => ipcRenderer.invoke('team:stand'),
     wochen: (vonDatum, bisDatum) => ipcRenderer.invoke('team:wochen', vonDatum, bisDatum)

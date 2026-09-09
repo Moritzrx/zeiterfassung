@@ -99,11 +99,29 @@ export function ligaFortschritt(trophaeen: number): number {
   return Math.max(0, Math.min(1, (trophaeen - l.ab) / (n.ab - l.ab)))
 }
 
+/** Der neutrale Punkt einer Woche in Stunden: Gesamtziel minus 10, anteilig gekürzt um Urlaubstage (Mo–Fr). */
+export function neutralStunden(gesamtziel: number, urlaubstage = 0): number {
+  const tage = Math.max(0, Math.min(5, urlaubstage))
+  return ((gesamtziel - LIGA_NEUTRAL_ABSTAND) * (5 - tage)) / 5
+}
+
 /** Trophäen, die eine Woche mit so vielen produktiven Sekunden bringt (oder kostet). */
-export function ligaDelta(produktivSekunden: number, gesamtziel: number): number {
+export function ligaDelta(produktivSekunden: number, gesamtziel: number, urlaubstage = 0): number {
   const stunden = produktivSekunden / 3600
-  const roh = Math.round((stunden - (gesamtziel - LIGA_NEUTRAL_ABSTAND)) * LIGA_FAKTOR)
+  const roh = Math.round((stunden - neutralStunden(gesamtziel, urlaubstage)) * LIGA_FAKTOR)
   return Math.max(LIGA_MIN_DELTA, Math.min(LIGA_MAX_DELTA, roh))
+}
+
+/** Wie viele Werktage (Mo–Fr) einer Woche ab dem Montag "JJJJ-MM-TT" in einem der Urlaube liegen. */
+export function urlaubstageInWoche(wocheStart: string, urlaube: Array<{ von: string; bis: string }>): number {
+  const [jahr, monat, tag] = wocheStart.split('-').map(Number)
+  let tage = 0
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(Date.UTC(jahr, monat - 1, tag + i))
+    const datum = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+    if (urlaube.some((u) => u.von <= datum && datum <= u.bis)) tage++
+  }
+  return tage
 }
 
 /** "+100", "−40" oder "±0". */

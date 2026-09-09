@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import {
   LIGA_FARBEN,
-  LIGA_NEUTRAL_ABSTAND,
   LIGA_START_TROPHAEEN,
   deltaText,
   liga,
   ligaDelta,
   ligaFortschritt,
-  naechsteLiga
+  naechsteLiga,
+  neutralStunden,
+  urlaubstageInWoche
 } from '@shared/liga'
-import type { LigaStand } from '@shared/typen'
+import type { LigaStand, Urlaub } from '@shared/typen'
+import { berlinDatum, wochenanfang } from '@shared/zeit'
 import { fehlerText, kurzDatum, stundenText, zahlText } from '../format'
 import { hinweisZeigen } from './Hinweis'
 import { Karte } from './Karte'
@@ -27,13 +29,18 @@ const SCHLUESSEL = 'liga.zuletzt.'
 /** Die eigene Liga auf dem Wochen-Screen: Abzeichen, Trophäen, Fortschritt zur nächsten Liga, Vorschau der Woche. */
 export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElement {
   const [eigene, setEigene] = useState<LigaStand | null>(null)
+  const [urlaube, setUrlaube] = useState<Urlaub[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [uebersichtOffen, setUebersichtOffen] = useState(false)
 
   const laden = useCallback(async () => {
     if (!window.api) return
     try {
-      const stand = await window.api.liga.stand()
+      const [stand, eigeneUrlaube] = await Promise.all([
+        window.api.liga.stand(),
+        window.api.urlaub.eigene().catch(() => [] as Urlaub[])
+      ])
+      setUrlaube(eigeneUrlaube)
       const ich = stand.find((s) => s.istIch) ?? null
       setEigene(ich)
       setFehler(null)
@@ -67,9 +74,12 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
   const naechste = naechsteLiga(trophaeen)
   const fortschritt = ligaFortschritt(trophaeen)
   const farbe = LIGA_FARBEN[l.stufe]
-  const vorschau = ligaDelta(produktivSekunden, gesamtziel)
+  // Urlaubstage dieser Woche senken die Erwartung anteilig.
+  const urlaubstage = urlaubstageInWoche(berlinDatum(wochenanfang(new Date())), urlaube)
+  const neutral = neutralStunden(gesamtziel, urlaubstage)
+  const vorschau = ligaDelta(produktivSekunden, gesamtziel, urlaubstage)
   // Bis zum neutralen Punkt fehlende Stunden, damit ein Minus am Wochenanfang nicht entmutigt.
-  const bisNeutral = Math.max(0, (gesamtziel - LIGA_NEUTRAL_ABSTAND) * 3600 - produktivSekunden)
+  const bisNeutral = Math.max(0, neutral * 3600 - produktivSekunden)
 
   return (
     <Karte>
@@ -94,7 +104,18 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
           <p className={`text-2xl font-light ${vorschau > 0 ? 'text-produktiv' : vorschau < 0 ? 'text-unproduktiv' : 'text-mute'}`}>
             {deltaText(vorschau)}
           </p>
-          <p className="text-xs text-dim">{vorschau < 0 ? `noch ${stundenText(bisNeutral)} h bis ±0` : 'zählt nach Sonntag'}</p>
+          <p className="text-xs text-dim">
+            {urlaubstage >= 5
+              ? 'ganze Woche Urlaub, kostet nichts'
+              : vorschau < 0
+                ? `noch ${stundenText(bisNeutral)} h bis ±0`
+                : 'zählt nach Sonntag'}
+          </p>
+          {urlaubstage > 0 && urlaubstage < 5 && (
+            <p className="text-xs text-dim">
+              {urlaubstage} {urlaubstage === 1 ? 'Urlaubstag' : 'Urlaubstage'}, Erwartung {stundenText(neutral * 3600)} h
+            </p>
+          )}
         </div>
       </div>
 

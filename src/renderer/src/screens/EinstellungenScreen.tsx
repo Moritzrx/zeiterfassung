@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState, type ReactElement, type ReactNode } f
 import { Trash2 } from 'lucide-react'
 import { STANDARD_GESAMTZIEL } from '@shared/rang'
 import { taetigkeitSchluessel } from '@shared/regeln'
-import type { Profil, Regel, RegelBewertung, SymbolInfo, SystemInfo, Ziel } from '@shared/typen'
+import type { Profil, Regel, RegelBewertung, SymbolInfo, SystemInfo, Urlaub, Ziel } from '@shared/typen'
 import { hinweisZeigen } from '../components/Hinweis'
 import { Karte } from '../components/Karte'
 import { SymbolWahl } from '../components/SymbolWahl'
 import { useErfassung } from '../erfassung'
-import { uhrzeit } from '../format'
+import { kurzDatum, uhrzeit } from '../format'
 import { useNutzer } from '../nutzer'
 import { SymbolBild, useSymbolZuordnung } from '../symbole'
 import { useTaetigkeiten } from '../taetigkeiten'
@@ -87,6 +87,49 @@ export function EinstellungenScreen(): ReactElement {
   const [regeln, setRegeln] = useState<Regel[]>([])
   const [symbolFuer, setSymbolFuer] = useState<string | null>(null)
   const [neuesZiel, setNeuesZiel] = useState({ taetigkeit: '', stunden: '5' })
+  const [urlaube, setUrlaube] = useState<Urlaub[]>([])
+  const [urlaubFehler, setUrlaubFehler] = useState<string | null>(null)
+  const [neuerUrlaub, setNeuerUrlaub] = useState({ von: '', bis: '', notiz: '' })
+
+  const urlaubLaden = useCallback(async () => {
+    if (!window.api) return
+    try {
+      setUrlaube(await window.api.urlaub.eigene())
+      setUrlaubFehler(null)
+    } catch (e) {
+      setUrlaubFehler(fehlerText(e))
+    }
+  }, [])
+  useEffect(() => {
+    void urlaubLaden()
+  }, [urlaubLaden])
+
+  async function urlaubSpeichern(): Promise<void> {
+    if (!window.api) return
+    try {
+      await window.api.urlaub.anlegen(neuerUrlaub.von, neuerUrlaub.bis || neuerUrlaub.von, neuerUrlaub.notiz || null)
+      setNeuerUrlaub({ von: '', bis: '', notiz: '' })
+      hinweisZeigen('Urlaub eingetragen.')
+      await urlaubLaden()
+    } catch (e) {
+      hinweisZeigen(fehlerText(e))
+    }
+  }
+
+  async function urlaubLoeschen(id: string): Promise<void> {
+    if (!window.api) return
+    try {
+      await window.api.urlaub.loeschen(id)
+      await urlaubLaden()
+    } catch (e) {
+      hinweisZeigen(fehlerText(e))
+    }
+  }
+
+  /** Kalendertage einschließlich beider Enden. */
+  function urlaubstage(u: Urlaub): number {
+    return Math.round((Date.parse(u.bis) - Date.parse(u.von)) / 86_400_000) + 1
+  }
   const [neueRegel, setNeueRegel] = useState({ muster: '', feld: 'titel' as 'programm' | 'titel', taetigkeit: '', bewertung: 'produktiv' as RegelBewertung, fuerAlle: false })
   const [loeschenId, setLoeschenId] = useState<string | null>(null)
 
@@ -290,6 +333,49 @@ export function EinstellungenScreen(): ReactElement {
               className="rounded-chip bg-ink px-3 py-2 text-sm text-ground disabled:opacity-40"
             >
               Hinzufügen
+            </button>
+          </div>
+        </div>
+      </Karte>
+
+      <Karte>
+        <p className="text-xs tracking-wide text-mute uppercase">Urlaub</p>
+        <p className="mt-1 text-xs text-dim">
+          Hinterlegte Urlaubstage (Montag bis Freitag) senken in der Liga die Erwartung der Woche anteilig. Eine ganze Urlaubswoche
+          kostet keine Trophäen. Zählt auch für Feiertage und Krankheit.
+        </p>
+        {urlaubFehler && <p className="mt-2 text-sm text-mute">{urlaubFehler}</p>}
+        <div className="mt-1 divide-y divide-panel-2">
+          {urlaube.map((u) => (
+            <Zeile
+              key={u.id}
+              titel={u.von === u.bis ? kurzDatum(u.von) : `${kurzDatum(u.von)} bis ${kurzDatum(u.bis)}`}
+              hinweis={`${urlaubstage(u)} ${urlaubstage(u) === 1 ? 'Tag' : 'Tage'}${u.notiz ? ` · ${u.notiz}` : ''}`}
+            >
+              <button type="button" onClick={() => void urlaubLoeschen(u.id)} className="rounded-chip p-1.5 text-mute hover:text-unproduktiv" title="Urlaub entfernen">
+                <Trash2 size={16} strokeWidth={1.5} />
+              </button>
+            </Zeile>
+          ))}
+          {urlaube.length === 0 && !urlaubFehler && <p className="py-3 text-sm text-dim">Noch kein Urlaub hinterlegt.</p>}
+          <div className="flex flex-wrap items-center gap-2 py-3">
+            <span className="text-sm text-mute">Von</span>
+            <input type="date" className={FELD} value={neuerUrlaub.von} onChange={(e) => setNeuerUrlaub((u) => ({ ...u, von: e.target.value }))} />
+            <span className="text-sm text-mute">bis</span>
+            <input type="date" className={FELD} value={neuerUrlaub.bis} min={neuerUrlaub.von || undefined} onChange={(e) => setNeuerUrlaub((u) => ({ ...u, bis: e.target.value }))} />
+            <input
+              className={`${FELD} min-w-0 flex-1`}
+              placeholder="Notiz, z. B. Sommerurlaub"
+              value={neuerUrlaub.notiz}
+              onChange={(e) => setNeuerUrlaub((u) => ({ ...u, notiz: e.target.value }))}
+            />
+            <button
+              type="button"
+              disabled={!neuerUrlaub.von || (!!neuerUrlaub.bis && neuerUrlaub.bis < neuerUrlaub.von)}
+              onClick={() => void urlaubSpeichern()}
+              className="rounded-chip bg-ink px-3 py-2 text-sm text-ground disabled:opacity-40"
+            >
+              Eintragen
             </button>
           </div>
         </div>

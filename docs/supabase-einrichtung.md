@@ -69,6 +69,12 @@ Für den Langzeit-Stand mit Trophäen und Ligen auf Woche und Team:
 - `supabase/08_liga.sql` genauso ausführen: **SQL Editor** → **New query** → einfügen → **Run**.
 - Solange das Skript nicht gelaufen ist, zeigt die Liga-Karte einen Hinweis statt Zahlen.
 
+## 6e. Urlaub (Skript 9)
+
+Damit jeder seinen Urlaub hinterlegen kann und die Liga ihn berücksichtigt:
+
+- `supabase/09_urlaub.sql` genauso ausführen: **SQL Editor** → **New query** → einfügen → **Run**. Das Skript legt die Tabelle an und ersetzt die Liga-Funktion aus Skript 8.
+
 ## 7. Zugangsdaten in die App bringen
 
 1. Links unten **"Project Settings"** (Zahnrad) → **"API Keys"**.
