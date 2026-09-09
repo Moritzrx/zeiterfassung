@@ -75,7 +75,7 @@ Das **rote X** oben im Fenster schließt nur das Fenster, die Erfassung läuft w
 ### Die sechs Screens (Navigation unten)
 
 1. **Heute**: Ring mit den vier Anteilen, produktive Stunden groß, der laufende Block, ein Hinweis auf ungeklärte Blöcke mit "Durchgehen" und die Liste aller Blöcke des Tages. Mit den Pfeilen blättert man zu früheren Tagen. Ein Klick auf einen Block öffnet ihn zum Bearbeiten (Bewertung, Tätigkeit, Notiz, Regel anlegen, Löschen).
-2. **Woche**: Rang-Ring, Balken Montag bis Sonntag mit Tagesrichtwert, Tätigkeiten gegen ihre Wochenziele, "Woche durchgehen" für auffällige Blöcke, die Auszeichnungen und ab Sonntagabend die Wochenzusammenfassung. Der Knopf "Alle 15 Ränge ansehen" zeigt die Übersicht.
+2. **Woche**: Rang-Ring, Balken Montag bis Sonntag (grün = produktiv, nur das zählt gegen die Richtwert-Linie; Unproduktives und Ungeklärtes schmal daneben; der Richtwert ist das Ziel geteilt durch die Arbeitstage, einstellbar 5 bis 7 unter Einstellungen → Wochenziele), Tätigkeiten gegen ihre Wochenziele, "Woche durchgehen" für auffällige Blöcke, die Auszeichnungen und ab Sonntagabend die Wochenzusammenfassung. Der Knopf "Alle 15 Ränge ansehen" zeigt die Übersicht.
 3. **Auswertung**: Verlauf, Trend der Wochenränge, Verteilung der Tätigkeiten und Hochrechnung auf Woche, Monat und Jahr. Der Zeitraum ist oben wählbar (7 Tage bis 12 Monate).
 4. **Team**: Wochenstunden aller drei, Rang-Abzeichen, Verlauf über mehrere Wochen und Rangliste. Die eigene Linie ist grün.
 5. **Eintragen**: Zeiten von Hand, etwa Kundentermine oder Fahrten. Überschneidet sich der Eintrag mit automatischen Blöcken, warnt die App und bietet an, diese zu ersetzen.

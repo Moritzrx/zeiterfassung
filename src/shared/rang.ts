@@ -98,13 +98,17 @@ export function rangStufe(r: number): RangStufe {
   return 'diamant'
 }
 
-/** Tagesrichtwert: Gesamtziel auf 5 Arbeitstage verteilt. */
-export function tagesrichtwert(gesamtzielStunden: number): number {
-  return gesamtzielStunden / 5
+/** Tagesrichtwert: Gesamtziel auf die Arbeitstage der Woche verteilt (5, 6 oder 7). */
+export function tagesrichtwert(gesamtzielStunden: number, arbeitstage = 5): number {
+  return gesamtzielStunden / arbeitstage
 }
 
-/** Verbleibende Arbeitstage der Woche inklusive heute: Montag 5 … Freitag 1, Wochenende 0. */
-export function verbleibendeArbeitstage(zeitpunkt: Date): number {
+/**
+ * Verbleibende Arbeitstage der Woche inklusive heute. Bei 5 Arbeitstagen Montag 5 … Freitag 1,
+ * Wochenende 0; bei 7 Arbeitstagen Montag 7 … Sonntag 1.
+ */
+export function verbleibendeArbeitstage(zeitpunkt: Date, arbeitstage = 5): number {
   const tag = wochentag(zeitpunkt)
-  return tag >= 1 && tag <= 5 ? 6 - tag : 0
+  const nummer = tag === 0 ? 7 : tag // Montag 1 … Sonntag 7
+  return nummer <= arbeitstage ? arbeitstage - nummer + 1 : 0
 }

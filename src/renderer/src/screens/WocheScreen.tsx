@@ -35,6 +35,7 @@ import { RangUebersicht } from '../components/RangUebersicht'
 import { TaetigkeitenListe, type TaetigkeitEintrag } from '../components/TaetigkeitenListe'
 import { WochenBalken, type TagesWerte } from '../components/WochenBalken'
 import { Wochenzusammenfassung } from '../components/Wochenzusammenfassung'
+import { useArbeitstage } from '../arbeitstage'
 import { useErfassung } from '../erfassung'
 import { datumText, kurzDatum, stundenText } from '../format'
 import { useTaetigkeiten } from '../taetigkeiten'
@@ -51,6 +52,7 @@ function anteil(block: Block, von: number, bis: number): number {
 
 /** Screen 2: Woche. Rang-Ring, Wochenbalken, Tätigkeiten gegen ihre Ziele, Restlaufzeit, Woche durchgehen. */
 export function WocheScreen(): ReactElement {
+  const arbeitstageWert = useArbeitstage()
   const status = useErfassung()
   const taetigkeiten = useTaetigkeiten()
   const [jetzt, setJetzt] = useState(() => Date.now())
@@ -188,10 +190,10 @@ export function WocheScreen(): ReactElement {
   let restlaufzeit: string | null = null
   if (aktuelleWoche && !geschafft) {
     const rest = rangSchwelle(ziel) - produktiv
-    const tageUebrig = verbleibendeArbeitstage(new Date(jetzt))
+    const tageUebrig = verbleibendeArbeitstage(new Date(jetzt), arbeitstageWert)
     restlaufzeit =
       tageUebrig === 0
-        ? `Wochenende. Noch ${stundenText(rest)} h bis Rang ${ziel}.`
+        ? `Kein Arbeitstag mehr diese Woche. Noch ${stundenText(rest)} h bis Rang ${ziel}.`
         : `Noch ${stundenText(rest)} h bis Rang ${ziel}, bei ${tageUebrig} verbleibenden ${
             tageUebrig === 1 ? 'Tag' : 'Tagen'
           } sind das ${stundenText(rest / tageUebrig)} h pro Tag.`
@@ -294,7 +296,7 @@ export function WocheScreen(): ReactElement {
       <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">Montag bis Sonntag</p>
         <div className="mt-3">
-          <WochenBalken tage={tage} richtwert={tagesrichtwert(gesamtziel)} />
+          <WochenBalken tage={tage} richtwert={tagesrichtwert(gesamtziel, arbeitstageWert)} />
         </div>
       </Karte>
 

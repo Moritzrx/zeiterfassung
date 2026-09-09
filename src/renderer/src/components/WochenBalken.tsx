@@ -13,7 +13,7 @@ export interface TagesWerte {
 
 interface Props {
   tage: TagesWerte[]
-  /** Tagesrichtwert in Stunden, als gestrichelte Linie */
+  /** Tagesrichtwert in produktiven Stunden, als gestrichelte Linie */
   richtwert: number
 }
 
@@ -21,13 +21,17 @@ function stundenFormat(wert: number): string {
   return wert.toFixed(1).replace('.', ',') + ' h'
 }
 
-/** Montag bis Sonntag, jeder Balken gestapelt nach produktiv, unproduktiv, ungeklärt, inaktiv. */
+/**
+ * Montag bis Sonntag. Der breite grüne Balken ist die produktive Zeit, nur sie zählt gegen die
+ * Richtwert-Linie. Unproduktives und Ungeklärtes stehen als schmale Balken daneben, damit man sie
+ * sieht, ohne dass sie den grünen Balken höher machen. Inaktive Zeit bleibt weg.
+ */
 function WochenBalkenInnen({ tage, richtwert }: Props): ReactElement {
-  const hoechster = Math.max(richtwert * 1.15, ...tage.map((t) => t.produktiv + t.unproduktiv + t.ungeklaert + t.inaktiv))
+  const hoechster = Math.max(richtwert * 1.15, ...tage.flatMap((t) => [t.produktiv, t.unproduktiv, t.ungeklaert]))
   return (
     <div className="h-[220px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={tage} margin={{ top: 8, right: 36, left: 0, bottom: 0 }} barCategoryGap="28%">
+        <BarChart data={tage} margin={{ top: 8, right: 36, left: 0, bottom: 0 }} barCategoryGap="22%" barGap={2}>
           <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 12 }} />
           <YAxis hide domain={[0, hoechster]} />
           <Tooltip content={<DiagrammTooltip format={stundenFormat} />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
@@ -35,12 +39,11 @@ function WochenBalkenInnen({ tage, richtwert }: Props): ReactElement {
             y={richtwert}
             stroke="#5A5A60"
             strokeDasharray="4 4"
-            label={{ value: stundenFormat(richtwert), position: 'right', fill: '#5A5A60', fontSize: 11 }}
+            label={{ value: `${stundenFormat(richtwert)} produktiv`, position: 'right', fill: '#5A5A60', fontSize: 11 }}
           />
-          <Bar dataKey="produktiv" name="produktiv" stackId="tag" fill="#00C076" isAnimationActive={false} />
-          <Bar dataKey="unproduktiv" name="unproduktiv" stackId="tag" fill="#FF4D4D" isAnimationActive={false} />
-          <Bar dataKey="ungeklaert" name="ungeklärt" stackId="tag" fill="#8A8A8F" isAnimationActive={false} />
-          <Bar dataKey="inaktiv" name="inaktiv" stackId="tag" fill="#3A3A3E" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="produktiv" name="produktiv" fill="#00C076" barSize={26} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="unproduktiv" name="unproduktiv" fill="#FF4D4D" barSize={7} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="ungeklaert" name="ungeklärt" fill="#8A8A8F" barSize={7} radius={[2, 2, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>

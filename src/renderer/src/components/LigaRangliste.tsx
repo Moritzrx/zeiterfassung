@@ -5,6 +5,7 @@ import type { LigaStand, TeamMitglied, Urlaub, Ziel } from '@shared/typen'
 import { fehlerText, zahlText } from '../format'
 import { Karte } from './Karte'
 import { LigaAbzeichen } from './LigaAbzeichen'
+import { useArbeitstage } from '../arbeitstage'
 
 /**
  * Die Liga-Rangliste des Teams: wer steht mit wie vielen Trophäen in welcher Liga, dazu je Person
@@ -17,6 +18,7 @@ export function LigaRangliste(): ReactElement {
   const [ziele, setZiele] = useState<Ziel[]>([])
   const [urlaube, setUrlaube] = useState<Urlaub[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
+  const arbeitstageWert = useArbeitstage()
 
   const laden = useCallback(async () => {
     if (!window.api) return
@@ -50,7 +52,8 @@ export function LigaRangliste(): ReactElement {
     const sekunden = team.find((m) => m.userId === s.userId)?.produktiveSekunden ?? 0
     const gesamtziel = ziele.find((z) => z.userId === s.userId && !z.taetigkeit)?.stundenProWoche ?? STANDARD_GESAMTZIEL
     const eigene = urlaube.filter((u) => u.userId === s.userId)
-    const p = wochenPrognose(sekunden, gesamtziel, eigene)
+    // Für alle gilt die Einstellung dieses Rechners (das Team arbeitet gleich lang).
+    const p = wochenPrognose(sekunden, gesamtziel, eigene, new Date(), null, arbeitstageWert)
     if (p.urlaubstage >= 5) return { text: 'diese Woche Urlaub', farbe: 'text-dim' }
     if (p.art === 'zu-frueh') return { text: 'Prognose ab Montagmittag', farbe: 'text-dim' }
     const wirksam = wirksamesDelta(s.trophaeen, p.delta)

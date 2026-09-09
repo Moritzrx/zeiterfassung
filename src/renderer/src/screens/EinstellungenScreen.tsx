@@ -12,6 +12,7 @@ import { useNutzer } from '../nutzer'
 import { SymbolBild, useSymbolZuordnung } from '../symbole'
 import { useTaetigkeiten } from '../taetigkeiten'
 import { KLICK_ARTEN, klickProbe, tonProbe, tonSpielen, toneEinstellung, toneEinstellungSetzen, type Ton } from '../toene'
+import { arbeitstageSetzen, useArbeitstage } from '../arbeitstage'
 
 const PROBEN: { ton: Ton; label: string }[] = [
   { ton: 'tick', label: 'Klick' },
@@ -121,6 +122,7 @@ export function EinstellungenScreen(): ReactElement {
   const [symbolFuer, setSymbolFuer] = useState<string | null>(null)
   const [toene, setToene] = useState(toneEinstellung)
   const [update, setUpdate] = useState<UpdateStatus | null>(null)
+  const arbeitstageWert = useArbeitstage()
   useEffect(() => {
     if (!window.api?.update) return
     void window.api.update.status().then(setUpdate)
@@ -333,6 +335,23 @@ export function EinstellungenScreen(): ReactElement {
 
       <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">Wochenziele</p>
+        <Zeile
+          titel="Arbeitstage pro Woche"
+          hinweis="Bestimmt den Tagesrichtwert (Ziel geteilt durch Tage), die Restlaufzeit und die Liga-Vorschau. Ihr arbeitet Montag bis Sonntag, also 7."
+        >
+          <div className="flex gap-1.5">
+            {[5, 6, 7].map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => arbeitstageSetzen(n)}
+                className={`rounded-chip px-3 py-1.5 text-xs transition-colors ${arbeitstageWert === n ? 'bg-ink text-ground' : 'bg-panel-2 text-ink hover:bg-inaktiv'}`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </Zeile>
         <div className="mt-1 divide-y divide-panel-2">
           <Zeile titel="Arbeitszeit gesamt" hinweis="Bestimmt, ab welchem Rang die Woche geschafft ist. 50 Stunden sind Rang 10.">
             <Zahl

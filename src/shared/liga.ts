@@ -154,7 +154,8 @@ export interface WochenPrognose {
 /**
  * Hochrechnung der laufenden Woche: der bisherige Schnitt je Arbeitstag wird auf die
  * restlichen Arbeitstage (ohne Urlaub) übertragen. Heute zählt anteilig nach der Uhrzeit,
- * ein Arbeitstag läuft von 8 bis 17 Uhr. Am Wochenende gibt es keine Prognose mehr, nur den Stand.
+ * ein Arbeitstag läuft von 8 bis 17 Uhr. Nach dem letzten Arbeitstag gibt es keine Prognose mehr,
+ * nur den Stand. Der neutrale Punkt bleibt unabhängig von den Arbeitstagen (Urlaub zählt Mo–Fr wie in der Datenbank).
  */
 export function wochenPrognose(
   produktivSekunden: number,
@@ -162,7 +163,9 @@ export function wochenPrognose(
   urlaube: Array<{ von: string; bis: string }>,
   jetzt = new Date(),
   /** Kalendertag "JJJJ-MM-TT" des allerersten Blocks: Tage davor zählen in der Hochrechnung nicht als Arbeitstage (Startwoche) */
-  erfassungSeit: string | null = null
+  erfassungSeit: string | null = null,
+  /** Arbeitstage je Woche (5, 6 oder 7): über so viele Tage ab Montag wird hochgerechnet */
+  arbeitstage = 5
 ): WochenPrognose {
   const start = berlinDatum(wochenanfang(jetzt))
   const heute = berlinDatum(jetzt)
@@ -171,7 +174,7 @@ export function wochenPrognose(
   let urlaubstage = 0
   let gearbeitet = 0
   let rest = 0
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < arbeitstage; i++) {
     const datum = datumVerschieben(start, i)
     if (urlaube.some((u) => u.von <= datum && datum <= u.bis)) {
       urlaubstage++
