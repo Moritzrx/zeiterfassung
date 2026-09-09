@@ -1,6 +1,7 @@
 import { startTransition, useEffect, useRef, useState, type ReactElement } from 'react'
 import { AUSZEICHNUNGEN } from '@shared/auszeichnungen'
 import { Hinweise, hinweisZeigen } from './components/Hinweis'
+import { Hintergrund } from './components/Hintergrund'
 import { Kopfzeile } from './components/Kopfzeile'
 import { Navigation, SCREEN_REIHENFOLGE, type ScreenId } from './components/Navigation'
 import { RangAufstieg } from './components/RangAufstieg'
@@ -70,6 +71,7 @@ function Oberflaeche(): ReactElement {
 
   return (
     <div className="flex h-full flex-col">
+      <Hintergrund />
       <Kopfzeile />
       <main className="relative flex-1 overflow-hidden">
         {SCREEN_REIHENFOLGE.filter((id) => besucht.includes(id)).map((id) => {

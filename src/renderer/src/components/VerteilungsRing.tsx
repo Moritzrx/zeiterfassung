@@ -45,7 +45,13 @@ export function VerteilungsRing({ werte }: { werte: Verteilungswert[] }): ReactE
           onMouseEnter={(_, index) => setAktiv(index)}
         >
           {werte.map((w, i) => (
-            <Cell key={w.name} fill={farben[i]} fillOpacity={aktiv === null || aktiv === i ? 1 : 0.25} />
+            <Cell
+              key={w.name}
+              fill={farben[i]}
+              fillOpacity={aktiv === null || aktiv === i ? 1 : 0.25}
+              // Jeder Anteil glüht in seiner eigenen Farbe
+              style={aktiv === null || aktiv === i ? { filter: `drop-shadow(0 0 4px ${farben[i]}cc) drop-shadow(0 0 12px ${farben[i]}66)` } : undefined}
+            />
           ))}
         </Pie>
       </PieChart>

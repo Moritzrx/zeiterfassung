@@ -200,6 +200,114 @@ body::after {
   overflow: visible;
 }
 
+/*
+ * Leuchten überall: Alles, was in den App-Farben gezeichnet wird, glüht.
+ * In Diagrammen über die Füll- und Linienfarbe, bei Flächen und Punkten über die Farbklassen.
+ */
+.recharts-surface [fill='#00C076'],
+.recharts-surface [fill='#34D399'] {
+  filter: drop-shadow(0 0 4px rgba(0, 192, 118, 0.9)) drop-shadow(0 0 14px rgba(0, 192, 118, 0.45));
+}
+.recharts-surface [fill='#FF4D4D'] {
+  filter: drop-shadow(0 0 4px rgba(255, 77, 77, 0.9)) drop-shadow(0 0 14px rgba(255, 77, 77, 0.45));
+}
+.recharts-surface [fill='#FE5303'] {
+  filter: drop-shadow(0 0 4px rgba(254, 83, 3, 0.9)) drop-shadow(0 0 14px rgba(254, 83, 3, 0.45));
+}
+.recharts-surface [stroke='#00C076'] {
+  filter: drop-shadow(0 0 6px rgba(0, 192, 118, 0.85));
+}
+.recharts-surface [stroke='#FF4D4D'] {
+  filter: drop-shadow(0 0 6px rgba(255, 77, 77, 0.85));
+}
+.recharts-surface [stroke='#FE5303'] {
+  filter: drop-shadow(0 0 6px rgba(254, 83, 3, 0.85));
+}
+.bg-produktiv {
+  box-shadow:
+    0 0 8px rgba(0, 192, 118, 0.75),
+    0 0 18px rgba(0, 192, 118, 0.35);
+}
+.bg-unproduktiv {
+  box-shadow:
+    0 0 8px rgba(255, 77, 77, 0.75),
+    0 0 18px rgba(255, 77, 77, 0.35);
+}
+.bg-orange {
+  box-shadow:
+    0 0 8px rgba(254, 83, 3, 0.75),
+    0 0 18px rgba(254, 83, 3, 0.35);
+}
+.text-produktiv {
+  text-shadow: 0 0 14px rgba(0, 192, 118, 0.5);
+}
+.text-unproduktiv {
+  text-shadow: 0 0 14px rgba(255, 77, 77, 0.5);
+}
+.text-orange {
+  text-shadow: 0 0 14px rgba(254, 83, 3, 0.5);
+}
+
+/* Der lebendige Hintergrund (Hintergrund.tsx): Raster, Zifferblätter, Lichtpunkte. */
+.hintergrund-raster {
+  background-size: 56px 56px;
+  opacity: 0.7;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, black 10%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, black 10%, transparent 75%);
+  animation: raster-treiben 48s linear infinite;
+  will-change: transform;
+}
+@keyframes raster-treiben {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-56px, -56px, 0);
+  }
+}
+.hintergrund-ring {
+  animation: ring-drehen 180s linear infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+.hintergrund-ring-2 {
+  animation: ring-drehen 240s linear infinite reverse;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+@keyframes ring-drehen {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.hintergrund-punkt {
+  bottom: -10px;
+  opacity: 0;
+  animation-name: punkt-aufsteigen;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+@keyframes punkt-aufsteigen {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate3d(var(--drift, 0px), -105vh, 0);
+    opacity: 0;
+  }
+}
+
 /* Dialoge: der dunkle Schleier blendet auf, das Fenster darin federt herein. */
 .animate-aufblenden > * {
   animation: einblenden 0.35s var(--ease-federnd) both;
