@@ -51,14 +51,30 @@ export function Definitionen({ id, farbe, leuchtet }: { id: string; farbe: strin
         <stop offset="68%" stopColor={dunkel(farbe, 0.38)} />
         <stop offset="100%" stopColor={hell(farbe, 0.2)} />
       </linearGradient>
-      <linearGradient id={`${id}-feld`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor={dunkel(farbe, 0.7)} />
-        <stop offset="100%" stopColor={dunkel(farbe, 0.88)} />
-      </linearGradient>
+      <radialGradient id={`${id}-feld`} cx="50%" cy="38%" r="65%">
+        <stop offset="0%" stopColor={dunkel(farbe, 0.58)} />
+        <stop offset="100%" stopColor={dunkel(farbe, 0.9)} />
+      </radialGradient>
       <radialGradient id={`${id}-glanz`} cx="32%" cy="22%" r="60%">
         <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.42} />
         <stop offset="60%" stopColor="#FFFFFF" stopOpacity={0} />
       </radialGradient>
+      {/* Fase: oben links Licht, unten rechts Schatten */}
+      <linearGradient id={`${id}-kante`} x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.7} />
+        <stop offset="50%" stopColor="#FFFFFF" stopOpacity={0.05} />
+        <stop offset="100%" stopColor="#000000" stopOpacity={0.6} />
+      </linearGradient>
+      <linearGradient id={`${id}-flamme`} x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stopColor={dunkel(farbe, 0.2)} />
+        <stop offset="55%" stopColor={farbe} />
+        <stop offset="100%" stopColor="#FFE38A" />
+      </linearGradient>
+      <linearGradient id={`${id}-eis`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#FFFFFF" />
+        <stop offset="35%" stopColor={hell(farbe, 0.35)} />
+        <stop offset="100%" stopColor={dunkel(farbe, 0.45)} />
+      </linearGradient>
       {leuchtet && (
         <filter id={`${id}-leuchten`} x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur stdDeviation="3.5" result="glanz" />
@@ -72,13 +88,105 @@ export function Definitionen({ id, farbe, leuchtet }: { id: string; farbe: strin
   )
 }
 
-/** Eine Form mit Metallrand, dunklem Innenfeld und Glanzlicht. */
+/** Eine Form mit gefastem Metallrand, dunklem Innenfeld, feiner Gravurlinie und Glanzlicht. */
 export function Metallform({ id, farbe, form, filter }: { id: string; farbe: string; form: string; filter?: string }): ReactElement {
   return (
     <g filter={filter}>
       <path d={form} fill={`url(#${id}-metall)`} stroke={dunkel(farbe, 0.55)} strokeWidth={1.6} strokeLinejoin="round" />
-      <path d={form} fill={`url(#${id}-feld)`} stroke={hell(farbe, 0.15)} strokeWidth={0.8} strokeLinejoin="round" transform={INNEN} />
+      <path d={form} fill="none" stroke={`url(#${id}-kante)`} strokeWidth={1.4} strokeLinejoin="round" transform="translate(50 50) scale(0.93) translate(-50 -50)" />
+      <path d={form} fill={`url(#${id}-feld)`} stroke={dunkel(farbe, 0.6)} strokeWidth={1} strokeLinejoin="round" transform={INNEN} />
+      <path d={form} fill="none" stroke={hell(farbe, 0.1)} strokeOpacity={0.6} strokeWidth={0.7} strokeLinejoin="round" transform="translate(50 50) scale(0.7) translate(-50 -50)" />
       <path d={form} fill={`url(#${id}-glanz)`} />
+    </g>
+  )
+}
+
+/** Ein Schriftband mit eingekerbten Enden, das quer über dem unteren Teil des Wappens liegt. */
+export function Band({ id, farbe, text, y = 76 }: { id: string; farbe: string; text: string; y?: number }): ReactElement {
+  const h = 13
+  return (
+    <g>
+      {/* Falten, wo das Band hinter dem Wappen hervorkommt */}
+      <path d={`M18 ${y + 2} L24 ${y - 3} L24 ${y + 2} Z`} fill={dunkel(farbe, 0.6)} />
+      <path d={`M82 ${y + 2} L76 ${y - 3} L76 ${y + 2} Z`} fill={dunkel(farbe, 0.6)} />
+      <path
+        d={`M6 ${y} H94 L88 ${y + h / 2} L94 ${y + h} H6 L12 ${y + h / 2} Z`}
+        fill={`url(#${id}-metall)`}
+        stroke={dunkel(farbe, 0.55)}
+        strokeWidth={1}
+        strokeLinejoin="round"
+      />
+      <path d={`M9 ${y + 1.5} H91`} stroke="#FFFFFF" strokeOpacity={0.35} strokeWidth={0.8} />
+      <text
+        x="50"
+        y={y + h - 3.4}
+        textAnchor="middle"
+        fontSize={7.6}
+        fontWeight={800}
+        letterSpacing="1.2"
+        fill={dunkel(farbe, 0.72)}
+        fontFamily={SCHRIFT}
+      >
+        {text.toUpperCase()}
+      </text>
+    </g>
+  )
+}
+
+/** Flammen, die hinter einem Wappen aufsteigen. */
+export function Flammen({ id, farbe }: { id: string; farbe: string }): ReactElement {
+  const zungen = [
+    'M22 70 C6 56 12 40 18 30 C16 44 26 44 24 32 C34 42 30 58 26 70 Z',
+    'M78 70 C94 56 88 40 82 30 C84 44 74 44 76 32 C66 42 70 58 74 70 Z',
+    'M36 40 C28 26 34 14 44 2 C40 16 52 18 50 6 C60 18 56 30 50 40 Z',
+    'M64 42 C72 28 66 16 56 4 C60 18 48 20 50 8 C40 20 44 32 50 42 Z',
+    'M50 44 C42 30 46 16 50 4 C54 16 58 30 50 44 Z'
+  ]
+  return (
+    <g>
+      {zungen.map((d, i) => (
+        <path key={i} d={d} fill={`url(#${id}-flamme)`} stroke={dunkel(farbe, 0.35)} strokeWidth={0.6} strokeLinejoin="round" opacity={i === 4 ? 1 : 0.92} />
+      ))}
+    </g>
+  )
+}
+
+/**
+ * Ein Brillant von der Seite: Tafel oben, Kranzfacetten bis zur Rundiste (breiteste Stelle),
+ * darunter der Pavillon, der in der Kalette zusammenläuft. Facetten wechseln hell und dunkel.
+ */
+export function Brillant({ id, farbe, filter }: { id: string; farbe: string; filter?: string }): ReactElement {
+  const TL = '34,22'
+  const TM = '50,22'
+  const TR = '66,22'
+  const GL = '4,48'
+  const P1 = '27,48'
+  const P3 = '73,48'
+  const GR = '96,48'
+  const CU = '50,96'
+  const umriss = `${TL} ${TR} ${GR} ${CU} ${GL}`
+  const facetten: Array<[string, string, number]> = [
+    [`${GL} ${TL} ${P1}`, '#FFFFFF', 0.45],
+    [`${TL} ${TM} ${P1}`, '#000000', 0.28],
+    [`${TM} ${P1} ${P3}`, '#FFFFFF', 0.22],
+    [`${TM} ${TR} ${P3}`, '#000000', 0.28],
+    [`${TR} ${GR} ${P3}`, '#FFFFFF', 0.45],
+    [`${GL} ${P1} ${CU}`, '#000000', 0.42],
+    [`${P1} ${P3} ${CU}`, '#FFFFFF', 0.12],
+    [`${P3} ${GR} ${CU}`, '#000000', 0.42]
+  ]
+  return (
+    <g filter={filter}>
+      <polygon points={umriss} fill={`url(#${id}-eis)`} stroke={dunkel(farbe, 0.5)} strokeWidth={1.2} strokeLinejoin="round" />
+      {facetten.map(([punkte, fuellung, deckung], i) => (
+        <polygon key={i} points={punkte} fill={fuellung} fillOpacity={deckung} />
+      ))}
+      {/* Tafel und Rundiste als feine Kanten */}
+      <polygon points={`${TL} ${TR} ${P3} ${P1}`} fill="#FFFFFF" fillOpacity={0.28} />
+      <path d="M4 48 H96" stroke="#FFFFFF" strokeOpacity={0.7} strokeWidth={0.9} />
+      <path d="M34 22 H66" stroke="#FFFFFF" strokeOpacity={0.8} strokeWidth={0.9} />
+      {/* Lichtreflex auf der Tafel */}
+      <polygon points="37,24 54,24 46,30 39,30" fill="#FFFFFF" fillOpacity={0.75} />
     </g>
   )
 }
@@ -240,8 +348,22 @@ export function Edelstein({ id, farbe, filter }: { id: string; farbe: string; fi
   )
 }
 
-/** Text in Metall mit dunkler Kontur, mittig. */
-export function Metallschrift({ text, fuellung, farbe, y, groesse }: { text: string; fuellung: string; farbe: string; y: number; groesse: number }): ReactElement {
+/** Text in Metall mit Kontur (standardmäßig dunkel), mittig. */
+export function Metallschrift({
+  text,
+  fuellung,
+  farbe,
+  y,
+  groesse,
+  kontur
+}: {
+  text: string
+  fuellung: string
+  farbe: string
+  y: number
+  groesse: number
+  kontur?: string
+}): ReactElement {
   return (
     <text
       x="50"
@@ -250,8 +372,8 @@ export function Metallschrift({ text, fuellung, farbe, y, groesse }: { text: str
       fontSize={groesse}
       fontWeight={800}
       fill={fuellung}
-      stroke={dunkel(farbe, 0.6)}
-      strokeWidth={1}
+      stroke={kontur ?? dunkel(farbe, 0.6)}
+      strokeWidth={kontur ? 1.4 : 1}
       paintOrder="stroke"
       fontFamily={SCHRIFT}
       letterSpacing="-1"
