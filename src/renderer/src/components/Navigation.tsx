@@ -12,6 +12,9 @@ const EINTRAEGE: { id: ScreenId; label: string; Icon: LucideIcon }[] = [
   { id: 'einstellungen', label: 'Einstellungen', Icon: Settings }
 ]
 
+/** Reihenfolge der Screens von links nach rechts; bestimmt die Richtung der Übergänge. */
+export const SCREEN_REIHENFOLGE: ScreenId[] = EINTRAEGE.map((e) => e.id)
+
 interface Props {
   aktiv: ScreenId
   onWechsel: (id: ScreenId) => void

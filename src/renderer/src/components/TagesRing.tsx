@@ -69,7 +69,16 @@ export function TagesRing({ anteile, groesse = 240, children }: Props): ReactEle
           animationDuration={700}
         >
           {daten.map((d) => (
-            <Cell key={d.name} fill={d.farbe} />
+            <Cell
+              key={d.name}
+              fill={d.farbe}
+              // Der produktive Anteil leuchtet, damit der Fortschritt lebendig wirkt.
+              style={
+                d.name === 'produktiv'
+                  ? { filter: 'drop-shadow(0 0 5px rgba(0, 192, 118, 0.95)) drop-shadow(0 0 18px rgba(0, 192, 118, 0.5))' }
+                  : undefined
+              }
+            />
           ))}
         </Pie>
         {!leer && <Tooltip content={<DiagrammTooltip />} cursor={false} />}

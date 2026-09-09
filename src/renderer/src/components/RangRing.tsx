@@ -51,7 +51,7 @@ export function RangRing({ produktivSekunden, zielRang, groesse = 260, children 
           key={`v${i}`}
           d={bogen(mitte, mitte, radius, a0, a0 + (a1 - a0) * anteil)}
           stroke={farbe}
-          style={{ filter: `drop-shadow(0 0 8px ${farbe}70)` }}
+          style={{ filter: `drop-shadow(0 0 5px ${farbe}e0) drop-shadow(0 0 16px ${farbe}70)` }}
         />
       )
     }
@@ -59,7 +59,7 @@ export function RangRing({ produktivSekunden, zielRang, groesse = 260, children 
 
   return (
     <div className="relative" style={{ width: groesse, height: groesse }}>
-      <svg width={groesse} height={groesse} fill="none" strokeWidth={12} strokeLinecap="butt">
+      <svg overflow="visible" width={groesse} height={groesse} fill="none" strokeWidth={12} strokeLinecap="butt">
         {teile}
       </svg>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">{children}</div>

@@ -71,30 +71,51 @@ body {
   overflow: hidden;
 }
 
-/* Tiefe im Hintergrund: zwei weiche Lichtflecken in den App-Farben und ein Hauch Licht von unten. */
+/*
+ * Tiefe im Hintergrund: weiche Lichtflecken in den App-Farben, die ganz langsam atmen,
+ * darüber ein feines Korn wie auf Fotopapier. Beides liegt hinter allem Inhalt.
+ */
 body::before {
+  content: '';
+  position: fixed;
+  inset: -12%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 640px at 12% -8%, rgba(254, 83, 3, 0.34), transparent 62%),
+    radial-gradient(900px 600px at 92% -2%, rgba(0, 192, 118, 0.22), transparent 60%),
+    radial-gradient(520px 520px at 50% 28%, rgba(255, 255, 255, 0.045), transparent 65%),
+    radial-gradient(1500px 760px at 50% 118%, rgba(255, 255, 255, 0.07), transparent 60%);
+  animation: hintergrund-atmen 26s ease-in-out infinite alternate;
+  will-change: transform;
+}
+body::after {
   content: '';
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background:
-    radial-gradient(1000px 560px at 10% -14%, rgba(254, 83, 3, 0.24), transparent 62%),
-    radial-gradient(820px 520px at 94% -6%, rgba(0, 192, 118, 0.16), transparent 60%),
-    radial-gradient(700px 420px at 50% 40%, rgba(255, 255, 255, 0.025), transparent 65%),
-    radial-gradient(1400px 700px at 50% 125%, rgba(255, 255, 255, 0.05), transparent 60%);
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='k'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23k)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+}
+@keyframes hintergrund-atmen {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-2.5%, 1.5%, 0) scale(1.07);
+  }
 }
 #root {
   position: relative;
   z-index: 1;
 }
 
-/* Flächen wie Milchglas: leicht durchscheinend, weichgezeichnet, mit feiner Lichtkante oben. */
+/* Flächen wie Milchglas: leicht durchscheinend mit feiner Lichtkante oben. Bewusst ohne Blur, das ruckelt beim Gleiten. */
 .glas {
-  background-color: color-mix(in srgb, var(--color-panel) 78%, transparent);
-  backdrop-filter: blur(24px) saturate(1.2);
-  -webkit-backdrop-filter: blur(24px) saturate(1.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  background-color: color-mix(in srgb, var(--color-panel) 80%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* Knöpfe und klickbare Zeilen federn beim Drücken kurz ein. */
@@ -113,27 +134,70 @@ body::before {
   }
 }
 
-/* Beim Wechsel des Screens gleiten die Karten nacheinander herein. */
-.screen-wechsel > * > * {
-  animation: aufsteigen 0.45s var(--ease-federnd) both;
+/*
+ * Screen-Wechsel wie am Mac: Der alte Screen gleitet in Klickrichtung hinaus und blendet aus,
+ * während der neue von der anderen Seite hereingleitet. Beides läuft gleichzeitig.
+ */
+@keyframes screen-rein-rechts {
+  from {
+    opacity: 0;
+    transform: translate3d(36px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
-.screen-wechsel > * > *:nth-child(2) {
-  animation-delay: 40ms;
+@keyframes screen-rein-links {
+  from {
+    opacity: 0;
+    transform: translate3d(-36px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
-.screen-wechsel > * > *:nth-child(3) {
-  animation-delay: 80ms;
+@keyframes screen-raus-links {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(-36px, 0, 0);
+  }
 }
-.screen-wechsel > * > *:nth-child(4) {
-  animation-delay: 120ms;
+@keyframes screen-raus-rechts {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(36px, 0, 0);
+  }
 }
-.screen-wechsel > * > *:nth-child(5) {
-  animation-delay: 160ms;
+.screen-rein-rechts,
+.screen-rein-links {
+  animation: screen-rein-rechts 0.46s var(--ease-federnd) both;
+  will-change: transform, opacity;
 }
-.screen-wechsel > * > *:nth-child(6) {
-  animation-delay: 200ms;
+.screen-rein-links {
+  animation-name: screen-rein-links;
 }
-.screen-wechsel > * > *:nth-child(n + 7) {
-  animation-delay: 240ms;
+.screen-raus-links,
+.screen-raus-rechts {
+  animation: screen-raus-links 0.26s cubic-bezier(0.4, 0, 0.6, 1) both;
+  will-change: transform, opacity;
+}
+.screen-raus-rechts {
+  animation-name: screen-raus-rechts;
+}
+
+/* Diagramme dürfen ihr Glühen über den eigenen Rand hinaus zeichnen, sonst entsteht ein sichtbares Quadrat. */
+.recharts-surface {
+  overflow: visible;
 }
 
 /* Dialoge: der dunkle Schleier blendet auf, das Fenster darin federt herein. */
