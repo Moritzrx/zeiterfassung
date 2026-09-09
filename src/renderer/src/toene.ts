@@ -115,8 +115,13 @@ interface RauschOptionen {
   start?: number
   dauer: number
   pegel: number
+  /** Filterart: bandpass (Standard) für Zischen, lowpass für weiches, dumpfes Rauschen */
+  filter?: BiquadFilterType
   filterVon: number
+  /** Ziel der Filterfrequenz; ohne `filterZurueck` am Ende erreicht, sonst nach 55 % der Dauer */
   filterBis?: number
+  /** Filterfrequenz am Ende, wenn der Bogen wieder zurückgehen soll (auf und ab wie ein Wischen) */
+  filterZurueck?: number
   guete?: number
   anstieg?: number
 }
@@ -130,12 +135,19 @@ function rauschen(k: AudioContext, o: RauschOptionen): void {
   const quelle = k.createBufferSource()
   quelle.buffer = rauschPuffer
   const filter = k.createBiquadFilter()
-  filter.type = 'bandpass'
+  filter.type = o.filter ?? 'bandpass'
   filter.Q.value = o.guete ?? 1
   const g = k.createGain()
   const t0 = k.currentTime + (o.start ?? 0)
   filter.frequency.setValueAtTime(o.filterVon, t0)
-  if (o.filterBis !== undefined) filter.frequency.exponentialRampToValueAtTime(o.filterBis, t0 + o.dauer)
+  if (o.filterBis !== undefined) {
+    if (o.filterZurueck !== undefined) {
+      filter.frequency.exponentialRampToValueAtTime(o.filterBis, t0 + o.dauer * 0.55)
+      filter.frequency.exponentialRampToValueAtTime(o.filterZurueck, t0 + o.dauer)
+    } else {
+      filter.frequency.exponentialRampToValueAtTime(o.filterBis, t0 + o.dauer)
+    }
+  }
   g.gain.setValueAtTime(0.0001, t0)
   g.gain.exponentialRampToValueAtTime(o.pegel, t0 + (o.anstieg ?? 0.01))
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.dauer)
@@ -147,15 +159,17 @@ function rauschen(k: AudioContext, o: RauschOptionen): void {
 }
 
 const KLAENGE: Record<Ton, (k: AudioContext) => void> = {
-  // Ein sauberer, kurzer Tastenklick: ein fallender Sinus-Tupfer plus ein Hauch Rauschen.
+  // Ein sauberer, kurzer Tastenklick: ein fallender Sinus-Tupfer plus ein Hauch dumpfes Rauschen.
   tick: (k) => {
-    ton(k, { von: 1900, bis: 1250, dauer: 0.045, pegel: 0.11 })
-    rauschen(k, { dauer: 0.025, pegel: 0.045, filterVon: 5200, filterBis: 3200, guete: 0.8 })
+    ton(k, { von: 1400, bis: 950, dauer: 0.04, pegel: 0.08 })
+    rauschen(k, { dauer: 0.02, pegel: 0.03, filter: 'lowpass', filterVon: 3200, filterBis: 1800, guete: 0.7 })
   },
-  // Das Wischen beim Screen-Wechsel: ein weiches, aufsteigendes Rauschen mit leisem Ton darunter.
+  // Das Wischen beim Screen-Wechsel, auf die 380 ms des Übergangs abgestimmt: weiches, tiefes Luftrauschen
+  // (Tiefpass, öffnet sich bis 1,1 kHz und schließt wieder), darunter ein sehr leiser, sanft steigender Ton.
+  // Bewusst ohne Höhen und mit langsamem Einschwingen, die erste Fassung war zu hell und scharf.
   wischen: (k) => {
-    rauschen(k, { dauer: 0.24, pegel: 0.05, filterVon: 500, filterBis: 2800, guete: 1.4, anstieg: 0.05 })
-    ton(k, { von: 420, bis: 660, dauer: 0.2, pegel: 0.035, anstieg: 0.04 })
+    rauschen(k, { dauer: 0.36, pegel: 0.032, filter: 'lowpass', filterVon: 220, filterBis: 1100, filterZurueck: 260, guete: 0.6, anstieg: 0.09 })
+    ton(k, { von: 260, bis: 330, dauer: 0.3, pegel: 0.018, anstieg: 0.08 })
   },
   oeffnen: (k) => {
     ton(k, { von: 520, dauer: 0.1, pegel: 0.07 })

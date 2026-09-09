@@ -147,10 +147,18 @@ body::after {
   opacity: 0;
   pointer-events: none;
 }
+/*
+ * Ruhige Choreografie (9. September 2026, "cleaner"): wenig Weg (24 px), kaum Skalierung, der alte
+ * Screen ist nach 180 ms weg, der neue bleibt in den ersten 30 % fast unsichtbar und blendet dann
+ * weich auf. So liegen nie zwei gut sichtbare Screens übereinander, es entsteht kein Doppelbild.
+ */
 @keyframes screen-rein-rechts {
   from {
     opacity: 0;
-    transform: translate3d(40px, 0, 0) scale(0.985);
+    transform: translate3d(24px, 0, 0) scale(0.995);
+  }
+  30% {
+    opacity: 0.25;
   }
   to {
     opacity: 1;
@@ -160,7 +168,10 @@ body::after {
 @keyframes screen-rein-links {
   from {
     opacity: 0;
-    transform: translate3d(-40px, 0, 0) scale(0.985);
+    transform: translate3d(-24px, 0, 0) scale(0.995);
+  }
+  30% {
+    opacity: 0.25;
   }
   to {
     opacity: 1;
@@ -174,7 +185,7 @@ body::after {
   }
   to {
     opacity: 0;
-    transform: translate3d(-40px, 0, 0) scale(0.985);
+    transform: translate3d(-16px, 0, 0) scale(0.995);
   }
 }
 @keyframes screen-raus-rechts {
@@ -184,19 +195,19 @@ body::after {
   }
   to {
     opacity: 0;
-    transform: translate3d(40px, 0, 0) scale(0.985);
+    transform: translate3d(16px, 0, 0) scale(0.995);
   }
 }
 .screen-rein-rechts,
 .screen-rein-links {
-  animation: screen-rein-rechts 0.44s var(--ease-federnd) both;
+  animation: screen-rein-rechts 0.38s var(--ease-federnd) both;
 }
 .screen-rein-links {
   animation-name: screen-rein-links;
 }
 .screen-raus-links,
 .screen-raus-rechts {
-  animation: screen-raus-links 0.24s cubic-bezier(0.4, 0, 0.6, 1) both;
+  animation: screen-raus-links 0.18s cubic-bezier(0.4, 0, 0.7, 1) both;
 }
 .screen-raus-rechts {
   animation-name: screen-raus-rechts;

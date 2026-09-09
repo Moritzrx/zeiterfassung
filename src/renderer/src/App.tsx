@@ -26,7 +26,7 @@ const SCREENS: Record<ScreenId, () => ReactElement> = {
 }
 
 /** Wie lange der alte Screen beim Wechsel noch sichtbar hinausgleitet (passend zu styles.css). */
-const RAUS_MS = 240
+const RAUS_MS = 180
 
 /**
  * Der Inhalt eines Screens, vom Wechsel abgekoppelt: `memo` sorgt dafür, dass ein Klick in der
