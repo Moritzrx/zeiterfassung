@@ -530,6 +530,7 @@ function ipcRegistrieren(): void {
         wochen: number
         letzte_woche: string | null
         letztes_delta: number | null
+        letztes_wirksam?: number | null
         im_urlaub?: boolean
       }>
     ).map((z) => ({
@@ -539,6 +540,7 @@ function ipcRegistrieren(): void {
       wochen: Number(z.wochen),
       letzteWoche: z.letzte_woche,
       letztesDelta: z.letztes_delta === null ? null : Number(z.letztes_delta),
+      letztesWirksam: z.letztes_wirksam === null || z.letztes_wirksam === undefined ? null : Number(z.letztes_wirksam),
       imUrlaub: z.im_urlaub === true,
       istIch: z.user_id === eigeneId
     }))

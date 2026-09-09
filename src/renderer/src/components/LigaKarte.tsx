@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
-import { LIGA_FARBEN, LIGA_START_TROPHAEEN, deltaText, liga, ligaFortschritt, naechsteLiga, wochenPrognose } from '@shared/liga'
+import {
+  LIGA_FARBEN,
+  LIGA_MAX_DELTA,
+  LIGA_MIN_DELTA,
+  LIGA_START_TROPHAEEN,
+  deltaText,
+  liga,
+  ligaFortschritt,
+  naechsteLiga,
+  wirksamesDelta,
+  wochenPrognose
+} from '@shared/liga'
 import type { LigaStand, Urlaub } from '@shared/typen'
 import { fehlerText, kurzDatum, stundenText, zahlText } from '../format'
 import { hinweisZeigen } from './Hinweis'
@@ -66,27 +77,50 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
   // Hochrechnung der laufenden Woche: bisheriger Schnitt je Arbeitstag auf den Rest übertragen.
   const p = wochenPrognose(produktivSekunden, gesamtziel, urlaube)
   const ganzeWocheUrlaub = p.urlaubstage >= 5
-  const farbeDelta = p.delta > 0 ? 'text-produktiv' : p.delta < 0 ? 'text-unproduktiv' : 'text-mute'
+  // Unter 0 fällt niemand: die große Zahl zeigt, was am Stand wirklich passiert; der Regelsatz nennt den rohen Wert.
+  const wirksam = wirksamesDelta(trophaeen, p.delta)
+  const abgefangen = wirksam !== p.delta
+  const farbeDelta = wirksam > 0 ? 'text-produktiv' : wirksam < 0 ? 'text-unproduktiv' : 'text-mute'
+  const neutralText = `${stundenText(p.neutral * 3600)} h`
   let titelRechts: string
-  let zahlRechts: string
-  let erklaerung: string
+  let zahlRechts: string | null
+  let kurz: string
+  let regel: string
   if (ganzeWocheUrlaub) {
     titelRechts = 'Diese Woche'
-    zahlRechts = deltaText(p.delta)
-    erklaerung = 'ganze Woche Urlaub, kostet nichts'
-  } else if (p.art === 'stand') {
-    titelRechts = 'Diese Woche'
-    zahlRechts = deltaText(p.delta)
-    erklaerung = `${stundenText(produktivSekunden)} h produktiv, zählt nach Sonntag`
+    zahlRechts = deltaText(wirksam)
+    kurz = 'ganze Woche Urlaub'
+    regel = 'Eine ganze Urlaubswoche kostet nichts. Wer trotzdem arbeitet, bekommt Trophäen dazu, 10 je Stunde.'
   } else if (p.art === 'zu-frueh') {
     titelRechts = 'Diese Woche'
-    zahlRechts = '–'
-    erklaerung = `Prognose ab Montagmittag, ±0 ab ${stundenText(p.neutral * 3600)} h`
+    zahlRechts = null
+    kurz = 'Hochrechnung ab Montagmittag'
+    regel = `Trophäen gibt es ab ${neutralText} produktiv in der Woche (dein Ziel minus 10), 10 je Stunde darüber. Jede Stunde darunter kostet 10.`
   } else {
-    titelRechts = 'Voraussichtlich'
-    zahlRechts = deltaText(p.delta)
-    erklaerung = `bei deinem Tempo etwa ${stundenText(p.sekunden)} h, ±0 ab ${stundenText(p.neutral * 3600)} h`
+    if (p.art === 'stand') {
+      titelRechts = 'Diese Woche'
+      kurz = `${stundenText(produktivSekunden)} h produktiv, zählt nach Sonntag`
+    } else {
+      titelRechts = 'Voraussichtlich diese Woche'
+      kurz = `bisher ${stundenText(produktivSekunden)} h, hochgerechnet etwa ${stundenText(p.sekunden)} h`
+    }
+    zahlRechts = deltaText(wirksam)
+    if (abgefangen) {
+      regel = `Das wären ${deltaText(p.delta)}, aber unter 0 Trophäen fällt niemand. Trophäen gibt es ab ${neutralText} produktiv in der Woche, 10 je Stunde darüber.`
+    } else if (p.delta < 0) {
+      regel = `Trophäen gibt es erst ab ${neutralText} produktiv in der Woche (dein Ziel minus 10). Jede Stunde darunter kostet 10, höchstens ${LIGA_MIN_DELTA} pro Woche.`
+    } else {
+      regel = `Jede Stunde über ${neutralText} produktiv bringt 10 Trophäen, höchstens +${LIGA_MAX_DELTA} pro Woche. Unter ${neutralText} kostet die Woche welche.`
+    }
   }
+  const letzteWocheText =
+    eigene?.letzteWoche && eigene.letztesDelta !== null
+      ? `Woche ab ${kurzDatum(eigene.letzteWoche)}: ${deltaText(eigene.letztesDelta)}${
+          eigene.letztesWirksam !== null && eigene.letztesWirksam !== eigene.letztesDelta
+            ? `, am Stand ${deltaText(eigene.letztesWirksam)} (unter 0 fällt niemand)`
+            : ''
+        } · ${eigene.wochen} ${eigene.wochen === 1 ? 'Woche' : 'Wochen'} gezählt`
+      : 'Noch keine Woche gezählt. Die erste zählt nach dem kommenden Sonntag.'
 
   return (
     <Karte>
@@ -106,10 +140,16 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
             />
           </div>
         </div>
-        <div className="max-w-[220px] shrink-0 text-right">
+        <div className="max-w-[240px] shrink-0 text-right">
           <p className="text-xs text-mute">{titelRechts}</p>
-          <p className={`text-2xl font-light ${p.art === 'zu-frueh' ? 'text-dim' : farbeDelta}`}>{zahlRechts}</p>
-          <p className="text-xs text-dim">{erklaerung}</p>
+          {zahlRechts === null ? (
+            <p className="text-2xl font-light text-dim">–</p>
+          ) : (
+            <p className={`text-2xl font-light ${farbeDelta}`}>
+              {zahlRechts} <span className="text-sm text-mute">Trophäen</span>
+            </p>
+          )}
+          <p className="text-xs text-dim">{kurz}</p>
           {p.urlaubstage > 0 && !ganzeWocheUrlaub && (
             <p className="text-xs text-dim">
               {p.urlaubstage} {p.urlaubstage === 1 ? 'Urlaubstag' : 'Urlaubstage'} diese Woche
@@ -118,22 +158,16 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 text-xs text-dim">
-        <span>
-          {fehler
-            ? fehler
-            : eigene?.letzteWoche && eigene.letztesDelta !== null
-              ? `Woche ab ${kurzDatum(eigene.letzteWoche)}: ${deltaText(eigene.letztesDelta)} · ${eigene.wochen} ${
-                  eigene.wochen === 1 ? 'Woche' : 'Wochen'
-                } gezählt`
-              : 'Noch keine Woche gezählt. Die erste zählt nach dem kommenden Sonntag.'}
-        </span>
+      <p className="mt-4 text-xs text-dim">{regel}</p>
+
+      <div className="mt-2 flex items-center justify-between gap-3 text-xs text-dim">
+        <span>{fehler ?? letzteWocheText}</span>
         <button
           type="button"
           onClick={() => setUebersichtOffen(true)}
           className="shrink-0 rounded-chip px-3 py-1.5 text-xs text-mute transition-colors hover:bg-panel-2 hover:text-ink"
         >
-          Alle Ligen
+          So funktioniert die Liga
         </button>
       </div>
 

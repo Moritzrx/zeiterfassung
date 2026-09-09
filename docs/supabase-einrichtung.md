@@ -83,6 +83,10 @@ Damit jeder seinen Urlaub hinterlegen kann und die Liga ihn berücksichtigt:
 
 - `supabase/11_auszeichnungen.sql` genauso ausführen. Es erlaubt der Tabelle die neuen Auszeichnungstypen; ohne das Skript kann die App sie nicht speichern.
 
+## 6h. Trophäen nie unter 0 (Skript 12)
+
+- `supabase/12_liga_nicht_unter_null.sql` genauso ausführen. Danach kann niemand unter 0 Trophäen fallen (wie in Clash of Clans), und die Liga-Karte zeigt zur letzten Woche auch, was sie am Stand wirklich geändert hat. Ohne das Skript rechnet die Datenbank weiter ins Minus, die App zeigt dann nach einer schwachen ersten Woche zum Beispiel −120 Trophäen.
+
 ## 7. Zugangsdaten in die App bringen
 
 1. Links unten **"Project Settings"** (Zahnrad) → **"API Keys"**.

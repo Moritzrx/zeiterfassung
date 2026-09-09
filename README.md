@@ -116,8 +116,9 @@ Der Wochenrang fängt jeden Montag bei null an. Die Liga dagegen bleibt, wie die
 - Pro Woche gibt es 10 Trophäen je produktive Stunde über oder unter dem neutralen Punkt. Der liegt 10 Stunden unter dem eigenen Wochenziel, bei 50 Stunden Ziel also bei 40. Das Ziel erreicht heißt +100, eine 30-Stunden-Woche kostet 100. Höchstens +200 und höchstens −120 pro Woche.
 - Wochen ohne einen einzigen Block (App aus) zählen nicht. Die laufende Woche zählt erst nach Sonntag; auf dem Wochen-Screen steht schon vorher, was sie bringen würde.
 - **Urlaub** trägt man unter Einstellungen → Urlaub ein (von, bis, Notiz). Urlaubstage von Montag bis Freitag senken die Erwartung der Woche anteilig: Bei zwei Urlaubstagen erwartet die Liga nur drei Fünftel, eine ganze Urlaubswoche kostet nichts. Das gilt genauso für Feiertage und Krankheit. Wer im Urlaub trotzdem arbeitet, bekommt Trophäen dazu.
+- Unter 0 Trophäen fällt niemand: Wer bei 0 steht, verliert durch eine schwache Woche nichts (wie in Clash of Clans). Die Wochen-Karte zeigt deshalb, was die Woche am Stand wirklich ändert, und nennt den rohen Wert dazu.
 - Die Liga läuft dauerhaft weiter und wird nie zurückgesetzt.
-- Jeder startet bei 0 Trophäen ohne Liga und erreicht mit etwa vier Zielwochen die Bronze-Liga III ab 400. Die Ligen: Bronze, Silber, Gold, Kristall, Meister, Champion und Titan mit je drei Stufen (III, II, I), darüber ab 5.000 Trophäen die Legenden-Liga. Alle Schwellen stehen in der App unter "Alle Ligen".
+- Jeder startet bei 0 Trophäen ohne Liga und erreicht mit etwa vier Zielwochen die Bronze-Liga III ab 400. Die Ligen: Bronze, Silber, Gold, Kristall, Meister, Champion und Titan mit je drei Stufen (III, II, I), darüber ab 5.000 Trophäen die Legenden-Liga. Alle Schwellen, die Regel und Beispielwochen stehen in der App unter "So funktioniert die Liga".
 - Die Liga-Rangliste des Teams steht oben auf dem Team-Screen.
 
 ### Auszeichnungen
@@ -170,7 +171,7 @@ Die ausführliche Klick-Anleitung mit Bildern steht in [`docs/supabase-einrichtu
 2. Im **SQL Editor** nacheinander die Skripte aus dem Ordner `supabase/` einfügen und mit "Run" ausführen:
    - `01_tabellen.sql` (Tabellen und Zugriffsrechte)
    - `02_startwerte.sql` (Namen, Ziele, Startregeln; vorher die drei E-Mail-Adressen oben im Skript prüfen)
-   - `05_auswertung.sql`, `06_team.sql`, `08_liga.sql`, `09_urlaub.sql`, `10_liga_start_null.sql` und `11_auszeichnungen.sql` (Funktionen für lange Auswertungen, den Team-Verlauf, die Liga, den Urlaub und die erweiterten Auszeichnungen)
+   - `05_auswertung.sql`, `06_team.sql`, `08_liga.sql`, `09_urlaub.sql`, `10_liga_start_null.sql`, `11_auszeichnungen.sql` und `12_liga_nicht_unter_null.sql` (Funktionen für lange Auswertungen, den Team-Verlauf, die Liga, den Urlaub und die erweiterten Auszeichnungen)
    - optional `03_testdaten_einfuegen.sql` zum Anschauen, später `04_testdaten_entfernen.sql`. **Vor dem echten Einsatz Skript 4 ausführen**, sonst stehen die erfundenen Wochen in den Auswertungen.
 3. Unter **Authentication → Sign In / Providers → Email** den Schalter **"Allow new users to sign up"** ausschalten, damit niemand Fremdes ein Konto anlegen kann.
 4. Unter **Project Settings → API Keys** die **Project URL** und den **Publishable key** kopieren. Diese beiden Werte werden beim Bauen fest in die App eingebaut (Abschnitt 7). Den **Secret key** nie verwenden oder weitergeben.

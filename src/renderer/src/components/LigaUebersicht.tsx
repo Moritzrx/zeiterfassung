@@ -9,10 +9,12 @@ import {
   LIGA_START_TROPHAEEN,
   LIGA_STUFEN_NAMEN,
   LIGEN,
+  deltaText,
   liga,
+  ligaDelta,
   type LigaStufe
 } from '@shared/liga'
-import { zahlText } from '../format'
+import { stundenText, zahlText } from '../format'
 import { LigaAbzeichen } from './LigaAbzeichen'
 
 interface Props {
@@ -35,6 +37,11 @@ export function LigaUebersicht({ trophaeen, gesamtziel, onSchliessen }: Props): 
 
   const aktuelle = liga(trophaeen)
   const neutral = gesamtziel - LIGA_NEUTRAL_ABSTAND
+  // Beispielwochen für das eigene Ziel: von deutlich darunter bis über dem Höchstwert.
+  const beispiele = [neutral - 15, neutral - 5, neutral, neutral + 5, gesamtziel, neutral + 20].map((stunden) => ({
+    stunden,
+    delta: ligaDelta(stunden * 3600, gesamtziel)
+  }))
 
   return (
     <Portal>
@@ -49,8 +56,17 @@ export function LigaUebersicht({ trophaeen, gesamtziel, onSchliessen }: Props): 
               {LIGA_NEUTRAL_ABSTAND}). Dein Ziel erreicht heißt +{(gesamtziel - neutral) * 10}, höchstens +{LIGA_MAX_DELTA} und
               höchstens {LIGA_MIN_DELTA} pro Woche. Wochen ohne einen einzigen Block zählen nicht. Hinterlegter Urlaub senkt
               die Erwartung anteilig, eine ganze Urlaubswoche kostet nichts. Jeder startet bei {LIGA_START_TROPHAEEN} Trophäen
-              ohne Liga; ab 400 beginnt die Bronze-Liga III. Die Liga läuft dauerhaft weiter und wird nie zurückgesetzt.
+              ohne Liga; ab 400 beginnt die Bronze-Liga III. Unter 0 fällt niemand: Wer bei 0 steht, verliert durch eine
+              schwache Woche nichts. Die Liga läuft dauerhaft weiter und wird nie zurückgesetzt.
             </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              {beispiele.map((b) => (
+                <span key={b.stunden} className="rounded-chip bg-panel-2 px-2.5 py-1 text-mute">
+                  {stundenText(b.stunden * 3600)} h{' '}
+                  <span className={b.delta > 0 ? 'text-produktiv' : b.delta < 0 ? 'text-unproduktiv' : 'text-ink'}>{deltaText(b.delta)}</span>
+                </span>
+              ))}
+            </div>
           </div>
           <button type="button" onClick={onSchliessen} className="rounded-chip p-1 text-mute hover:text-ink" title="Schließen">
             <X size={18} strokeWidth={1.5} />

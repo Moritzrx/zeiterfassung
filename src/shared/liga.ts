@@ -3,8 +3,9 @@
  * Jede abgeschlossene Woche bringt Trophäen dazu oder nimmt welche weg, je nachdem,
  * wie weit man über oder unter dem neutralen Punkt lag (Gesamtziel minus 10 Stunden).
  *
- * Die Summe über alle Wochen rechnet die Datenbank (supabase/08_liga.sql) mit genau
- * dieser Formel. Hier steht sie für die Vorschau der laufenden Woche und die Ligastufen.
+ * Die Summe über alle Wochen rechnet die Datenbank (zuletzt supabase/12_liga_nicht_unter_null.sql)
+ * mit genau dieser Formel, Woche für Woche und nie unter 0 (wie in Clash of Clans).
+ * Hier steht sie für die Vorschau der laufenden Woche und die Ligastufen.
  */
 
 import { berlinDatum, berlinTeile, datumVerschieben, wochenanfang } from './zeit'
@@ -112,6 +113,14 @@ export function ligaDelta(produktivSekunden: number, gesamtziel: number, urlaubs
   const stunden = produktivSekunden / 3600
   const roh = Math.round((stunden - neutralStunden(gesamtziel, urlaubstage)) * LIGA_FAKTOR)
   return Math.max(LIGA_MIN_DELTA, Math.min(LIGA_MAX_DELTA, roh))
+}
+
+/**
+ * Trophäen fallen nie unter 0: was eine Woche mit diesem Delta am Stand tatsächlich ändert.
+ * Bei 0 Trophäen kostet eine schwache Woche nichts, bei 50 Trophäen höchstens −50.
+ */
+export function wirksamesDelta(trophaeen: number, delta: number): number {
+  return Math.max(delta, -Math.max(0, trophaeen))
 }
 
 /** Wie viele Werktage (Mo–Fr) einer Woche ab dem Montag "JJJJ-MM-TT" in einem der Urlaube liegen. */

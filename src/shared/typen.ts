@@ -118,6 +118,8 @@ export interface LigaStand {
   letzteWoche: string | null
   /** Trophäen der zuletzt gezählten Woche */
   letztesDelta: number | null
+  /** was die zuletzt gezählte Woche am Stand tatsächlich geändert hat (nie unter 0); null vor Skript 12 */
+  letztesWirksam: number | null
   /** heute im hinterlegten Urlaub */
   imUrlaub: boolean
   istIch: boolean
