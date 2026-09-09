@@ -1,34 +1,22 @@
 import type { ReactElement } from 'react'
-import { LIGA_FARBEN, liga, type Liga } from '@shared/liga'
-import {
-  Definitionen,
-  Edelstein,
-  Fluegel,
-  Funkeln,
-  Krone,
-  Lorbeer,
-  Metallform,
-  Metallschrift,
-  Nieten,
-  SCHILD,
-  SECHSECK,
-  Strahlen,
-  dunkel,
-  stern
-} from './wappen'
+import { LIGA_FARBEN, liga, type Liga, type LigaStufe } from '@shared/liga'
+import bronze from '../assets/wappen/liga-bronze.png'
+import silber from '../assets/wappen/liga-silber.png'
+import gold from '../assets/wappen/liga-gold.png'
+import kristall from '../assets/wappen/liga-kristall.png'
+import meister from '../assets/wappen/liga-meister.png'
+import champion from '../assets/wappen/liga-champion.png'
+import titan from '../assets/wappen/liga-titan.png'
+import legende from '../assets/wappen/liga-legende.png'
+import { Definitionen, Metallschrift, SCHILD, dunkel } from './wappen'
 
 /*
- * Die Liga-Abzeichen, von unten nach oben prächtiger:
- *   Bronze   Schild mit Nieten
- *   Silber   Schild mit Nieten und Flügeln
- *   Gold     Schild mit Lorbeer
- *   Kristall geschliffener Edelstein mit Funkeln
- *   Meister  Schild mit Krone und Lorbeer
- *   Champion Schild mit Krone und Strahlenkranz, leuchtet
- *   Titan    Sechseck-Platte mit großen Flügeln und Blitz, leuchtet
- *   Legende  Stern im Strahlenkranz, leuchtet
+ * Die Liga-Abzeichen: ein illustriertes Wappen je Stufe (erzeugt mit Higgsfield, liegt als PNG mit
+ * Alphakanal in assets/wappen und wird ohne sichtbaren Rand eingeblendet), darüber als Vektor die
+ * römische Ziffer der Unterstufe. Ohne Liga bleibt ein graues Schild mit Strich.
  */
 
+const BILDER: Record<LigaStufe, string | null> = { keine: null, bronze, silber, gold, kristall, meister, champion, titan, legende }
 const ROEMISCH: Record<number, string> = { 1: 'I', 2: 'II', 3: 'III' }
 
 interface Props {
@@ -40,125 +28,37 @@ interface Props {
 
 export function LigaAbzeichen({ trophaeen = 0, liga: vorgabe, groesse = 56 }: Props): ReactElement {
   const l = vorgabe ?? liga(trophaeen)
-  const stufe = l.stufe
-  const farbe = LIGA_FARBEN[stufe]
-  const id = `liga-${stufe}`
-  const leuchtet = stufe !== 'keine'
-  const metall = `url(#${id}-metall)`
-  const filter = leuchtet ? `url(#${id}-leuchten)` : undefined
-  const ziffer = (y = 63, groesseZiffer = 34): ReactElement => (
-    <Metallschrift text={ROEMISCH[l.nummer] ?? ''} fuellung={metall} farbe={farbe} y={y} groesse={l.nummer === 3 ? groesseZiffer * 0.86 : groesseZiffer} />
-  )
-
-  let inhalt: ReactElement
-  switch (stufe) {
-    case 'keine':
-      inhalt = (
-        <g>
-          <path d={SCHILD} fill="#1C1C1F" stroke={farbe} strokeWidth={2} strokeLinejoin="round" />
-          <path d="M38 52 H62" stroke={farbe} strokeWidth={4} strokeLinecap="round" />
-        </g>
-      )
-      break
-    case 'bronze':
-      inhalt = (
-        <g>
-          <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
-          <Nieten farbe={farbe} />
-          {ziffer()}
-        </g>
-      )
-      break
-    case 'silber':
-      inhalt = (
-        <g>
-          <Fluegel farbe={farbe} gross={false} />
-          <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
-          <Nieten farbe={farbe} />
-          {ziffer()}
-        </g>
-      )
-      break
-    case 'gold':
-      inhalt = (
-        <g>
-          <Lorbeer farbe={farbe} />
-          <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
-          {ziffer()}
-        </g>
-      )
-      break
-    case 'kristall':
-      inhalt = (
-        <g>
-          <Edelstein id={id} farbe={farbe} filter={filter} />
-          <Metallschrift text={ROEMISCH[l.nummer] ?? ''} fuellung="#EAF7FF" farbe={farbe} y={62} groesse={l.nummer === 3 ? 26 : 30} />
-          <Funkeln x={30} y={26} r={6} farbe="#FFFFFF" />
-          <Funkeln x={74} y={70} r={4.5} farbe="#FFFFFF" />
-        </g>
-      )
-      break
-    case 'meister':
-      inhalt = (
-        <g>
-          <Lorbeer farbe={farbe} />
-          <g transform="translate(0 6)">
-            <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
-          </g>
-          <Krone farbe={farbe} metall={metall} />
-          {ziffer(72, 30)}
-        </g>
-      )
-      break
-    case 'champion':
-      inhalt = (
-        <g>
-          <Strahlen farbe={farbe} anzahl={14} innen={30} aussen={50} />
-          <g transform="translate(0 6)">
-            <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
-          </g>
-          <Krone farbe={farbe} metall={metall} />
-          {ziffer(72, 30)}
-        </g>
-      )
-      break
-    case 'titan':
-      inhalt = (
-        <g>
-          <Fluegel farbe={farbe} gross />
-          <Metallform id={id} farbe={farbe} form={SECHSECK} filter={filter} />
-          <path
-            d="M55 20 L38 54 H49 L44 80 L64 44 H53 Z"
-            fill="#FFD166"
-            stroke={dunkel('#FFD166', 0.4)}
-            strokeWidth={0.8}
-            strokeLinejoin="round"
-            opacity={0.9}
-            transform="translate(50 50) scale(0.78) translate(-50 -56)"
-          />
-          {ziffer(84, 15)}
-        </g>
-      )
-      break
-    default:
-      inhalt = (
-        <g>
-          <Strahlen farbe="#A78BFA" anzahl={20} innen={22} aussen={50} />
-          <g filter={filter}>
-            <circle cx="50" cy="50" r="30" fill="#2A1D4A" stroke={farbe} strokeWidth={1.5} />
-            <polygon points={stern(50, 52, 27)} fill={metall} stroke={dunkel(farbe, 0.5)} strokeWidth={1.2} strokeLinejoin="round" />
-            <polygon points={stern(50, 52, 27)} fill={`url(#${id}-glanz)`} />
-          </g>
-          <Funkeln x={24} y={22} r={5} farbe="#FFFFFF" />
-          <Funkeln x={78} y={30} r={3.5} farbe="#FFFFFF" />
-        </g>
-      )
-  }
+  const farbe = LIGA_FARBEN[l.stufe]
+  const bild = BILDER[l.stufe]
+  const id = `liga-${l.stufe}`
+  const ziffer = ROEMISCH[l.nummer]
 
   return (
-    <svg width={groesse} height={groesse} viewBox="0 0 100 100" overflow="visible" role="img" aria-label={l.name}>
-      <Definitionen id={id} farbe={farbe} />
-      {inhalt}
-    </svg>
+    <div className="relative shrink-0 select-none" style={{ width: groesse, height: groesse }} role="img" aria-label={l.name}>
+      {bild && (
+        <img
+          src={bild}
+          alt=""
+          draggable={false}
+          className="pointer-events-none absolute max-w-none"
+          style={{ left: '-12%', top: '-12%', width: '124%', height: '124%' }}
+        />
+      )}
+      <svg className="absolute inset-0" width={groesse} height={groesse} viewBox="0 0 100 100" overflow="visible" aria-hidden="true">
+        <Definitionen id={id} farbe={farbe} />
+        {!bild && (
+          <g>
+            <path d={SCHILD} fill="#1C1C1F" stroke={farbe} strokeWidth={2.5} strokeLinejoin="round" />
+            <path d="M38 52 H62" stroke={farbe} strokeWidth={4} strokeLinecap="round" />
+          </g>
+        )}
+        {bild && ziffer && (
+          <g>
+            <rect x={ziffer === 'III' ? 30 : 35} y={44} width={ziffer === 'III' ? 40 : 30} height={26} rx={8} fill="#000000" fillOpacity={0.38} />
+            <Metallschrift text={ziffer} fuellung="#FFFFFF" farbe={farbe} y={65} groesse={ziffer === 'III' ? 24 : 28} kontur={dunkel(farbe, 0.8)} />
+          </g>
+        )}
+      </svg>
+    </div>
   )
 }

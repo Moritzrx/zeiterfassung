@@ -267,7 +267,7 @@ export function WocheScreen(): ReactElement {
 
       <section className="flex flex-col items-center">
         <RangRing produktivSekunden={produktiv} zielRang={ziel}>
-          <RangAbzeichen rang={aktuellerRang} groesse={52} />
+          <RangAbzeichen rang={aktuellerRang} groesse={64} />
           <p className="mt-1 text-[48px] leading-none font-light">
             <AnimierteZahl wert={aktuellerRang} format={(n) => String(Math.round(n))} />
           </p>

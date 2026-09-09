@@ -74,7 +74,7 @@ export function LigaUebersicht({ trophaeen, gesamtziel, onSchliessen }: Props): 
                       className={`flex items-center gap-3 rounded-card p-3 ${istAktuell ? 'bg-panel-2' : erreicht ? 'bg-panel-2/40' : ''}`}
                     >
                       <div className={erreicht ? '' : 'opacity-40'}>
-                        <LigaAbzeichen liga={l} groesse={44} />
+                        <LigaAbzeichen liga={l} groesse={52} />
                       </div>
                       <div className="min-w-0">
                         <p className={`truncate text-sm ${erreicht ? 'text-ink' : 'text-mute'}`}>{l.name}</p>

@@ -73,7 +73,7 @@ export function RangUebersicht({ aktuellerRang, onSchliessen }: Props): ReactEle
                       }`}
                     >
                       <div className={erreicht ? '' : 'opacity-40'}>
-                        <RangAbzeichen rang={r} groesse={44} />
+                        <RangAbzeichen rang={r} groesse={52} />
                       </div>
                       <div className="min-w-0">
                         <p className={`truncate text-sm ${erreicht ? 'text-ink' : 'text-mute'}`}>
