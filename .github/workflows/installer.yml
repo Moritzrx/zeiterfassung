@@ -34,7 +34,8 @@ jobs:
         run: node node_modules/electron/install.js
 
       - name: Installer bauen
-        run: npm run build:win
+        # --publish never: electron-builder soll nichts selbst hochladen (das macht der Schritt unten), sonst verlangt es ein Token.
+        run: npm run build:win -- --publish never
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
@@ -82,7 +83,7 @@ jobs:
         run: chmod +x node_modules/get-windows/main
 
       - name: App bauen (Intel und Apple Silicon in einer Datei)
-        run: npm run build:mac:app
+        run: npm run build:mac:app -- --publish never
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
@@ -97,7 +98,7 @@ jobs:
         run: codesign --verify --deep --strict --verbose=2 "dist/mac-universal/wessamedia Zeit.app"
 
       - name: DMG packen
-        run: npx electron-builder --mac dmg --universal --prepackaged "dist/mac-universal/wessamedia Zeit.app"
+        run: npx electron-builder --mac dmg --universal --prepackaged "dist/mac-universal/wessamedia Zeit.app" --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
