@@ -12,6 +12,7 @@ import { AnimierteZahl } from '../components/AnimierteZahl'
 import { BlockDialog } from '../components/BlockDialog'
 import { BlockZeile } from '../components/BlockZeile'
 import { hinweisZeigen } from '../components/Hinweis'
+import { tonSpielen } from '../toene'
 import { Karte } from '../components/Karte'
 import { Mehrfachleiste } from '../components/Mehrfachleiste'
 import { TagesRing, type RingAnteile } from '../components/TagesRing'
@@ -118,6 +119,7 @@ export function HeuteScreen(): ReactElement {
   async function mehrere(aenderung: { taetigkeit?: string; bewertung?: Bewertung; loeschen?: boolean }): Promise<void> {
     if (!window.api || !auswahl || auswahl.size === 0) return
     const n = await window.api.bloecke.mehrereAendern([...auswahl], aenderung)
+    tonSpielen('erfolg')
     hinweisZeigen(aenderung.loeschen ? `${n} Blöcke gelöscht.` : `${n} Blöcke geändert.`)
     setAuswahl(new Set())
   }

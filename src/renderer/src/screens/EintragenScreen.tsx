@@ -4,6 +4,7 @@ import { berlinDatum, berlinZuUtc } from '@shared/zeit'
 import { BlockDialog } from '../components/BlockDialog'
 import { BlockZeile } from '../components/BlockZeile'
 import { hinweisZeigen } from '../components/Hinweis'
+import { tonSpielen } from '../toene'
 import { Karte } from '../components/Karte'
 import { useErfassung } from '../erfassung'
 import { dauerText } from '../format'
@@ -102,6 +103,7 @@ export function EintragenScreen(): ReactElement {
         )
         zusatz = `, ${n} automatische Blöcke gelöscht`
       }
+      tonSpielen('erfolg')
       hinweisZeigen(`Eingetragen: ${block.taetigkeit}, ${dauerText(dauer)}${zusatz}.`)
       setTaetigkeit('')
       setNotiz('')

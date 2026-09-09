@@ -12,6 +12,7 @@ import {
   wochenPrognose
 } from '@shared/liga'
 import type { LigaStand, Urlaub } from '@shared/typen'
+import { berlinDatum } from '@shared/zeit'
 import { fehlerText, kurzDatum, stundenText, zahlText } from '../format'
 import { hinweisZeigen } from './Hinweis'
 import { Karte } from './Karte'
@@ -33,6 +34,22 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
   const [urlaube, setUrlaube] = useState<Urlaub[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [uebersichtOffen, setUebersichtOffen] = useState(false)
+  // Tag des allerersten eigenen Blocks (bis 13 Wochen zurück), damit die Startwoche fair hochgerechnet wird.
+  const [erfassungSeit, setErfassungSeit] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!window.api) return
+    const bis = new Date()
+    const von = new Date(bis.getTime() - 13 * 7 * 86_400_000)
+    window.api.bloecke
+      .zeitraum(von.toISOString(), bis.toISOString())
+      .then((bloecke) => {
+        if (!bloecke.length) return
+        const erster = bloecke.reduce((a, b) => (b.start < a ? b.start : a), bloecke[0].start)
+        setErfassungSeit(berlinDatum(new Date(erster)))
+      })
+      .catch(() => {})
+  }, [])
 
   const laden = useCallback(async () => {
     if (!window.api) return
@@ -78,7 +95,7 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
   const fortschritt = ligaFortschritt(trophaeen)
   const farbe = LIGA_FARBEN[l.stufe]
   // Hochrechnung der laufenden Woche: bisheriger Schnitt je Arbeitstag auf den Rest übertragen.
-  const p = wochenPrognose(produktivSekunden, gesamtziel, urlaube)
+  const p = wochenPrognose(produktivSekunden, gesamtziel, urlaube, new Date(), erfassungSeit)
   const ganzeWocheUrlaub = p.urlaubstage >= 5
   // Unter 0 fällt niemand: die große Zahl zeigt, was am Stand wirklich passiert; der Regelsatz nennt den rohen Wert.
   const wirksam = wirksamesDelta(trophaeen, p.delta)

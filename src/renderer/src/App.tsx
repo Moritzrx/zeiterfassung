@@ -85,6 +85,28 @@ function Oberflaeche(): ReactElement {
   // Klick-Ton für alle Knöpfe und klickbaren Zeilen.
   useEffect(() => klickToeneEinrichten(), [])
 
+  // Tastenkürzel: Strg+1 bis Strg+6 (Mac: Cmd) wechseln den Screen, Leertaste pausiert die Erfassung
+  // oder setzt sie fort, aber nur, wenn gerade kein Eingabefeld oder Knopf den Fokus hat.
+  useEffect(() => {
+    const taste = (e: KeyboardEvent): void => {
+      const ziel = e.target as HTMLElement | null
+      const imFeld = !!ziel && (ziel.tagName === 'INPUT' || ziel.tagName === 'TEXTAREA' || ziel.tagName === 'SELECT' || ziel.isContentEditable)
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && /^[1-6]$/.test(e.key)) {
+        e.preventDefault()
+        wechselnRef.current(SCREEN_REIHENFOLGE[Number(e.key) - 1])
+        return
+      }
+      if (e.key === ' ' && !imFeld && (!ziel || ziel === document.body) && window.api) {
+        e.preventDefault()
+        void window.api.erfassung.status().then((s) => (s.zustand === 'pausiert' ? window.api.erfassung.fortsetzen() : window.api.erfassung.pause()))
+      }
+    }
+    window.addEventListener('keydown', taste)
+    return () => window.removeEventListener('keydown', taste)
+  }, [])
+  const wechselnRef = useRef(wechseln)
+  wechselnRef.current = wechseln
+
   // Die übrigen Screens kurz nach dem Start im Hintergrund aufbauen (einer nach dem anderen, mit
   // niedriger Priorität), damit auch der erste Klick auf einen Screen ohne Aufbau-Ruckler gleitet.
   useEffect(() => {

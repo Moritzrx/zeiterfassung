@@ -7,6 +7,7 @@ import { musterVorschlag } from '@shared/regeln'
 import { berlinDatum, berlinTeile, berlinZuUtc } from '@shared/zeit'
 import { datumText, dauerText } from '../format'
 import { hinweisZeigen } from './Hinweis'
+import { tonSpielen } from '../toene'
 
 interface Props {
   block: Block
@@ -140,6 +141,7 @@ export function BlockDialog({
           if (notiz.trim()) fuerAlle.notiz = notiz
           n += await window.api.bloecke.mehrereAendern(e.ids, fuerAlle)
         }
+        tonSpielen('erfolg')
         hinweisZeigen(`${n} Blöcke zugeordnet.`)
       } else if (von !== zeitFeld(block.start) || bis !== zeitFeld(block.ende)) {
         const [jahr, monat, tag] = berlinDatum(new Date(block.start)).split('-').map(Number)

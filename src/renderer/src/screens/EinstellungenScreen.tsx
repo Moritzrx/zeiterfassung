@@ -11,7 +11,7 @@ import { kurzDatum, uhrzeit } from '../format'
 import { useNutzer } from '../nutzer'
 import { SymbolBild, useSymbolZuordnung } from '../symbole'
 import { useTaetigkeiten } from '../taetigkeiten'
-import { KLICK_ARTEN, klickProbe, tonProbe, toneEinstellung, toneEinstellungSetzen, type Ton } from '../toene'
+import { KLICK_ARTEN, klickProbe, tonProbe, tonSpielen, toneEinstellung, toneEinstellungSetzen, type Ton } from '../toene'
 
 const PROBEN: { ton: Ton; label: string }[] = [
   { ton: 'tick', label: 'Klick' },
@@ -149,6 +149,7 @@ export function EinstellungenScreen(): ReactElement {
     try {
       await window.api.urlaub.anlegen(neuerUrlaub.von, neuerUrlaub.bis || neuerUrlaub.von, neuerUrlaub.notiz || null)
       setNeuerUrlaub({ von: '', bis: '', notiz: '' })
+      tonSpielen('erfolg')
       hinweisZeigen('Urlaub eingetragen.')
       await urlaubLaden()
     } catch (e) {
@@ -194,6 +195,7 @@ export function EinstellungenScreen(): ReactElement {
   async function profilSpeichern(aenderung: Partial<Profil>): Promise<void> {
     try {
       setProfil(await window.api.profil.aendern(aenderung))
+      tonSpielen('erfolg')
       hinweisZeigen('Gespeichert.')
     } catch (e) {
       hinweisZeigen(fehlerText(e))
@@ -204,6 +206,7 @@ export function EinstellungenScreen(): ReactElement {
     try {
       await window.api.ziele.setzen(taetigkeit, stunden)
       await laden()
+      tonSpielen('erfolg')
       hinweisZeigen('Ziel gespeichert.')
     } catch (e) {
       hinweisZeigen(fehlerText(e))
@@ -257,6 +260,7 @@ export function EinstellungenScreen(): ReactElement {
       })
       setNeueRegel({ muster: '', feld: 'titel', taetigkeit: '', bewertung: 'produktiv', fuerAlle: false })
       await laden()
+      tonSpielen('erfolg')
       hinweisZeigen(neuBewertet ? `Regel angelegt, ${neuBewertet} Blöcke neu bewertet.` : 'Regel angelegt.')
     } catch (e) {
       hinweisZeigen(fehlerText(e))
@@ -267,6 +271,7 @@ export function EinstellungenScreen(): ReactElement {
     try {
       await window.api.taetigkeiten.symbolSetzen(name, symbol)
       setSymbolFuer(null)
+      tonSpielen('erfolg')
       hinweisZeigen('Symbol gespeichert.')
     } catch (e) {
       hinweisZeigen(fehlerText(e))

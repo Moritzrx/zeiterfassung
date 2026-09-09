@@ -160,7 +160,9 @@ export function wochenPrognose(
   produktivSekunden: number,
   gesamtziel: number,
   urlaube: Array<{ von: string; bis: string }>,
-  jetzt = new Date()
+  jetzt = new Date(),
+  /** Kalendertag "JJJJ-MM-TT" des allerersten Blocks: Tage davor zählen in der Hochrechnung nicht als Arbeitstage (Startwoche) */
+  erfassungSeit: string | null = null
 ): WochenPrognose {
   const start = berlinDatum(wochenanfang(jetzt))
   const heute = berlinDatum(jetzt)
@@ -175,6 +177,8 @@ export function wochenPrognose(
       urlaubstage++
       continue
     }
+    // Vor der Installation gab es keine Erfassung: diese Tage verzerren sonst den Schnitt der ersten Woche.
+    if (erfassungSeit && datum < erfassungSeit) continue
     if (datum < heute) gearbeitet += 1
     else if (datum === heute) {
       gearbeitet += tagesanteil
