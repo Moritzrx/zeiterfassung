@@ -220,7 +220,7 @@ export function Wochenrueckblick(): ReactElement | null {
   return (
     <Portal>
       <div
-        className={`aufstieg-schleier fixed inset-0 z-50 flex items-center justify-center overflow-hidden ${raus ? 'aufstieg-raus' : ''}`}
+        className={`aufstieg-schleier fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto ${raus ? 'aufstieg-raus' : ''}`}
         style={stil}
         onClick={schliessen}
         role="dialog"
@@ -250,7 +250,7 @@ export function Wochenrueckblick(): ReactElement | null {
           ))}
         </div>
 
-        <div className="relative flex w-full max-w-[860px] flex-col items-center px-6 text-center" onClick={(e) => e.stopPropagation()}>
+        <div className="relative my-auto flex w-full max-w-[860px] flex-col items-center px-6 py-8 text-center" onClick={(e) => e.stopPropagation()}>
           <p className="aufstieg-text text-sm tracking-[0.45em] uppercase" style={{ color: farbe, textShadow: `0 0 18px ${farbe}`, animationDelay: '0.1s' }}>
             Wochenrückblick
           </p>
@@ -258,22 +258,22 @@ export function Wochenrueckblick(): ReactElement | null {
             KW {kalenderwoche(daten.start)} · {kurzDatum(daten.start)} bis {kurzDatum(ende)}
           </p>
 
-          <div className="relative mt-5">
+          <div className="relative mt-4">
             <div className="aufstieg-schein pointer-events-none absolute rounded-full" style={{ inset: -50, background: `radial-gradient(circle, ${farbe}70, ${farbe}18 45%, transparent 68%)` }} />
             <div className="aufstieg-wappen relative">
-              <RangAbzeichen rang={daten.rang} groesse={170} />
+              <RangAbzeichen rang={daten.rang} groesse={150} />
             </div>
           </div>
-          <p className="aufstieg-text mt-4 text-[44px] leading-none font-light" style={{ animationDelay: '0.55s' }}>
+          <p className="aufstieg-text mt-3 text-[40px] leading-none font-light" style={{ animationDelay: '0.55s' }}>
             Rang {daten.rang} <span className="text-2xl text-mute">{rangName(daten.rang)}</span>
           </p>
           <p className="aufstieg-text mt-2 text-sm" style={{ animationDelay: '0.7s', color: geschafft ? '#00C076' : '#8E8E93' }}>
             {geschafft ? 'Wochenziel geschafft' : `Ziel war Rang ${daten.ziel}`}
           </p>
 
-          <div className="mt-7 grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="mt-5 grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {kacheln.map((k, i) => (
-              <div key={k.titel} className="aufstieg-text glas rounded-card px-4 py-3 text-left" style={{ animationDelay: `${0.85 + i * 0.16}s` }}>
+              <div key={k.titel} className="aufstieg-text glas rounded-card px-4 py-2.5 text-left" style={{ animationDelay: `${0.85 + i * 0.16}s` }}>
                 <p className="text-xs text-mute">{k.titel}</p>
                 <p className="mt-0.5 text-2xl font-light" style={{ color: k.farbe, textShadow: k.farbe ? `0 0 14px ${k.farbe}66` : undefined }}>
                   {k.wert}
@@ -284,7 +284,7 @@ export function Wochenrueckblick(): ReactElement | null {
           </div>
 
           {daten.neue.length > 0 && (
-            <div className="aufstieg-text mt-6 flex flex-wrap items-center justify-center gap-4" style={{ animationDelay: `${0.9 + kacheln.length * 0.16}s` }}>
+            <div className="aufstieg-text mt-5 flex flex-wrap items-center justify-center gap-4" style={{ animationDelay: `${0.9 + kacheln.length * 0.16}s` }}>
               {daten.neue.map((a) => (
                 <div key={a.typ} className="flex flex-col items-center gap-1">
                   <AuszeichnungBild typ={a.typ} erreicht groesse={64} />
@@ -297,7 +297,7 @@ export function Wochenrueckblick(): ReactElement | null {
           <button
             type="button"
             onClick={schliessen}
-            className="aufstieg-text mt-8 rounded-chip bg-ink px-5 py-2 text-sm text-ground transition-colors hover:bg-white"
+            className="aufstieg-text mt-6 rounded-chip bg-ink px-5 py-2 text-sm text-ground transition-colors hover:bg-white"
             style={{ animationDelay: `${1.2 + kacheln.length * 0.16}s` }}
           >
             Auf in die neue Woche
