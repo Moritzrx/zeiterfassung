@@ -43,14 +43,21 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wessamedia-Zeit-Windows
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
           if-no-files-found: error
 
+      # latest.yml und .blockmap braucht die App für die automatische Aktualisierung unter Windows.
       - name: An die Veröffentlichung anhängen
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.exe
+          files: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
 
   mac:
     name: Mac (.dmg für Intel und Apple Silicon)

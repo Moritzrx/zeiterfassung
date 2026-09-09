@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactElement, type ReactNode } f
 import { Trash2 } from 'lucide-react'
 import { STANDARD_GESAMTZIEL } from '@shared/rang'
 import { taetigkeitSchluessel } from '@shared/regeln'
-import type { Profil, Regel, RegelBewertung, SymbolInfo, SystemInfo, Urlaub, Ziel } from '@shared/typen'
+import type { Profil, Regel, RegelBewertung, SymbolInfo, SystemInfo, UpdateStatus, Urlaub, Ziel } from '@shared/typen'
 import { hinweisZeigen } from '../components/Hinweis'
 import { Karte } from '../components/Karte'
 import { SymbolWahl } from '../components/SymbolWahl'
@@ -84,6 +84,30 @@ function Zahl({ wert, onSpeichern, min, max, schritt = 1 }: { wert: number; onSp
   )
 }
 
+/** Text zur Update-Zeile in den Einstellungen. */
+function updateText(u: UpdateStatus | null): string {
+  if (!u) return ''
+  const wann = u.zuletztGeprueft ? ` Zuletzt geprüft um ${uhrzeit(u.zuletztGeprueft)}.` : ''
+  switch (u.zustand) {
+    case 'entwicklung':
+      return 'In der Entwicklungsversion wird nicht geprüft.'
+    case 'unbekannt':
+      return 'Noch nicht geprüft. Die App sieht kurz nach dem Start und dann alle vier Stunden nach.'
+    case 'prueft':
+      return 'Sieht gerade nach …'
+    case 'aktuell':
+      return `Version ${u.aktuelleVersion} ist die neueste.${wann}`
+    case 'verfuegbar':
+      return `Version ${u.neueVersion} ist da. Auf dem Mac bitte über die Download-Seite installieren.${wann}`
+    case 'laedt':
+      return `Version ${u.neueVersion} wird geladen${u.prozent !== null ? ` (${u.prozent} %)` : ''} …`
+    case 'bereit':
+      return `Version ${u.neueVersion} ist geladen und wird beim nächsten Start eingespielt.`
+    case 'fehler':
+      return `Prüfung fehlgeschlagen: ${u.fehler ?? 'unbekannter Fehler'}.${wann}`
+  }
+}
+
 /** Screen 6: Einstellungen. Erfassung, Ziele, Regeln, Symbole, Hochrechnung, System, Konto. */
 export function EinstellungenScreen(): ReactElement {
   const { status, neuLaden } = useNutzer()
@@ -96,6 +120,12 @@ export function EinstellungenScreen(): ReactElement {
   const [regeln, setRegeln] = useState<Regel[]>([])
   const [symbolFuer, setSymbolFuer] = useState<string | null>(null)
   const [toene, setToene] = useState(toneEinstellung)
+  const [update, setUpdate] = useState<UpdateStatus | null>(null)
+  useEffect(() => {
+    if (!window.api?.update) return
+    void window.api.update.status().then(setUpdate)
+    return window.api.update.onStatus(setUpdate)
+  }, [])
   const [neuesZiel, setNeuesZiel] = useState({ taetigkeit: '', stunden: '5' })
   const [urlaube, setUrlaube] = useState<Urlaub[]>([])
   const [urlaubFehler, setUrlaubFehler] = useState<string | null>(null)
@@ -606,6 +636,21 @@ export function EinstellungenScreen(): ReactElement {
           </Zeile>
           <Zeile titel="Version" hinweis={system ? `${system.plattform === 'mac' ? 'Mac' : system.plattform === 'windows' ? 'Windows' : 'Linux'} · ${system.gepackt ? 'installierte App' : 'Entwicklungsversion'}` : undefined}>
             <span className="text-sm text-mute">{system?.version ?? ''}</span>
+          </Zeile>
+          <Zeile titel="Updates" hinweis={updateText(update)}>
+            {update && update.zustand !== 'entwicklung' && (
+              <button
+                type="button"
+                disabled={update.zustand === 'prueft' || update.zustand === 'laedt'}
+                onClick={() => {
+                  if (update.zustand === 'bereit' || update.zustand === 'verfuegbar') void window.api.update.installieren()
+                  else void window.api.update.pruefen().then(setUpdate)
+                }}
+                className="rounded-chip bg-panel-2 px-3 py-1.5 text-xs text-ink transition-colors hover:bg-inaktiv disabled:opacity-40"
+              >
+                {update.zustand === 'bereit' ? 'Jetzt neu starten' : update.zustand === 'verfuegbar' ? 'Download öffnen' : 'Jetzt prüfen'}
+              </button>
+            )}
           </Zeile>
         </div>
       </Karte>

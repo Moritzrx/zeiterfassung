@@ -17,6 +17,7 @@ import { hinweisZeigen } from './Hinweis'
 import { Karte } from './Karte'
 import { LigaAbzeichen } from './LigaAbzeichen'
 import { LigaUebersicht } from './LigaUebersicht'
+import { ligaAufstiegZeigen } from './RangAufstieg'
 
 interface Props {
   /** produktive Sekunden der laufenden Woche, für die Vorschau */
@@ -51,7 +52,9 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
           const vorher = localStorage.getItem(schluessel)
           const jetzt = liga(ich.trophaeen)
           if (vorher !== null && Number(vorher) !== jetzt.index) {
-            hinweisZeigen(Number(vorher) < jetzt.index ? `Aufstieg in die ${jetzt.name}!` : `Abstieg in die ${jetzt.name}.`)
+            // Aufstieg groß feiern (Einblendung wie beim Rang), Abstieg nur kurz melden.
+            if (Number(vorher) < jetzt.index) ligaAufstiegZeigen(ich.trophaeen)
+            else hinweisZeigen(`Abstieg in die ${jetzt.name}.`)
           }
           localStorage.setItem(schluessel, String(jetzt.index))
         } catch {

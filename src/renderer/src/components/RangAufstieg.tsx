@@ -1,12 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react'
 import { Portal } from './Portal'
 import { STUFEN_FARBEN, rangName, rangStufe } from '@shared/rang'
+import { LIGA_FARBEN, liga as ligaVon, type Liga } from '@shared/liga'
 import { useErfassung } from '../erfassung'
+import { zahlText } from '../format'
 import { tonSpielen } from '../toene'
+import { LigaAbzeichen } from './LigaAbzeichen'
 import { RangAbzeichen } from './RangAbzeichen'
 
 const DAUER_MS = 5200
 const RAUS_MS = 350
+
+/** Was gefeiert wird: ein Wochenrang oder eine neue Liga. */
+type Feier = { art: 'rang'; rang: number } | { art: 'liga'; liga: Liga; trophaeen: number }
+
+/** Von der Liga-Karte ausgelöst, wenn der Trophäenstand eine neue Liga erreicht hat. */
+export function ligaAufstiegZeigen(trophaeen: number): void {
+  window.dispatchEvent(new CustomEvent('liga-aufstieg', { detail: trophaeen }))
+}
 
 /** Die Lichtbahnen, wie im Hintergrund von unten links nach oben rechts (Raster 1000 × 600). */
 const BAHNEN = [
@@ -24,7 +35,7 @@ interface Funke {
   weiss: boolean
 }
 
-/** Fester Zufall je Rang, damit die Funken bei jedem Aufbau gleich fliegen. */
+/** Fester Zufall je Saat, damit die Funken bei jedem Aufbau gleich fliegen. */
 function funken(saat: number): Funke[] {
   let s = saat * 7919 + 13
   const z = (): number => {
@@ -46,24 +57,26 @@ function funken(saat: number): Funke[] {
 }
 
 /**
- * Die große Einblendung beim Rang-Aufstieg: Lichtschein und Strahlenkranz in der Stufenfarbe,
- * Druckwellen und Funken vom Wappen weg, Lichtbahnen wie im Hintergrund, dazu Klang.
- * Erscheint nur, wenn das Fenster sichtbar ist, bleibt ein paar Sekunden oder bis zum Klick,
- * und wird pro Woche für jeden Rang nur einmal gezeigt.
+ * Die große Einblendung beim Aufstieg (Wochenrang oder Liga): Lichtschein und Strahlenkranz in der
+ * Stufenfarbe, Druckwellen und Funken vom Wappen weg, Lichtbahnen wie im Hintergrund, dazu Klang.
+ * Der Rang-Aufstieg kommt aus dem Erfassungsstatus (nur bei sichtbarem Fenster, pro Woche je Rang einmal),
+ * der Liga-Aufstieg als Ereignis von der Liga-Karte. Bleibt ein paar Sekunden oder bis zum Klick.
  */
 export function RangAufstieg(): ReactElement | null {
   const status = useErfassung()
-  const [gezeigt, setGezeigt] = useState<number | null>(null)
+  const [gezeigt, setGezeigt] = useState<Feier | null>(null)
   const [raus, setRaus] = useState(false)
   // Zuletzt gefeierter Rang, damit bis zur nächsten Statusmeldung nichts doppelt erscheint.
   const gefeiert = useRef(0)
 
-  const schliessen = useCallback((r: number): void => {
+  const schliessen = useCallback((f: Feier): void => {
     setRaus((schon) => {
       if (schon) return schon
       window.setTimeout(() => {
-        gefeiert.current = Math.max(gefeiert.current, r)
-        if (window.api) void window.api.rang.gefeiert(r)
+        if (f.art === 'rang') {
+          gefeiert.current = Math.max(gefeiert.current, f.rang)
+          if (window.api) void window.api.rang.gefeiert(f.rang)
+        }
         setGezeigt(null)
         setRaus(false)
       }, RAUS_MS)
@@ -71,22 +84,34 @@ export function RangAufstieg(): ReactElement | null {
     })
   }, [])
 
-  // Einblenden, sobald ein neuer Rang gemeldet wird und das Fenster sichtbar ist.
+  // Rang: einblenden, sobald ein neuer Rang gemeldet wird und das Fenster sichtbar ist.
   useEffect(() => {
     const neuer = status.neuerRang
     if (neuer === null || neuer <= gefeiert.current || gezeigt !== null) return
     const starten = (): void => {
-      if (!document.hidden) setGezeigt(neuer)
+      if (!document.hidden) setGezeigt({ art: 'rang', rang: neuer })
     }
     starten()
     document.addEventListener('visibilitychange', starten)
     return () => document.removeEventListener('visibilitychange', starten)
   }, [status.neuerRang, gezeigt])
 
-  // In der Entwicklungsversion lässt sich die Einblendung aus der Konsole auslösen: rangAufstiegTest(7)
+  // Liga: Ereignis von der Liga-Karte.
+  useEffect(() => {
+    const handler = (e: Event): void => {
+      const trophaeen = (e as CustomEvent<number>).detail
+      setGezeigt((alt) => alt ?? { art: 'liga', liga: ligaVon(trophaeen), trophaeen })
+    }
+    window.addEventListener('liga-aufstieg', handler)
+    return () => window.removeEventListener('liga-aufstieg', handler)
+  }, [])
+
+  // In der Entwicklungsversion aus der Konsole auslösbar: rangAufstiegTest(7), ligaAufstiegTest(1400)
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    ;(window as unknown as { rangAufstiegTest: (r: number) => void }).rangAufstiegTest = (r) => setGezeigt(r)
+    const w = window as unknown as { rangAufstiegTest: (r: number) => void; ligaAufstiegTest: (t: number) => void }
+    w.rangAufstiegTest = (r) => setGezeigt({ art: 'rang', rang: r })
+    w.ligaAufstiegTest = (t) => setGezeigt({ art: 'liga', liga: ligaVon(t), trophaeen: t })
   }, [])
 
   // Klang beim Erscheinen, nach ein paar Sekunden von selbst schließen.
@@ -97,11 +122,14 @@ export function RangAufstieg(): ReactElement | null {
     return () => window.clearTimeout(timer)
   }, [gezeigt, schliessen])
 
-  const alleFunken = useMemo(() => (gezeigt === null ? [] : funken(gezeigt)), [gezeigt])
+  const alleFunken = useMemo(() => (gezeigt === null ? [] : funken(gezeigt.art === 'rang' ? gezeigt.rang : 100 + gezeigt.liga.index)), [gezeigt])
 
   if (gezeigt === null) return null
 
-  const farbe = STUFEN_FARBEN[rangStufe(gezeigt)]
+  const farbe = gezeigt.art === 'rang' ? STUFEN_FARBEN[rangStufe(gezeigt.rang)] : LIGA_FARBEN[gezeigt.liga.stufe]
+  const ueberschrift = gezeigt.art === 'rang' ? 'Aufstieg' : 'Liga-Aufstieg'
+  const gross = gezeigt.art === 'rang' ? `Rang ${gezeigt.rang}` : gezeigt.liga.name
+  const klein = gezeigt.art === 'rang' ? rangName(gezeigt.rang) : `${zahlText(gezeigt.trophaeen, 0)} Trophäen`
   const stil = {
     background: `radial-gradient(ellipse 55% 45% at 50% 44%, ${farbe}33, transparent 70%), rgba(6, 6, 8, 0.94)`,
     '--farbe': farbe,
@@ -115,7 +143,7 @@ export function RangAufstieg(): ReactElement | null {
         style={stil}
         onClick={() => schliessen(gezeigt)}
         role="dialog"
-        aria-label={`Aufstieg auf Rang ${gezeigt}`}
+        aria-label={`${ueberschrift}: ${gross}`}
       >
         {/* Lichtbahnen, die einmal durchs Bild zischen */}
         <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
@@ -161,17 +189,17 @@ export function RangAufstieg(): ReactElement | null {
               style={{ inset: -70, background: `radial-gradient(circle, ${farbe}80, ${farbe}22 45%, transparent 68%)` }}
             />
             <div className="aufstieg-wappen relative">
-              <RangAbzeichen rang={gezeigt} groesse={230} />
+              {gezeigt.art === 'rang' ? <RangAbzeichen rang={gezeigt.rang} groesse={230} /> : <LigaAbzeichen liga={gezeigt.liga} groesse={230} />}
             </div>
           </div>
           <p className="aufstieg-text mt-8 text-sm tracking-[0.45em] uppercase" style={{ color: farbe, textShadow: `0 0 18px ${farbe}`, animationDelay: '0.5s' }}>
-            Aufstieg
+            {ueberschrift}
           </p>
           <p className="aufstieg-text mt-2 text-[76px] leading-none font-light" style={{ animationDelay: '0.62s', textShadow: '0 0 30px rgba(255,255,255,0.25)' }}>
-            Rang {gezeigt}
+            {gross}
           </p>
           <p className="aufstieg-text mt-3 text-xl text-mute" style={{ animationDelay: '0.76s' }}>
-            {rangName(gezeigt)}
+            {klein}
           </p>
           <p className="aufstieg-text mt-10 text-xs text-dim" style={{ animationDelay: '1.8s' }}>
             Klicken zum Schließen

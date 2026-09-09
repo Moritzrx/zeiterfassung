@@ -1,6 +1,8 @@
 import { memo, startTransition, useEffect, useRef, useState, type ReactElement } from 'react'
 import { AUSZEICHNUNGEN } from '@shared/auszeichnungen'
+import { Fehlerschutz } from './components/Fehlerschutz'
 import { Hinweise, hinweisZeigen } from './components/Hinweis'
+import { UpdateHinweis } from './components/UpdateHinweis'
 import { Hintergrund } from './components/Hintergrund'
 import { Kopfzeile } from './components/Kopfzeile'
 import { Navigation, SCREEN_REIHENFOLGE, type ScreenId } from './components/Navigation'
@@ -23,6 +25,15 @@ const SCREENS: Record<ScreenId, () => ReactElement> = {
   team: TeamScreen,
   eintragen: EintragenScreen,
   einstellungen: EinstellungenScreen
+}
+
+const SCREEN_NAMEN: Record<ScreenId, string> = {
+  heute: 'Heute',
+  woche: 'Woche',
+  auswertung: 'Auswertung',
+  team: 'Team',
+  eintragen: 'Eintragen',
+  einstellungen: 'Einstellungen'
 }
 
 /** Wie lange der alte Screen beim Wechsel noch sichtbar hinausgleitet (passend zu styles.css). */
@@ -126,7 +137,9 @@ function Oberflaeche(): ReactElement {
               className={`screen-ebene absolute inset-0 overflow-y-auto ${klasse} ${zustand === 'raus' ? 'pointer-events-none' : ''}`}
             >
               <div className="mx-auto w-full max-w-[800px] px-6 pt-4 pb-10">
-                <ScreenInhalt id={id} />
+                <Fehlerschutz bereich={SCREEN_NAMEN[id]}>
+                  <ScreenInhalt id={id} />
+                </Fehlerschutz>
               </div>
             </div>
           )
@@ -134,7 +147,10 @@ function Oberflaeche(): ReactElement {
       </main>
       <Navigation aktiv={aktiv} onWechsel={wechseln} />
       <Hinweise />
-      <RangAufstieg />
+      <UpdateHinweis />
+      <Fehlerschutz bereich="Aufstieg">
+        <RangAufstieg />
+      </Fehlerschutz>
     </div>
   )
 }

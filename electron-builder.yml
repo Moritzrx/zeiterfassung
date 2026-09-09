@@ -89,4 +89,11 @@ dmg:
   title: wessamedia Zeit
   artifactName: wessamedia-Zeit-${version}-Mac.${ext}
 
-publish: null
+# Automatische Updates: Die App fragt die Veröffentlichungen ("Releases") dieses GitHub-Repositorys ab.
+# electron-builder schreibt daraus app-update.yml in die App und latest.yml neben den Windows-Installer.
+# Hochgeladen wird nichts von hier aus (das macht der GitHub-Ablauf beim Tag v*), deshalb releaseType und
+# publish: never in den Skripten nicht nötig: ohne GH_TOKEN veröffentlicht electron-builder nicht.
+publish:
+  provider: github
+  owner: wessamedia
+  repo: zeiterfassung

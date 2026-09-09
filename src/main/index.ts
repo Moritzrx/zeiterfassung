@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, Notification, powerMonitor, shell } from '
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { aktualisierungStarten } from './aktualisierung'
 import type {
   Auszeichnung,
   Block,
@@ -634,6 +635,7 @@ void app.whenReady().then(async () => {
 
   autostartEinrichten()
   fenster = fensterAnlegen()
+  aktualisierungStarten(fenster)
 
   const status = await authStatus()
   if (status.angemeldet && status.userId) sitzungStarten(status.userId)

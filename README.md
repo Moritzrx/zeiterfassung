@@ -109,6 +109,10 @@ Jede Woche beginnt bei Rang 0. Bis Rang 10 gibt es alle 5 produktiven Stunden ei
 
 Bronze 1 bis 3, Silber 4 bis 6, Gold 7 bis 9, Champion 10, Diamant 11 bis 15. Jede Stufe hat ein eigenes, illustriertes Wappen (mit KI erzeugt), darauf stehen Rangzahl, Sterne und Name; die Ligen haben ebenfalls eigene Wappen mit römischer Ziffer. Beim Aufstieg erscheint eine große Einblendung: Wappen mit Strahlenkranz, Druckwellen und Funken in der Farbe der Stufe, dazu ein Klang; sie schließt nach ein paar Sekunden oder mit einem Klick. Wer sein Gesamtziel in den Einstellungen ändert (zum Beispiel 40 Stunden), bekommt einen anderen Ziel-Rang (dann Rang 8); die Stundengrenzen der Ränge bleiben gleich.
 
+### Updates
+
+Die App sieht kurz nach dem Start und danach alle vier Stunden auf GitHub nach, ob es eine neue Version gibt. Unter Windows wird sie im Hintergrund geladen und beim nächsten Start eingespielt, eine Leiste über der Navigation bietet den Neustart an. Auf dem Mac öffnet die App die Download-Seite, weil sie ohne Apple-Signatur nicht selbst tauschen darf. Unter Einstellungen → System → Updates steht der Stand, dort lässt sich auch sofort prüfen.
+
 ### Töne
 
 Die App klickt leise bei Knöpfen, wischt beim Screen-Wechsel und spielt Klänge bei Aufstieg und Auszeichnungen. Alle Töne entstehen in der App selbst, es werden keine Dateien geladen. Unter Einstellungen → Töne lassen sie sich ausschalten, in der Lautstärke regeln und probehören; für den Klick stehen mehrere Arten zur Wahl (Tock, Pop, Tap, Fein oder kein Klick).

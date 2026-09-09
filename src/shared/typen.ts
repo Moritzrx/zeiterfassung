@@ -90,6 +90,24 @@ export interface SystemInfo {
   autostart: boolean
 }
 
+/** Stand der automatischen Aktualisierung (src/main/aktualisierung.ts). */
+export interface UpdateStatus {
+  aktuelleVersion: string
+  /**
+   * entwicklung: keine Prüfung in der Entwicklungsversion · unbekannt: noch nicht geprüft · prueft ·
+   * aktuell · verfuegbar (Mac: neue Version auf GitHub) · laedt (Windows: Download läuft) ·
+   * bereit (Windows: installiert beim Neustart) · fehler
+   */
+  zustand: 'entwicklung' | 'unbekannt' | 'prueft' | 'aktuell' | 'verfuegbar' | 'laedt' | 'bereit' | 'fehler'
+  neueVersion: string | null
+  /** Download-Fortschritt 0–100, sonst null */
+  prozent: number | null
+  fehler: string | null
+  zuletztGeprueft: string | null
+  /** true, wenn die App das Update selbst einspielen kann (Windows); auf dem Mac öffnet sich die Download-Seite */
+  selbstInstallierend: boolean
+}
+
 /** Sekunden je Tag, Tätigkeit und Bewertung. Gleiche Form wie die Datenbankfunktion tages_summen. */
 export interface Tagessumme {
   datum: string

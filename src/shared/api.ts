@@ -14,6 +14,7 @@ import type {
   RegelAenderung,
   SymbolInfo,
   SystemInfo,
+  UpdateStatus,
   Tagessumme,
   TeamMitglied,
   TeamWoche,
@@ -104,6 +105,14 @@ export interface Api {
     info: () => Promise<SystemInfo>
     /** Autostart ein- oder ausschalten; wirkt nur in der installierten App. */
     autostartSetzen: (an: boolean) => Promise<boolean>
+  }
+  update: {
+    status: () => Promise<UpdateStatus>
+    /** Jetzt nach einer neuen Version sehen; liefert den Stand danach. */
+    pruefen: () => Promise<UpdateStatus>
+    /** Windows: App neu starten und Update einspielen. Mac: Download-Seite öffnen. */
+    installieren: () => Promise<void>
+    onStatus: (rueckruf: (status: UpdateStatus) => void) => Abmelden
   }
   auszeichnungen: {
     /** Die eigenen freigeschalteten Auszeichnungen. */
