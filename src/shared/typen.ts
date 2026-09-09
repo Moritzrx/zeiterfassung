@@ -93,6 +93,20 @@ export interface TeamMitglied {
   istIch: boolean
 }
 
+/** Der Ligastand einer Person aus der Datenbankfunktion liga_stand. */
+export interface LigaStand {
+  userId: string
+  name: string
+  trophaeen: number
+  /** Anzahl der Wochen, die bisher gezählt haben */
+  wochen: number
+  /** Montag der zuletzt gezählten Woche, "JJJJ-MM-TT" */
+  letzteWoche: string | null
+  /** Trophäen der zuletzt gezählten Woche */
+  letztesDelta: number | null
+  istIch: boolean
+}
+
 /** Produktive Sekunden einer Person in einer Woche, für den Team-Verlauf. */
 export interface TeamWoche {
   userId: string

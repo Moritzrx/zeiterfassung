@@ -6,6 +6,7 @@ import type {
   Auszeichnung,
   Block,
   BlockAenderung,
+  LigaStand,
   ErfassungsStatus,
   NeueRegel,
   NeuerEintrag,
@@ -504,6 +505,37 @@ function ipcRegistrieren(): void {
         istIch
       }
     })
+  })
+
+  ipcMain.handle('liga:stand', async (): Promise<LigaStand[]> => {
+    if (!sitzung) return []
+    if (!supabaseKonfiguriert()) throw new Error('Keine Datenbank konfiguriert.')
+    const { data, error } = await supabase().rpc('liga_stand')
+    if (error) {
+      if (/liga_stand/.test(error.message)) {
+        throw new Error('Für die Liga muss in Supabase einmal das Skript 8 (08_liga.sql) ausgeführt werden.')
+      }
+      throw new Error('Datenbank nicht erreichbar: ' + error.message)
+    }
+    const eigeneId = sitzung.userId
+    return (
+      (data ?? []) as Array<{
+        user_id: string
+        name: string
+        trophaeen: number
+        wochen: number
+        letzte_woche: string | null
+        letztes_delta: number | null
+      }>
+    ).map((z) => ({
+      userId: z.user_id,
+      name: z.name,
+      trophaeen: Number(z.trophaeen),
+      wochen: Number(z.wochen),
+      letzteWoche: z.letzte_woche,
+      letztesDelta: z.letztes_delta === null ? null : Number(z.letztes_delta),
+      istIch: z.user_id === eigeneId
+    }))
   })
 
   ipcMain.handle('team:wochen', async (_ereignis, vonDatum: string, bisDatum: string): Promise<TeamWoche[]> => {

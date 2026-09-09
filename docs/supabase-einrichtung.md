@@ -62,6 +62,13 @@ Für den Verlauf über mehrere Wochen und die Rangliste auf dem Team-Screen:
 
 - `supabase/06_team.sql` genauso ausführen: **SQL Editor** → **New query** → einfügen → **Run**.
 
+## 6d. Die Liga (Skript 8)
+
+Für den Langzeit-Stand mit Trophäen und Ligen auf Woche und Team:
+
+- `supabase/08_liga.sql` genauso ausführen: **SQL Editor** → **New query** → einfügen → **Run**.
+- Solange das Skript nicht gelaufen ist, zeigt die Liga-Karte einen Hinweis statt Zahlen.
+
 ## 7. Zugangsdaten in die App bringen
 
 1. Links unten **"Project Settings"** (Zahnrad) → **"API Keys"**.

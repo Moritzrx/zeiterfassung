@@ -8,6 +8,11 @@ const DATUM = new Intl.DateTimeFormat('de-DE', {
   month: 'short'
 })
 
+/** Fehlertext ohne das technische Vorwort, das Electron bei Fehlern aus dem Hauptprozess voranstellt. */
+export function fehlerText(e: unknown): string {
+  return e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(e)
+}
+
 /** Zahl im deutschen Format mit fester Anzahl Nachkommastellen, z. B. "1.702" oder "30,3". */
 export function zahlText(wert: number, nachkommastellen = 1): string {
   return wert.toLocaleString('de-DE', {

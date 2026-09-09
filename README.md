@@ -107,6 +107,15 @@ Jede Woche beginnt bei Rang 0. Bis Rang 10 gibt es alle 5 produktiven Stunden ei
 
 Bronze 1 bis 3, Silber 4 bis 6, Gold 7 bis 9, Champion 10, Diamant 11 bis 15. Beim Aufstieg erscheint kurz eine Einblendung mit dem Abzeichen. Wer sein Gesamtziel in den Einstellungen ändert (zum Beispiel 40 Stunden), bekommt einen anderen Ziel-Rang (dann Rang 8); die Stundengrenzen der Ränge bleiben gleich.
 
+### Die Liga
+
+Der Wochenrang fängt jeden Montag bei null an. Die Liga dagegen bleibt, wie die Ligen in Clash of Clans: Jede abgeschlossene Woche bringt Trophäen dazu oder nimmt welche weg, und die Trophäen bestimmen die Liga.
+
+- Pro Woche gibt es 10 Trophäen je produktive Stunde über oder unter dem neutralen Punkt. Der liegt 10 Stunden unter dem eigenen Wochenziel, bei 50 Stunden Ziel also bei 40. Das Ziel erreicht heißt +100, eine 30-Stunden-Woche kostet 100. Höchstens +200 und höchstens −120 pro Woche.
+- Wochen ohne einen einzigen Block (Urlaub, App aus) zählen nicht. Die laufende Woche zählt erst nach Sonntag; auf dem Wochen-Screen steht schon vorher, was sie bringen würde.
+- Jeder startet mit 400 Trophäen in der Bronze-Liga III. Die Ligen: Bronze, Silber, Gold, Kristall, Meister, Champion und Titan mit je drei Stufen (III, II, I), darüber ab 5.000 Trophäen die Legenden-Liga. Alle Schwellen stehen in der App unter "Alle Ligen".
+- Die Liga-Rangliste des Teams steht oben auf dem Team-Screen.
+
 ### Auszeichnungen
 
 Vier Abzeichen, die man dauerhaft behält:
@@ -147,7 +156,7 @@ Die ausführliche Klick-Anleitung mit Bildern steht in [`docs/supabase-einrichtu
 2. Im **SQL Editor** nacheinander die Skripte aus dem Ordner `supabase/` einfügen und mit "Run" ausführen:
    - `01_tabellen.sql` (Tabellen und Zugriffsrechte)
    - `02_startwerte.sql` (Namen, Ziele, Startregeln; vorher die drei E-Mail-Adressen oben im Skript prüfen)
-   - `05_auswertung.sql` und `06_team.sql` (Funktionen für lange Auswertungen und den Team-Verlauf)
+   - `05_auswertung.sql`, `06_team.sql` und `08_liga.sql` (Funktionen für lange Auswertungen, den Team-Verlauf und die Liga)
    - optional `03_testdaten_einfuegen.sql` zum Anschauen, später `04_testdaten_entfernen.sql`. **Vor dem echten Einsatz Skript 4 ausführen**, sonst stehen die erfundenen Wochen in den Auswertungen.
 3. Unter **Authentication → Sign In / Providers → Email** den Schalter **"Allow new users to sign up"** ausschalten, damit niemand Fremdes ein Konto anlegen kann.
 4. Unter **Project Settings → API Keys** die **Project URL** und den **Publishable key** kopieren. Diese beiden Werte werden beim Bauen fest in die App eingebaut (Abschnitt 7). Den **Secret key** nie verwenden oder weitergeben.

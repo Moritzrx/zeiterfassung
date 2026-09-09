@@ -3,6 +3,7 @@ import { STANDARD_GESAMTZIEL, rang, rangName, zielRang } from '@shared/rang'
 import type { TeamMitglied, TeamWoche, Ziel } from '@shared/typen'
 import { berlinDatum, datumVerschieben, datumZuTagesanfang, kalenderwoche, wochenanfang } from '@shared/zeit'
 import { Karte } from '../components/Karte'
+import { LigaRangliste } from '../components/LigaRangliste'
 import { RangAbzeichen } from '../components/RangAbzeichen'
 import { RangUebersicht } from '../components/RangUebersicht'
 import { TeamBalken, type Teamwert } from '../components/TeamBalken'
@@ -175,6 +176,8 @@ export function TeamScreen(): ReactElement {
       {uebersichtOffen && (
         <RangUebersicht aktuellerRang={rang(status.wocheProduktivSekunden)} onSchliessen={() => setUebersichtOffen(false)} />
       )}
+
+      <LigaRangliste />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {zeilen.map((z) => {

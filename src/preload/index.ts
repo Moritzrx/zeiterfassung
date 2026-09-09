@@ -69,6 +69,9 @@ const api: Api = {
   rang: {
     gefeiert: (rang) => ipcRenderer.invoke('rang:gefeiert', rang)
   },
+  liga: {
+    stand: () => ipcRenderer.invoke('liga:stand')
+  },
   team: {
     stand: () => ipcRenderer.invoke('team:stand'),
     wochen: (vonDatum, bisDatum) => ipcRenderer.invoke('team:wochen', vonDatum, bisDatum)

@@ -34,6 +34,8 @@ export interface AuthErgebnis {
   fehler: string | null
 }
 
+import type { LigaStand } from './typen'
+
 /** Abmelden einer Ereignis-Anmeldung. */
 export type Abmelden = () => void
 
@@ -112,6 +114,10 @@ export interface Api {
   rang: {
     /** Meldet, dass die Aufstiegs-Einblendung für diesen Rang gezeigt wurde. */
     gefeiert: (rang: number) => Promise<void>
+  }
+  liga: {
+    /** Trophäen und Liga aller aktiven Personen, aus abgeschlossenen Wochen. */
+    stand: () => Promise<LigaStand[]>
   }
   team: {
     /** Produktive Wochenstunden aller aktiven Personen, eigene live. */
