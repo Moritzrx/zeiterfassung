@@ -8,15 +8,32 @@
 
 export type Ton = 'tick' | 'wischen' | 'oeffnen' | 'schliessen' | 'erfolg' | 'auszeichnung' | 'aufstieg'
 
+/** Die Klick-Arten zur Auswahl in den Einstellungen; der Auftraggeber hört sie an und wählt (Claude kann nicht hören). */
+export type KlickArt = 'tock' | 'pop' | 'tap' | 'fein' | 'keiner'
+
+export const KLICK_ARTEN: { art: KlickArt; label: string; hinweis: string }[] = [
+  { art: 'tock', label: 'Tock', hinweis: 'warm und tief, wie eine gute Taste' },
+  { art: 'pop', label: 'Pop', hinweis: 'rund und kurz' },
+  { art: 'tap', label: 'Tap', hinweis: 'dumpf, wie ein Tippen auf Filz' },
+  { art: 'fein', label: 'Fein', hinweis: 'sehr leise und hell, wie Glas' },
+  { art: 'keiner', label: 'Kein Klick', hinweis: 'nur Wischen, Aufstieg und Auszeichnungen' }
+]
+
 export interface ToneEinstellung {
   an: boolean
   /** 0 bis 1 */
   lautstaerke: number
+  klick: KlickArt
 }
 
 const SCHLUESSEL_AN = 'toene.an'
 const SCHLUESSEL_LAUT = 'toene.lautstaerke'
-const STANDARD: ToneEinstellung = { an: true, lautstaerke: 0.5 }
+const SCHLUESSEL_KLICK = 'toene.klick'
+const STANDARD: ToneEinstellung = { an: true, lautstaerke: 0.5, klick: 'tock' }
+
+function klickArtLesen(wert: string | null): KlickArt {
+  return KLICK_ARTEN.some((k) => k.art === wert) ? (wert as KlickArt) : STANDARD.klick
+}
 
 let kontext: AudioContext | null = null
 let master: GainNode | null = null
@@ -30,7 +47,8 @@ export function toneEinstellung(): ToneEinstellung {
     const laut = localStorage.getItem(SCHLUESSEL_LAUT)
     return {
       an: an === null ? STANDARD.an : an === '1',
-      lautstaerke: laut === null ? STANDARD.lautstaerke : Math.max(0, Math.min(1, Number(laut)))
+      lautstaerke: laut === null ? STANDARD.lautstaerke : Math.max(0, Math.min(1, Number(laut))),
+      klick: klickArtLesen(localStorage.getItem(SCHLUESSEL_KLICK))
     }
   } catch {
     return STANDARD
@@ -43,6 +61,7 @@ export function toneEinstellungSetzen(neu: Partial<ToneEinstellung>): ToneEinste
   try {
     localStorage.setItem(SCHLUESSEL_AN, ergebnis.an ? '1' : '0')
     localStorage.setItem(SCHLUESSEL_LAUT, String(ergebnis.lautstaerke))
+    localStorage.setItem(SCHLUESSEL_KLICK, ergebnis.klick)
   } catch {
     /* localStorage nicht verfügbar */
   }
@@ -158,12 +177,36 @@ function rauschen(k: AudioContext, o: RauschOptionen): void {
   quelle.stop(t0 + o.dauer + 0.05)
 }
 
-const KLAENGE: Record<Ton, (k: AudioContext) => void> = {
-  // Ein sauberer, kurzer Tastenklick: ein fallender Sinus-Tupfer plus ein Hauch dumpfes Rauschen.
-  tick: (k) => {
-    ton(k, { von: 1400, bis: 950, dauer: 0.04, pegel: 0.08 })
-    rauschen(k, { dauer: 0.02, pegel: 0.03, filter: 'lowpass', filterVon: 3200, filterBis: 1800, guete: 0.7 })
+/*
+ * Die Klick-Arten. Die ersten beiden Fassungen (heller Sinus 1900→1250 Hz, dann 1400→950 Hz) gefielen
+ * dem Auftraggeber nicht; deshalb mehrere Arten zur Auswahl, alle kurz und ohne scharfe Höhen.
+ */
+const KLICKS: Record<KlickArt, (k: AudioContext) => void> = {
+  // Warm und tief: ein schneller Tonfall von 520 auf 300 Hz plus ein winziger dumpfer Anschlag.
+  tock: (k) => {
+    ton(k, { von: 520, bis: 300, dauer: 0.055, pegel: 0.1, anstieg: 0.002 })
+    rauschen(k, { dauer: 0.016, pegel: 0.04, filter: 'lowpass', filterVon: 1500, filterBis: 500, guete: 0.5, anstieg: 0.002 })
   },
+  // Rund und kurz: ein Sinus von 800 auf 420 Hz, wie eine Blase.
+  pop: (k) => {
+    ton(k, { von: 800, bis: 420, dauer: 0.04, pegel: 0.09, anstieg: 0.003 })
+  },
+  // Dumpf wie Filz: fast nur ein tiefes, sehr kurzes Rauschen plus ein Hauch Grundton.
+  tap: (k) => {
+    rauschen(k, { dauer: 0.03, pegel: 0.07, filter: 'lowpass', filterVon: 900, filterBis: 300, guete: 0.6, anstieg: 0.002 })
+    ton(k, { von: 220, bis: 160, dauer: 0.04, pegel: 0.05, anstieg: 0.002 })
+  },
+  // Sehr leise und hell, wie ein Fingernagel auf Glas.
+  fein: (k) => {
+    ton(k, { von: 2200, dauer: 0.03, pegel: 0.025 })
+    ton(k, { von: 3300, dauer: 0.02, pegel: 0.012 })
+  },
+  keiner: () => {}
+}
+
+const KLAENGE: Record<Ton, (k: AudioContext) => void> = {
+  // Der Klick in der gewählten Art.
+  tick: (k) => KLICKS[toneEinstellung().klick](k),
   // Das Wischen beim Screen-Wechsel, auf die 380 ms des Übergangs abgestimmt: weiches, tiefes Luftrauschen
   // (Tiefpass, öffnet sich bis 1,1 kHz und schließt wieder), darunter ein sehr leiser, sanft steigender Ton.
   // Bewusst ohne Höhen und mit langsamem Einschwingen, die erste Fassung war zu hell und scharf.
@@ -223,6 +266,18 @@ export function tonProbe(name: Ton, lautstaerke: number): void {
   master.gain.value = lautstaerke
   try {
     KLAENGE[name](k)
+  } catch {
+    /* Audio nicht verfügbar */
+  }
+}
+
+/** Eine bestimmte Klick-Art probehören, unabhängig von der gewählten. */
+export function klickProbe(art: KlickArt, lautstaerke: number): void {
+  const k = bereit()
+  if (!k || !master) return
+  master.gain.value = lautstaerke
+  try {
+    KLICKS[art](k)
   } catch {
     /* Audio nicht verfügbar */
   }

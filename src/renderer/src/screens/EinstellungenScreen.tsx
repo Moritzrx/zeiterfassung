@@ -11,7 +11,7 @@ import { kurzDatum, uhrzeit } from '../format'
 import { useNutzer } from '../nutzer'
 import { SymbolBild, useSymbolZuordnung } from '../symbole'
 import { useTaetigkeiten } from '../taetigkeiten'
-import { tonProbe, toneEinstellung, toneEinstellungSetzen, type Ton } from '../toene'
+import { KLICK_ARTEN, klickProbe, tonProbe, toneEinstellung, toneEinstellungSetzen, type Ton } from '../toene'
 
 const PROBEN: { ton: Ton; label: string }[] = [
   { ton: 'tick', label: 'Klick' },
@@ -548,6 +548,33 @@ export function EinstellungenScreen(): ReactElement {
               aria-label="Lautstärke"
             />
           </Zeile>
+          <div className="py-3">
+            <p className="text-sm">Klick-Art</p>
+            <p className="mt-0.5 text-xs text-dim">Antippen spielt die Art vor und wählt sie aus.</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {KLICK_ARTEN.map((k) => {
+                const gewaehlt = toene.klick === k.art
+                return (
+                  <button
+                    key={k.art}
+                    type="button"
+                    data-stumm
+                    title={k.hinweis}
+                    onClick={() => {
+                      klickProbe(k.art, toene.lautstaerke)
+                      setToene(toneEinstellungSetzen({ klick: k.art }))
+                    }}
+                    className={`rounded-chip px-3 py-1.5 text-xs transition-colors ${
+                      gewaehlt ? 'bg-ink text-ground' : 'bg-panel-2 text-ink hover:bg-inaktiv'
+                    }`}
+                  >
+                    {k.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-1.5 text-xs text-dim">{KLICK_ARTEN.find((k) => k.art === toene.klick)?.hinweis}</p>
+          </div>
           <Zeile titel="Probehören">
             <div className="flex flex-wrap justify-end gap-1.5">
               {PROBEN.map((p) => (

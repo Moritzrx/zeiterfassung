@@ -111,7 +111,7 @@ Bronze 1 bis 3, Silber 4 bis 6, Gold 7 bis 9, Champion 10, Diamant 11 bis 15. Je
 
 ### Töne
 
-Die App klickt leise bei Knöpfen, wischt beim Screen-Wechsel und spielt Klänge bei Aufstieg und Auszeichnungen. Alle Töne entstehen in der App selbst, es werden keine Dateien geladen. Unter Einstellungen → Töne lassen sie sich ausschalten, in der Lautstärke regeln und probehören.
+Die App klickt leise bei Knöpfen, wischt beim Screen-Wechsel und spielt Klänge bei Aufstieg und Auszeichnungen. Alle Töne entstehen in der App selbst, es werden keine Dateien geladen. Unter Einstellungen → Töne lassen sie sich ausschalten, in der Lautstärke regeln und probehören; für den Klick stehen mehrere Arten zur Wahl (Tock, Pop, Tap, Fein oder kein Klick).
 
 ### Die Liga
 
