@@ -107,7 +107,7 @@ Jede Woche beginnt bei Rang 0. Bis Rang 10 gibt es alle 5 produktiven Stunden ei
 | 7 | 35 | Conqueror | 15 | 60 | Eternal |
 | 8 | 40 | Warlord | | | |
 
-Bronze 1 bis 3, Silber 4 bis 6, Gold 7 bis 9, Champion 10, Diamant 11 bis 15. Jede Stufe hat ein eigenes, illustriertes Wappen (mit KI erzeugt), darauf stehen Rangzahl, Sterne und Name; die Ligen haben ebenfalls eigene Wappen mit römischer Ziffer. Beim Aufstieg erscheint eine große Einblendung: Wappen mit Strahlenkranz, Druckwellen und Funken in der Farbe der Stufe, dazu ein Klang; sie schließt nach ein paar Sekunden oder mit einem Klick. Wer sein Gesamtziel in den Einstellungen ändert (zum Beispiel 40 Stunden), bekommt einen anderen Ziel-Rang (dann Rang 8); die Stundengrenzen der Ränge bleiben gleich.
+Bronze 1 bis 3, Silber 4 bis 6, Gold 7 bis 9, Champion 10, Diamant 11 bis 15. Jede Stufe hat ein eigenes, illustriertes Wappen (mit KI erzeugt), ebenso jede der 14 Auszeichnungen eine eigene Medaille, darauf stehen Rangzahl, Sterne und Name; die Ligen haben ebenfalls eigene Wappen mit römischer Ziffer. Beim Aufstieg erscheint eine große Einblendung: Wappen mit Strahlenkranz, Druckwellen und Funken in der Farbe der Stufe, dazu ein Klang; sie schließt nach ein paar Sekunden oder mit einem Klick. Wer sein Gesamtziel in den Einstellungen ändert (zum Beispiel 40 Stunden), bekommt einen anderen Ziel-Rang (dann Rang 8); die Stundengrenzen der Ränge bleiben gleich.
 
 ### Updates
 
