@@ -4,6 +4,7 @@ import {
   LIGA_MAX_DELTA,
   LIGA_MIN_DELTA,
   LIGA_START_TROPHAEEN,
+  URLAUB_WOCHENTAGE,
   deltaText,
   liga,
   ligaFortschritt,
@@ -98,7 +99,7 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
   const farbe = LIGA_FARBEN[l.stufe]
   // Hochrechnung der laufenden Woche: bisheriger Schnitt je Arbeitstag auf den Rest übertragen.
   const p = wochenPrognose(produktivSekunden, gesamtziel, urlaube, new Date(), erfassungSeit, arbeitstageWert)
-  const ganzeWocheUrlaub = p.urlaubstage >= 5
+  const ganzeWocheUrlaub = p.urlaubstage >= URLAUB_WOCHENTAGE
   // Unter 0 fällt niemand: die große Zahl zeigt, was am Stand wirklich passiert; der Regelsatz nennt den rohen Wert.
   const wirksam = wirksamesDelta(trophaeen, p.delta)
   const abgefangen = wirksam !== p.delta

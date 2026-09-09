@@ -168,9 +168,9 @@ function Oberflaeche(): ReactElement {
           )
         })}
       </main>
+      <UpdateHinweis />
       <Navigation aktiv={aktiv} onWechsel={wechseln} />
       <Hinweise />
-      <UpdateHinweis />
       <Fehlerschutz bereich="Aufstieg">
         <RangAufstieg />
       </Fehlerschutz>

@@ -20,6 +20,8 @@ export const LIGA_NEUTRAL_ABSTAND = 10
 export const LIGA_FAKTOR = 10
 export const LIGA_MIN_DELTA = -120
 export const LIGA_MAX_DELTA = 200
+/** Über so viele Tage je Woche zählt der Urlaub (das Team arbeitet Montag bis Sonntag); gleich in liga_stand() der Datenbank. */
+export const URLAUB_WOCHENTAGE = 7
 
 export type LigaStufe = 'keine' | 'bronze' | 'silber' | 'gold' | 'kristall' | 'meister' | 'champion' | 'titan' | 'legende'
 
@@ -102,10 +104,10 @@ export function ligaFortschritt(trophaeen: number): number {
   return Math.max(0, Math.min(1, (trophaeen - l.ab) / (n.ab - l.ab)))
 }
 
-/** Der neutrale Punkt einer Woche in Stunden: Gesamtziel minus 10, anteilig gekürzt um Urlaubstage (Mo–Fr). */
+/** Der neutrale Punkt einer Woche in Stunden: Gesamtziel minus 10, anteilig gekürzt um Urlaubstage (Mo–So). */
 export function neutralStunden(gesamtziel: number, urlaubstage = 0): number {
-  const tage = Math.max(0, Math.min(5, urlaubstage))
-  return ((gesamtziel - LIGA_NEUTRAL_ABSTAND) * (5 - tage)) / 5
+  const tage = Math.max(0, Math.min(URLAUB_WOCHENTAGE, urlaubstage))
+  return ((gesamtziel - LIGA_NEUTRAL_ABSTAND) * (URLAUB_WOCHENTAGE - tage)) / URLAUB_WOCHENTAGE
 }
 
 /** Trophäen, die eine Woche mit so vielen produktiven Sekunden bringt (oder kostet). */
@@ -123,11 +125,11 @@ export function wirksamesDelta(trophaeen: number, delta: number): number {
   return Math.max(delta, -Math.max(0, trophaeen))
 }
 
-/** Wie viele Werktage (Mo–Fr) einer Woche ab dem Montag "JJJJ-MM-TT" in einem der Urlaube liegen. */
+/** Wie viele Tage (Mo–So) einer Woche ab dem Montag "JJJJ-MM-TT" in einem der Urlaube liegen. */
 export function urlaubstageInWoche(wocheStart: string, urlaube: Array<{ von: string; bis: string }>): number {
   const [jahr, monat, tag] = wocheStart.split('-').map(Number)
   let tage = 0
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < URLAUB_WOCHENTAGE; i++) {
     const d = new Date(Date.UTC(jahr, monat - 1, tag + i))
     const datum = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
     if (urlaube.some((u) => u.von <= datum && datum <= u.bis)) tage++
@@ -155,7 +157,7 @@ export interface WochenPrognose {
  * Hochrechnung der laufenden Woche: der bisherige Schnitt je Arbeitstag wird auf die
  * restlichen Arbeitstage (ohne Urlaub) übertragen. Heute zählt anteilig nach der Uhrzeit,
  * ein Arbeitstag läuft von 8 bis 17 Uhr. Nach dem letzten Arbeitstag gibt es keine Prognose mehr,
- * nur den Stand. Der neutrale Punkt bleibt unabhängig von den Arbeitstagen (Urlaub zählt Mo–Fr wie in der Datenbank).
+ * nur den Stand. Der neutrale Punkt hängt nicht von den Arbeitstagen ab; Urlaub zählt an allen sieben Tagen wie in der Datenbank.
  */
 export function wochenPrognose(
   produktivSekunden: number,
@@ -171,15 +173,13 @@ export function wochenPrognose(
   const heute = berlinDatum(jetzt)
   const t = berlinTeile(jetzt)
   const tagesanteil = Math.max(0, Math.min(1, (t.stunde + t.minute / 60 - 8) / 9))
-  let urlaubstage = 0
+  // Urlaub zählt über alle sieben Tage (wie in der Datenbank), hochgerechnet wird nur über die Arbeitstage.
+  const urlaubstage = urlaubstageInWoche(start, urlaube)
   let gearbeitet = 0
   let rest = 0
   for (let i = 0; i < arbeitstage; i++) {
     const datum = datumVerschieben(start, i)
-    if (urlaube.some((u) => u.von <= datum && datum <= u.bis)) {
-      urlaubstage++
-      continue
-    }
+    if (urlaube.some((u) => u.von <= datum && datum <= u.bis)) continue
     // Vor der Installation gab es keine Erfassung: diese Tage verzerren sonst den Schnitt der ersten Woche.
     if (erfassungSeit && datum < erfassungSeit) continue
     if (datum < heute) gearbeitet += 1

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
-import { deltaText, liga, wirksamesDelta, wochenPrognose } from '@shared/liga'
+import { URLAUB_WOCHENTAGE, deltaText, liga, wirksamesDelta, wochenPrognose } from '@shared/liga'
 import { STANDARD_GESAMTZIEL } from '@shared/rang'
 import type { LigaStand, TeamMitglied, Urlaub, Ziel } from '@shared/typen'
 import { fehlerText, zahlText } from '../format'
@@ -54,7 +54,7 @@ export function LigaRangliste(): ReactElement {
     const eigene = urlaube.filter((u) => u.userId === s.userId)
     // Für alle gilt die Einstellung dieses Rechners (das Team arbeitet gleich lang).
     const p = wochenPrognose(sekunden, gesamtziel, eigene, new Date(), null, arbeitstageWert)
-    if (p.urlaubstage >= 5) return { text: 'diese Woche Urlaub', farbe: 'text-dim' }
+    if (p.urlaubstage >= URLAUB_WOCHENTAGE) return { text: 'diese Woche Urlaub', farbe: 'text-dim' }
     if (p.art === 'zu-frueh') return { text: 'Prognose ab Montagmittag', farbe: 'text-dim' }
     const wirksam = wirksamesDelta(s.trophaeen, p.delta)
     const wort = p.art === 'stand' ? 'diese Woche' : 'voraussichtlich'

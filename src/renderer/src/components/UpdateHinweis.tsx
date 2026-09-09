@@ -5,6 +5,7 @@ import type { UpdateStatus } from '@shared/typen'
 /**
  * Die Leiste über der Navigation, wenn eine neue Version bereitliegt: unter Windows ist sie schon
  * geladen und wird mit einem Klick eingespielt, auf dem Mac öffnet der Klick die Download-Seite.
+ * Sitzt im Seitenaufbau zwischen Inhalt und Navigation (nicht schwebend), damit sie nichts verdeckt.
  * Lässt sich für die laufende Sitzung wegklicken.
  */
 export function UpdateHinweis(): ReactElement | null {
@@ -21,8 +22,8 @@ export function UpdateHinweis(): ReactElement | null {
   if (status.zustand !== 'bereit' && status.zustand !== 'verfuegbar') return null
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-20 z-40 flex justify-center px-6">
-      <div className="glas animate-einblenden pointer-events-auto flex items-center gap-3 rounded-card py-2 pr-2 pl-4 text-sm">
+    <div className="flex shrink-0 justify-center px-6 pb-2">
+      <div className="glas animate-einblenden flex items-center gap-3 rounded-card py-2 pr-2 pl-4 text-sm">
         <span>
           Version {status.neueVersion} {status.zustand === 'bereit' ? 'ist geladen und wird beim Neustart eingespielt.' : 'ist da.'}
         </span>
