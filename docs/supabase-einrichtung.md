@@ -89,7 +89,7 @@ Damit jeder seinen Urlaub hinterlegen kann und die Liga ihn berücksichtigt:
 
 ## 6i. 36 Auszeichnungen, Stunden-Meilensteine, Urlaub Mo–So (Skript 13)
 
-- `supabase/13_auszeichnungen_erweitert.sql` genauso ausführen. Es erlaubt die neuen Auszeichnungstypen, legt die Funktion an, die die produktiven Stunden seit dem Start zählt, und stellt die Liga so um, dass Urlaubstage an allen sieben Tagen zählen. Ohne das Skript bleiben die neuen Medaillen grau, und der Urlaub zählt in der Liga weiter nur Montag bis Freitag.
+- `supabase/13_auszeichnungen_erweitert.sql` genauso ausführen (am 10. September 2026 erledigt). Es erlaubt die neuen Auszeichnungstypen, legt die Funktion an, die die produktiven Stunden seit dem Start zählt, und stellt die Liga so um, dass Urlaubstage an allen sieben Tagen zählen. Ohne das Skript bleiben die neuen Medaillen grau, und der Urlaub zählt in der Liga weiter nur Montag bis Freitag.
 
 ## 7. Zugangsdaten in die App bringen
 
