@@ -79,6 +79,10 @@ Damit jeder seinen Urlaub hinterlegen kann und die Liga ihn berücksichtigt:
 
 - `supabase/10_liga_start_null.sql` genauso ausführen. Danach beginnt jeder ohne Liga bei 0 Trophäen statt bei 400 in der Bronze-Liga III.
 
+## 6g. Zehn neue Auszeichnungen (Skript 11)
+
+- `supabase/11_auszeichnungen.sql` genauso ausführen. Es erlaubt der Tabelle die neuen Auszeichnungstypen; ohne das Skript kann die App sie nicht speichern.
+
 ## 7. Zugangsdaten in die App bringen
 
 1. Links unten **"Project Settings"** (Zahnrad) → **"API Keys"**.

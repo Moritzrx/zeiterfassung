@@ -122,12 +122,22 @@ Der Wochenrang fängt jeden Montag bei null an. Die Liga dagegen bleibt, wie die
 
 ### Auszeichnungen
 
-Vier Abzeichen, die man dauerhaft behält:
+Vierzehn Medaillen, die man dauerhaft behält. Auf dem Wochen-Screen ganz unten; mit der Maus über eine Medaille fahren zeigt die Bedingung.
 
 - **Erster Champion**: zum ersten Mal Rang 10 in einer Woche.
 - **Serie**: drei Wochen hintereinander Rang 10 oder höher.
+- **Dauerbrenner**: vier Wochen in Folge mindestens Rang 5.
+- **Comeback**: direkt nach einer Woche unter Rang 5 eine Woche auf Rang 10 oder höher.
+- **Eternal**: Rang 15 in einer Woche, höher geht es nicht.
+- **Perfekte Woche**: Montag bis Freitag jeden Tag mindestens 8 produktive Stunden.
 - **Alle Lernziele**: alle Lernziele einer Woche erreicht.
 - **Fokus-Woche**: höchstens 2 Stunden unproduktive Zeit in einer Woche, ab Rang 5.
+- **Marathon**: 10 produktive Stunden an einem einzigen Tag.
+- **Sprint**: 3 Stunden am Stück produktiv, ohne Unterbrechung über 5 Minuten.
+- **Frühaufsteher**: in einer Woche mindestens 2 produktive Stunden vor 8 Uhr.
+- **Nachteule**: in einer Woche mindestens 2 produktive Stunden nach 22 Uhr.
+- **Wochenend-Krieger**: 5 produktive Stunden an einem Wochenende.
+- **Aufgeräumt**: eine abgeschlossene Woche mit mindestens 20 produktiven Stunden und keinem einzigen ungeklärten Block.
 
 ### Wochenzusammenfassung
 
@@ -160,7 +170,7 @@ Die ausführliche Klick-Anleitung mit Bildern steht in [`docs/supabase-einrichtu
 2. Im **SQL Editor** nacheinander die Skripte aus dem Ordner `supabase/` einfügen und mit "Run" ausführen:
    - `01_tabellen.sql` (Tabellen und Zugriffsrechte)
    - `02_startwerte.sql` (Namen, Ziele, Startregeln; vorher die drei E-Mail-Adressen oben im Skript prüfen)
-   - `05_auswertung.sql`, `06_team.sql`, `08_liga.sql`, `09_urlaub.sql` und `10_liga_start_null.sql` (Funktionen für lange Auswertungen, den Team-Verlauf, die Liga und den Urlaub)
+   - `05_auswertung.sql`, `06_team.sql`, `08_liga.sql`, `09_urlaub.sql`, `10_liga_start_null.sql` und `11_auszeichnungen.sql` (Funktionen für lange Auswertungen, den Team-Verlauf, die Liga, den Urlaub und die erweiterten Auszeichnungen)
    - optional `03_testdaten_einfuegen.sql` zum Anschauen, später `04_testdaten_entfernen.sql`. **Vor dem echten Einsatz Skript 4 ausführen**, sonst stehen die erfundenen Wochen in den Auswertungen.
 3. Unter **Authentication → Sign In / Providers → Email** den Schalter **"Allow new users to sign up"** ausschalten, damit niemand Fremdes ein Konto anlegen kann.
 4. Unter **Project Settings → API Keys** die **Project URL** und den **Publishable key** kopieren. Diese beiden Werte werden beim Bauen fest in die App eingebaut (Abschnitt 7). Den **Secret key** nie verwenden oder weitergeben.

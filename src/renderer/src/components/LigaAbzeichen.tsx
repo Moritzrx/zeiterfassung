@@ -43,7 +43,7 @@ export function LigaAbzeichen({ trophaeen = 0, liga: vorgabe, groesse = 56 }: Pr
   const stufe = l.stufe
   const farbe = LIGA_FARBEN[stufe]
   const id = `liga-${stufe}`
-  const leuchtet = stufe === 'champion' || stufe === 'titan' || stufe === 'legende' || stufe === 'kristall'
+  const leuchtet = stufe !== 'keine'
   const metall = `url(#${id}-metall)`
   const filter = leuchtet ? `url(#${id}-leuchten)` : undefined
   const ziffer = (y = 63, groesseZiffer = 34): ReactElement => (
@@ -63,7 +63,7 @@ export function LigaAbzeichen({ trophaeen = 0, liga: vorgabe, groesse = 56 }: Pr
     case 'bronze':
       inhalt = (
         <g>
-          <Metallform id={id} farbe={farbe} form={SCHILD} />
+          <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
           <Nieten farbe={farbe} />
           {ziffer()}
         </g>
@@ -73,7 +73,7 @@ export function LigaAbzeichen({ trophaeen = 0, liga: vorgabe, groesse = 56 }: Pr
       inhalt = (
         <g>
           <Fluegel farbe={farbe} gross={false} />
-          <Metallform id={id} farbe={farbe} form={SCHILD} />
+          <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
           <Nieten farbe={farbe} />
           {ziffer()}
         </g>
@@ -83,7 +83,7 @@ export function LigaAbzeichen({ trophaeen = 0, liga: vorgabe, groesse = 56 }: Pr
       inhalt = (
         <g>
           <Lorbeer farbe={farbe} />
-          <Metallform id={id} farbe={farbe} form={SCHILD} />
+          <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
           {ziffer()}
         </g>
       )
@@ -103,7 +103,7 @@ export function LigaAbzeichen({ trophaeen = 0, liga: vorgabe, groesse = 56 }: Pr
         <g>
           <Lorbeer farbe={farbe} />
           <g transform="translate(0 6)">
-            <Metallform id={id} farbe={farbe} form={SCHILD} />
+            <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
           </g>
           <Krone farbe={farbe} metall={metall} />
           {ziffer(72, 30)}
@@ -157,7 +157,7 @@ export function LigaAbzeichen({ trophaeen = 0, liga: vorgabe, groesse = 56 }: Pr
 
   return (
     <svg width={groesse} height={groesse} viewBox="0 0 100 100" overflow="visible" role="img" aria-label={l.name}>
-      <Definitionen id={id} farbe={farbe} leuchtet={leuchtet} />
+      <Definitionen id={id} farbe={farbe} />
       {inhalt}
     </svg>
   )

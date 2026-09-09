@@ -1,24 +1,44 @@
 /**
- * Wochenstatistik und die vier Auszeichnungen. Einmal freigeschaltet, werden
+ * Wochenstatistik und die Auszeichnungen. Einmal freigeschaltet, werden
  * sie nie zurückgenommen, auch wenn jemand die Woche später korrigiert.
  */
-import { RANG_ZIEL, STANDARD_GESAMTZIEL, rang, zielRang } from './rang'
+import { MAX_RANG, RANG_ZIEL, STANDARD_GESAMTZIEL, rang, zielRang } from './rang'
 import { taetigkeitSchluessel } from './regeln'
 import type { Auszeichnung, AuszeichnungTyp, Block, Ziel } from './typen'
 import { berlinDatum, datumVerschieben, datumZuTagesanfang, wochenanfang } from './zeit'
 
-export const AUSZEICHNUNGEN: Record<AuszeichnungTyp, { titel: string; text: string }> = {
-  erste_woche_level10: { titel: 'Erster Champion', text: `Zum ersten Mal Rang ${RANG_ZIEL} in einer Woche erreicht.` },
-  drei_wochen_level10: { titel: 'Serie', text: `Drei Wochen in Folge auf Rang ${RANG_ZIEL} oder höher.` },
-  alle_lernziele: { titel: 'Alle Lernziele', text: 'Alle Lernziele einer Woche erreicht.' },
-  fokus_woche: { titel: 'Fokus-Woche', text: 'Eine Woche mit höchstens 2 Stunden unproduktiver Zeit, ab Rang 5.' }
+export const AUSZEICHNUNGEN: Record<AuszeichnungTyp, { titel: string; text: string; farbe: string }> = {
+  erste_woche_level10: { titel: 'Erster Champion', text: `Zum ersten Mal Rang ${RANG_ZIEL} in einer Woche erreicht.`, farbe: '#FE5303' },
+  drei_wochen_level10: { titel: 'Serie', text: `Drei Wochen in Folge auf Rang ${RANG_ZIEL} oder höher.`, farbe: '#E8B923' },
+  dauerbrenner: { titel: 'Dauerbrenner', text: 'Vier Wochen in Folge mindestens Rang 5.', farbe: '#FF8A3D' },
+  comeback: { titel: 'Comeback', text: `Direkt nach einer Woche unter Rang 5 eine Woche auf Rang ${RANG_ZIEL} oder höher.`, farbe: '#FB7185' },
+  eternal: { titel: 'Eternal', text: `Rang ${MAX_RANG} in einer Woche erreicht, höher geht es nicht.`, farbe: '#7DD3FC' },
+  perfekte_woche: { titel: 'Perfekte Woche', text: 'Montag bis Freitag jeden Tag mindestens 8 produktive Stunden.', farbe: '#FFD166' },
+  alle_lernziele: { titel: 'Alle Lernziele', text: 'Alle Lernziele einer Woche erreicht.', farbe: '#00C076' },
+  fokus_woche: { titel: 'Fokus-Woche', text: 'Eine Woche mit höchstens 2 Stunden unproduktiver Zeit, ab Rang 5.', farbe: '#FF4D4D' },
+  marathon: { titel: 'Marathon', text: '10 produktive Stunden an einem einzigen Tag.', farbe: '#38BDF8' },
+  sprint: { titel: 'Sprint', text: '3 Stunden am Stück produktiv, ohne Unterbrechung über 5 Minuten.', farbe: '#34D399' },
+  fruehaufsteher: { titel: 'Frühaufsteher', text: 'In einer Woche mindestens 2 produktive Stunden vor 8 Uhr.', farbe: '#FDBA74' },
+  nachteule: { titel: 'Nachteule', text: 'In einer Woche mindestens 2 produktive Stunden nach 22 Uhr.', farbe: '#A78BFA' },
+  wochenend_krieger: { titel: 'Wochenend-Krieger', text: '5 produktive Stunden an einem Wochenende.', farbe: '#F472B6' },
+  aufgeraeumt: { titel: 'Aufgeräumt', text: 'Eine abgeschlossene Woche mit mindestens 20 produktiven Stunden und keinem ungeklärten Block.', farbe: '#C9CDD6' }
 }
 
 export const AUSZEICHNUNG_REIHENFOLGE: AuszeichnungTyp[] = [
   'erste_woche_level10',
   'drei_wochen_level10',
+  'dauerbrenner',
+  'comeback',
+  'eternal',
+  'perfekte_woche',
   'alle_lernziele',
-  'fokus_woche'
+  'fokus_woche',
+  'marathon',
+  'sprint',
+  'fruehaufsteher',
+  'nachteule',
+  'wochenend_krieger',
+  'aufgeraeumt'
 ]
 
 export interface Wochenstatistik {
@@ -30,13 +50,24 @@ export interface Wochenstatistik {
   inaktiv: number
   /** produktive Sekunden je Tätigkeitsschlüssel */
   jeTaetigkeit: Map<string, { name: string; sekunden: number }>
+  /** produktive Sekunden je Wochentag, Index 0 = Montag */
+  tage: number[]
+  /** produktive Sekunden vor 8 Uhr */
+  frueh: number
+  /** produktive Sekunden nach 22 Uhr */
+  spaet: number
+  /** längste produktive Strecke am Stück (Lücken bis 5 Minuten erlaubt) */
+  laengsteStrecke: number
   /** true, wenn es gar keine Blöcke gab */
   leer: boolean
   /** true, wenn mindestens ein Block aus den Testdaten stammt */
   testdaten: boolean
 }
 
-function anteil(block: Block, von: number, bis: number): number {
+const STUNDE = 3600
+const STRECKE_LUECKE = 5 * 60
+
+function ueberlappung(block: Block, von: number, bis: number): number {
   const s = Math.max(Date.parse(block.start), von)
   const e = Math.min(Date.parse(block.ende), bis)
   return e > s ? (e - s) / 1000 : 0
@@ -53,22 +84,52 @@ export function wochenstatistik(bloecke: Block[], start: string): Wochenstatisti
     ungeklaert: 0,
     inaktiv: 0,
     jeTaetigkeit: new Map(),
+    tage: [0, 0, 0, 0, 0, 0, 0],
+    frueh: 0,
+    spaet: 0,
+    laengsteStrecke: 0,
     leer: true,
     testdaten: false
   }
+  const tagesgrenzen = Array.from({ length: 7 }, (_, i) => datumZuTagesanfang(datumVerschieben(start, i)).getTime())
+  const produktive: Array<[number, number]> = []
   for (const b of bloecke) {
     if (b.geloeschtAm) continue
-    const a = anteil(b, von, bis)
+    const a = ueberlappung(b, von, bis)
     if (a <= 0) continue
     stat.leer = false
     if (b.testdaten) stat.testdaten = true
     stat[b.bewertung] += a
-    if (b.bewertung === 'produktiv' && b.taetigkeit) {
+    if (b.bewertung !== 'produktiv') continue
+    if (b.taetigkeit) {
       const s = taetigkeitSchluessel(b.taetigkeit)
       const e = stat.jeTaetigkeit.get(s) ?? { name: b.taetigkeit, sekunden: 0 }
       e.sekunden += a
       stat.jeTaetigkeit.set(s, e)
     }
+    for (let i = 0; i < 7; i++) {
+      const tagVon = tagesgrenzen[i]
+      const tagBis = i < 6 ? tagesgrenzen[i + 1] : bis
+      const amTag = ueberlappung(b, tagVon, tagBis)
+      if (amTag <= 0) continue
+      stat.tage[i] += amTag
+      stat.frueh += ueberlappung(b, tagVon, tagVon + 8 * STUNDE * 1000)
+      stat.spaet += ueberlappung(b, tagVon + 22 * STUNDE * 1000, tagBis)
+    }
+    produktive.push([Math.max(Date.parse(b.start), von), Math.min(Date.parse(b.ende), bis)])
+  }
+  // Längste Strecke: produktive Blöcke nach Start sortiert, Lücken bis 5 Minuten überbrücken
+  produktive.sort((x, y) => x[0] - y[0])
+  let streckeStart = 0
+  let streckeEnde = 0
+  for (const [s, e] of produktive) {
+    if (streckeEnde && s - streckeEnde <= STRECKE_LUECKE * 1000) {
+      streckeEnde = Math.max(streckeEnde, e)
+    } else {
+      streckeStart = s
+      streckeEnde = e
+    }
+    stat.laengsteStrecke = Math.max(stat.laengsteStrecke, (streckeEnde - streckeStart) / 1000)
   }
   return stat
 }
@@ -90,9 +151,9 @@ export interface NeueAuszeichnung {
 }
 
 /**
- * Prüft, welche Auszeichnungen neu dazukommen. "Erster Champion", "Serie" und
- * "Alle Lernziele" gibt es sofort, sobald erfüllt, auch mitten in der Woche.
- * "Fokus-Woche" erst nach Wochenende, weil bis dahin noch Unproduktives dazukommen kann.
+ * Prüft, welche Auszeichnungen neu dazukommen. Die meisten gibt es sofort, sobald
+ * erfüllt, auch mitten in der Woche. "Fokus-Woche" und "Aufgeräumt" erst nach dem
+ * Wochenende, weil bis dahin noch Unproduktives oder Ungeklärtes dazukommen kann.
  */
 export function auszeichnungenPruefen(
   bloecke: Block[],
@@ -109,32 +170,46 @@ export function auszeichnungenPruefen(
 
   const wochen: Wochenstatistik[] = []
   for (let k = wochenZurueck; k >= 0; k--) wochen.push(wochenstatistik(bloecke, datumVerschieben(laufende, -7 * k)))
-  const aufZiel = (w: Wochenstatistik): boolean => rang(w.produktiv) >= ziel
+  const r = (w: Wochenstatistik): number => rang(w.produktiv)
+  const aufZiel = (w: Wochenstatistik): boolean => r(w) >= ziel
 
   const neue: NeueAuszeichnung[] = []
-  if (!hat.has('erste_woche_level10')) {
-    const w = wochen.find(aufZiel)
-    if (w) neue.push({ typ: 'erste_woche_level10', wocheStart: w.start, testdaten: w.testdaten })
+  const melden = (typ: AuszeichnungTyp, w: Wochenstatistik | undefined, testdaten = w?.testdaten ?? false): void => {
+    if (w && !hat.has(typ)) neue.push({ typ, wocheStart: w.start, testdaten })
   }
-  if (!hat.has('drei_wochen_level10')) {
-    for (let i = 2; i < wochen.length; i++) {
-      if (aufZiel(wochen[i - 2]) && aufZiel(wochen[i - 1]) && aufZiel(wochen[i])) {
-        neue.push({
-          typ: 'drei_wochen_level10',
-          wocheStart: wochen[i].start,
-          testdaten: wochen[i].testdaten || wochen[i - 1].testdaten || wochen[i - 2].testdaten
-        })
-        break
-      }
+  /** Erste Woche, die eine Bedingung erfüllt */
+  const erste = (bedingung: (w: Wochenstatistik, i: number) => boolean): Wochenstatistik | undefined => wochen.find((w, i) => bedingung(w, i))
+  /** Erste Woche, ab der n Wochen in Folge eine Bedingung erfüllen; liefert die letzte Woche der Folge */
+  const folge = (n: number, bedingung: (w: Wochenstatistik) => boolean): Wochenstatistik | undefined => {
+    for (let i = n - 1; i < wochen.length; i++) {
+      if (wochen.slice(i - n + 1, i + 1).every(bedingung)) return wochen[i]
     }
+    return undefined
   }
-  if (!hat.has('alle_lernziele') && lernziele.length > 0) {
-    const w = wochen.find((w) => !w.leer && zieleErreicht(w, lernziele).every((z) => z.erreicht))
-    if (w) neue.push({ typ: 'alle_lernziele', wocheStart: w.start, testdaten: w.testdaten })
+
+  melden('erste_woche_level10', erste(aufZiel))
+  const serie = folge(3, aufZiel)
+  if (serie) {
+    const i = wochen.indexOf(serie)
+    melden('drei_wochen_level10', serie, wochen.slice(i - 2, i + 1).some((w) => w.testdaten))
   }
-  if (!hat.has('fokus_woche')) {
-    const w = wochen.find((w) => w.start < laufende && !w.leer && w.unproduktiv <= 2 * 3600 && rang(w.produktiv) >= 5)
-    if (w) neue.push({ typ: 'fokus_woche', wocheStart: w.start, testdaten: w.testdaten })
+  const brenner = folge(4, (w) => r(w) >= 5)
+  if (brenner) {
+    const i = wochen.indexOf(brenner)
+    melden('dauerbrenner', brenner, wochen.slice(i - 3, i + 1).some((w) => w.testdaten))
   }
+  melden('comeback', erste((w, i) => i > 0 && !wochen[i - 1].leer && r(wochen[i - 1]) < 5 && aufZiel(w)))
+  melden('eternal', erste((w) => r(w) >= MAX_RANG))
+  melden('perfekte_woche', erste((w) => w.tage.slice(0, 5).every((t) => t >= 8 * STUNDE)))
+  if (lernziele.length > 0) {
+    melden('alle_lernziele', erste((w) => !w.leer && zieleErreicht(w, lernziele).every((z) => z.erreicht)))
+  }
+  melden('fokus_woche', erste((w) => w.start < laufende && !w.leer && w.unproduktiv <= 2 * STUNDE && r(w) >= 5))
+  melden('marathon', erste((w) => w.tage.some((t) => t >= 10 * STUNDE)))
+  melden('sprint', erste((w) => w.laengsteStrecke >= 3 * STUNDE))
+  melden('fruehaufsteher', erste((w) => w.frueh >= 2 * STUNDE))
+  melden('nachteule', erste((w) => w.spaet >= 2 * STUNDE))
+  melden('wochenend_krieger', erste((w) => w.tage[5] + w.tage[6] >= 5 * STUNDE))
+  melden('aufgeraeumt', erste((w) => w.start < laufende && !w.leer && w.produktiv >= 20 * STUNDE && w.ungeklaert === 0))
   return neue
 }

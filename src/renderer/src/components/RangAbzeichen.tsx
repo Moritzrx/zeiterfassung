@@ -20,13 +20,13 @@ import {
 } from './wappen'
 
 /*
- * Das Abzeichen eines Wochenrangs, ein Wappen wie aus einem Spiel:
- *   Bronze 1–3    genietetes Bronzeschild, Sterne, Namensband
- *   Silber 4–6    Silberschild mit Flügeln, Stern oben, Sterne, Namensband
+ * Das Abzeichen eines Wochenrangs, ein Wappen im Spiel-Stil:
+ *   Bronze 1–3    genietetes Bronzeschild, goldene Sterne, Namensband
+ *   Silber 4–6    Silberschild mit Flügeln, Stein oben, Sterne, Namensband
  *   Gold 7–9      Goldschild im Lorbeer mit Rubin oben, Sterne, Namensband
- *   Champion 10   Schild mit Krone in Flammen und Strahlenkranz, leuchtet
- *   Diamant 11–15 Brillant im Strahlenkranz mit Flügeln, ein bis fünf kleine Diamanten, leuchtet
- * Rang 0 ist ein schlichtes graues Schild.
+ *   Champion 10   Schild mit Krone in Flammen und Strahlenkranz
+ *   Diamant 11–15 Brillant im Strahlenkranz mit Flügeln, ein bis fünf kleine Brillanten
+ * Alle leuchten in ihrer Farbe. Rang 0 ist ein schlichtes graues Schild.
  */
 
 interface Props {
@@ -34,12 +34,14 @@ interface Props {
   groesse?: number
 }
 
-/** Ein bis drei Sterne in einer Reihe. */
-function Sterne({ anzahl, farbe, y }: { anzahl: number; farbe: string; y: number }): ReactElement {
+const STERN_GELB = '#FFD166'
+
+/** Ein bis drei goldene Sterne in einer Reihe. */
+function Sterne({ anzahl, y }: { anzahl: number; y: number }): ReactElement {
   return (
     <g>
       {Array.from({ length: anzahl }, (_, i) => (
-        <polygon key={i} points={stern(50 + (i - (anzahl - 1) / 2) * 11, y, 4.6)} fill={hell(farbe, 0.4)} stroke={dunkel(farbe, 0.45)} strokeWidth={0.5} />
+        <polygon key={i} points={stern(50 + (i - (anzahl - 1) / 2) * 13, y, 6)} fill={STERN_GELB} stroke="#6B4A00" strokeWidth={1.2} strokeLinejoin="round" />
       ))}
     </g>
   )
@@ -50,12 +52,12 @@ function Diamanten({ anzahl, farbe, y }: { anzahl: number; farbe: string; y: num
   return (
     <g>
       {Array.from({ length: anzahl }, (_, i) => {
-        const x = 50 + (i - (anzahl - 1) / 2) * 10
+        const x = 50 + (i - (anzahl - 1) / 2) * 10.5
         return (
           <g key={i}>
-            <polygon points={`${x - 3.6},${y - 2} ${x + 3.6},${y - 2} ${x},${y + 5}`} fill={dunkel(farbe, 0.15)} stroke={dunkel(farbe, 0.5)} strokeWidth={0.5} />
-            <polygon points={`${x - 3.6},${y - 2} ${x + 3.6},${y - 2} ${x + 2.2},${y - 5} ${x - 2.2},${y - 5}`} fill="#FFFFFF" fillOpacity={0.85} />
-            <polygon points={`${x - 3.6},${y - 2} ${x},${y + 5} ${x - 1},${y - 2}`} fill="#FFFFFF" fillOpacity={0.35} />
+            <polygon points={`${x - 4},${y - 2} ${x + 4},${y - 2} ${x},${y + 5.5}`} fill={dunkel(farbe, 0.15)} stroke={dunkel(farbe, 0.6)} strokeWidth={0.9} />
+            <polygon points={`${x - 4},${y - 2} ${x + 4},${y - 2} ${x + 2.4},${y - 5.5} ${x - 2.4},${y - 5.5}`} fill="#FFFFFF" fillOpacity={0.9} stroke={dunkel(farbe, 0.6)} strokeWidth={0.9} />
+            <polygon points={`${x - 4},${y - 2} ${x},${y + 5.5} ${x - 1},${y - 2}`} fill="#FFFFFF" fillOpacity={0.35} />
           </g>
         )
       })}
@@ -67,8 +69,8 @@ function Diamanten({ anzahl, farbe, y }: { anzahl: number; farbe: string; y: num
 function Stein({ farbe, stein }: { farbe: string; stein: string }): ReactElement {
   return (
     <g>
-      <polygon points="50,9 56,15 50,21 44,15" fill={stein} stroke={dunkel(farbe, 0.5)} strokeWidth={0.6} />
-      <polygon points="50,9 56,15 50,15" fill="#FFFFFF" fillOpacity={0.5} />
+      <polygon points="50,8 57,15 50,22 43,15" fill={stein} stroke={dunkel(farbe, 0.7)} strokeWidth={1.2} strokeLinejoin="round" />
+      <polygon points="50,8 57,15 50,15" fill="#FFFFFF" fillOpacity={0.55} />
     </g>
   )
 }
@@ -77,14 +79,13 @@ export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
   const stufe = rangStufe(rang)
   const farbe = STUFEN_FARBEN[stufe]
   const id = `rang-${stufe}`
-  const leuchtet = stufe === 'champion' || stufe === 'diamant'
   const metall = `url(#${id}-metall)`
-  const filter = leuchtet ? `url(#${id}-leuchten)` : undefined
+  const filter = stufe === 'keine' ? undefined : `url(#${id}-leuchten)`
   const sterne = stufe === 'bronze' || stufe === 'silber' || stufe === 'gold' ? ((rang - 1) % 3) + 1 : 0
   const diamanten = stufe === 'diamant' ? rang - 10 : 0
   const name = rangName(rang)
-  const zahl = (y: number, groesseZahl: number, fuellung = metall, kontur?: string): ReactElement => (
-    <Metallschrift text={String(rang)} fuellung={fuellung} farbe={farbe} y={y} groesse={rang >= 10 ? groesseZahl * 0.88 : groesseZahl} kontur={kontur} />
+  const zahl = (y: number, groesseZahl: number, fuellung = '#FFFFFF', kontur?: string): ReactElement => (
+    <Metallschrift text={String(rang)} fuellung={fuellung} farbe={farbe} y={y} groesse={rang >= 10 ? groesseZahl * 0.86 : groesseZahl} kontur={kontur} />
   )
 
   let inhalt: ReactElement
@@ -92,18 +93,18 @@ export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
     case 'keine':
       inhalt = (
         <g>
-          <path d={SCHILD} fill="#1C1C1F" stroke={farbe} strokeWidth={2} strokeLinejoin="round" />
-          {zahl(62, 34, farbe)}
+          <path d={SCHILD} fill="#1C1C1F" stroke={farbe} strokeWidth={2.5} strokeLinejoin="round" />
+          {zahl(62, 36, farbe, '#0B0B0C')}
         </g>
       )
       break
     case 'bronze':
       inhalt = (
         <g>
-          <Metallform id={id} farbe={farbe} form={SCHILD} />
+          <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
           <Nieten farbe={farbe} />
-          {zahl(54, 34)}
-          <Sterne anzahl={sterne} farbe={farbe} y={65} />
+          {zahl(55, 40)}
+          <Sterne anzahl={sterne} y={66} />
           <Band id={id} farbe={farbe} text={name} />
         </g>
       )
@@ -112,11 +113,11 @@ export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
       inhalt = (
         <g>
           <Fluegel farbe={farbe} gross={false} />
-          <Metallform id={id} farbe={farbe} form={SCHILD} />
+          <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
           <Nieten farbe={farbe} />
           <Stein farbe={farbe} stein={hell(farbe, 0.5)} />
-          {zahl(56, 32)}
-          <Sterne anzahl={sterne} farbe={farbe} y={66} />
+          {zahl(57, 36)}
+          <Sterne anzahl={sterne} y={67} />
           <Band id={id} farbe={farbe} text={name} />
         </g>
       )
@@ -125,10 +126,10 @@ export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
       inhalt = (
         <g>
           <Lorbeer farbe={farbe} />
-          <Metallform id={id} farbe={farbe} form={SCHILD} />
+          <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
           <Stein farbe={farbe} stein="#FF4D4D" />
-          {zahl(56, 32)}
-          <Sterne anzahl={sterne} farbe={farbe} y={66} />
+          {zahl(57, 36)}
+          <Sterne anzahl={sterne} y={67} />
           <Band id={id} farbe={farbe} text={name} />
         </g>
       )
@@ -142,7 +143,7 @@ export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
             <Metallform id={id} farbe={farbe} form={SCHILD} filter={filter} />
           </g>
           <Krone farbe={farbe} metall={metall} />
-          {zahl(70, 28)}
+          {zahl(71, 30)}
           <Band id={id} farbe={farbe} text={name} y={80} />
         </g>
       )
@@ -153,8 +154,8 @@ export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
           <Strahlen farbe={farbe} anzahl={18} innen={30} aussen={54} />
           <Fluegel farbe={hell(farbe, 0.45)} gross />
           <Brillant id={id} farbe={farbe} filter={filter} />
-          {zahl(44, 26, '#0A2E4A', '#FFFFFF')}
-          <Diamanten anzahl={diamanten} farbe={farbe} y={62} />
+          {zahl(45, 28, '#FFFFFF', '#0A2E4A')}
+          <Diamanten anzahl={diamanten} farbe={farbe} y={63} />
           <Funkeln x={20} y={30} r={7} farbe="#FFFFFF" />
           <Funkeln x={84} y={38} r={5} farbe="#FFFFFF" />
           <Funkeln x={62} y={82} r={3.5} farbe="#FFFFFF" />
@@ -165,7 +166,7 @@ export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
 
   return (
     <svg width={groesse} height={groesse} viewBox="0 0 100 100" overflow="visible" role="img" aria-label={`Rang ${rang}, ${rangName(rang)}`}>
-      <Definitionen id={id} farbe={farbe} leuchtet={leuchtet} />
+      <Definitionen id={id} farbe={farbe} />
       {inhalt}
     </svg>
   )

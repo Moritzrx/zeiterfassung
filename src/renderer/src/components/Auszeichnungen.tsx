@@ -10,15 +10,18 @@ export function Auszeichnungen({ liste }: { liste: Auszeichnung[] }): ReactEleme
   return (
     <Karte>
       <p className="text-xs tracking-wide text-mute uppercase">Auszeichnungen</p>
-      <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <p className="mt-1 text-xs text-dim">
+        {liste.length} von {AUSZEICHNUNG_REIHENFOLGE.length} freigeschaltet. Mit der Maus über eine Medaille fahren zeigt, was dafür nötig ist.
+      </p>
+      <div className="mt-3 grid grid-cols-4 gap-x-2 gap-y-4 sm:grid-cols-7">
         {AUSZEICHNUNG_REIHENFOLGE.map((typ) => {
           const a = liste.find((x) => x.typ === typ)
           const info = AUSZEICHNUNGEN[typ]
           return (
-            <div key={typ} className={`flex flex-col items-center text-center ${a ? '' : 'opacity-60'}`} title={info.text}>
-              <AuszeichnungBild typ={typ} erreicht={!!a} />
-              <p className={`mt-2 text-sm ${a ? 'text-ink' : 'text-mute'}`}>{info.titel}</p>
-              <p className="mt-0.5 text-xs text-dim">{a ? `Woche ab ${kurzDatum(a.wocheStart)}` : 'noch offen'}</p>
+            <div key={typ} className="flex flex-col items-center text-center" title={info.text}>
+              <AuszeichnungBild typ={typ} erreicht={!!a} groesse={66} />
+              <p className={`mt-1.5 text-xs leading-tight ${a ? 'text-ink' : 'text-mute'}`}>{info.titel}</p>
+              <p className="mt-0.5 text-[11px] text-dim">{a ? kurzDatum(a.wocheStart) : 'offen'}</p>
             </div>
           )
         })}

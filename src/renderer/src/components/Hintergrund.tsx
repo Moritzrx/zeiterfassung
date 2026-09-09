@@ -35,7 +35,7 @@ const RASTER =
 export function Hintergrund(): ReactElement {
   const partikel = useMemo<Partikel[]>(() => {
     const z = zufall(7)
-    return Array.from({ length: 28 }, (_, i) => ({
+    return Array.from({ length: 44 }, (_, i) => ({
       links: z() * 100,
       groesse: 2 + z() * 3,
       dauer: 22 + z() * 26,
@@ -49,6 +49,23 @@ export function Hintergrund(): ReactElement {
     <div aria-hidden="true" className="hintergrund pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: -1 }}>
       {/* Raster */}
       <div className="hintergrund-raster absolute inset-0" style={{ backgroundImage: RASTER }} />
+
+      {/* Große weiche Lichtkugeln, die langsam durchs Bild treiben */}
+      <div className="hintergrund-kugel absolute rounded-full" style={{ width: 380, height: 380, left: '8%', top: '55%', background: 'rgba(0, 192, 118, 0.16)', animationDuration: '52s' }} />
+      <div className="hintergrund-kugel absolute rounded-full" style={{ width: 300, height: 300, left: '62%', top: '12%', background: 'rgba(254, 83, 3, 0.16)', animationDuration: '64s', animationDelay: '-20s' }} />
+      <div className="hintergrund-kugel absolute rounded-full" style={{ width: 240, height: 240, left: '78%', top: '66%', background: 'rgba(125, 211, 252, 0.1)', animationDuration: '76s', animationDelay: '-40s' }} />
+
+      {/* Radar-Strahl, der um das Zifferblatt oben rechts läuft */}
+      <div className="hintergrund-radar absolute rounded-full" style={{ top: -340, right: -260, width: 880, height: 880 }} />
+
+      {/* Sternschnuppen */}
+      {[0, 1, 2].map((i) => (
+        <span
+          key={`s${i}`}
+          className="hintergrund-schnuppe absolute"
+          style={{ top: `${8 + i * 22}%`, left: `${-10 + i * 12}%`, animationDuration: `${16 + i * 7}s`, animationDelay: `${-i * 9 - 4}s` }}
+        />
+      ))}
 
       {/* Zifferblatt oben rechts */}
       <svg className="hintergrund-ring absolute" style={{ top: -380, right: -300, width: 960, height: 960 }} viewBox="0 0 960 960">

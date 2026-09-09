@@ -25,7 +25,21 @@ export interface Block {
   testdaten?: boolean
 }
 
-export type AuszeichnungTyp = 'erste_woche_level10' | 'drei_wochen_level10' | 'alle_lernziele' | 'fokus_woche'
+export type AuszeichnungTyp =
+  | 'erste_woche_level10'
+  | 'drei_wochen_level10'
+  | 'alle_lernziele'
+  | 'fokus_woche'
+  | 'fruehaufsteher'
+  | 'nachteule'
+  | 'marathon'
+  | 'sprint'
+  | 'wochenend_krieger'
+  | 'perfekte_woche'
+  | 'eternal'
+  | 'comeback'
+  | 'dauerbrenner'
+  | 'aufgeraeumt'
 
 /** Eine freigeschaltete Auszeichnung. Einmal verdient, bleibt sie. */
 export interface Auszeichnung {

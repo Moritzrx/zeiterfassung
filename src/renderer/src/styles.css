@@ -283,6 +283,59 @@ body::after {
     transform: rotate(360deg);
   }
 }
+.hintergrund-kugel {
+  filter: blur(46px);
+  animation-name: kugel-treiben;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  will-change: transform;
+}
+@keyframes kugel-treiben {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(220px, -140px, 0) scale(1.25);
+  }
+}
+.hintergrund-radar {
+  background: conic-gradient(from 0deg, rgba(254, 83, 3, 0.55), rgba(254, 83, 3, 0.12) 22deg, transparent 34deg);
+  mask-image: radial-gradient(circle closest-side, transparent 80%, black 90%, black 99%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle closest-side, transparent 80%, black 90%, black 99%, transparent 100%);
+  animation: ring-drehen 22s linear infinite;
+  will-change: transform;
+}
+.hintergrund-schnuppe {
+  width: 180px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), rgba(0, 192, 118, 0.8), transparent);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  transform: rotate(-32deg);
+  animation-name: schnuppe-fliegen;
+  animation-timing-function: ease-in;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+@keyframes schnuppe-fliegen {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-32deg);
+    opacity: 0;
+  }
+  1% {
+    opacity: 1;
+  }
+  7% {
+    transform: translate3d(760px, 475px, 0) rotate(-32deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(760px, 475px, 0) rotate(-32deg);
+    opacity: 0;
+  }
+}
 .hintergrund-punkt {
   bottom: -10px;
   opacity: 0;
