@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { Check } from 'lucide-react'
 import type { Block } from '@shared/typen'
+import { fensterInfo } from '@shared/fenster'
 import { dauerText, uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
 
@@ -37,6 +38,7 @@ export function BlockZeile({ block, laeuft = false, onClick, auswahlModus = fals
         ? (block.taetigkeit ?? 'Von Hand eingetragen')
         : (block.programm ?? 'Unbekanntes Programm')
   const klickbar = !!onClick && !laeuft
+  const fenster = fensterInfo(block.programm, block.fenstertitel)
 
   return (
     <div
@@ -61,6 +63,9 @@ export function BlockZeile({ block, laeuft = false, onClick, auswahlModus = fals
         <div className="flex items-center gap-2">
           {block.taetigkeit && block.quelle === 'manuell' && <TaetigkeitSymbol name={block.taetigkeit} groesse={14} />}
           <span className="truncate text-sm">{hauptzeile}</span>
+          {fenster.seite && block.quelle === 'auto' && (
+            <span className="shrink-0 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute">{fenster.seite}</span>
+          )}
           {block.taetigkeit && block.quelle === 'auto' && (
             <span className="flex shrink-0 items-center gap-1 text-xs text-mute">
               · <TaetigkeitSymbol name={block.taetigkeit} groesse={12} /> {block.taetigkeit}
@@ -70,7 +75,11 @@ export function BlockZeile({ block, laeuft = false, onClick, auswahlModus = fals
             <Check size={12} strokeWidth={2} className="shrink-0 text-dim" aria-label="von Hand geprüft" />
           )}
         </div>
-        {block.fenstertitel && <div className="truncate text-xs text-dim">{block.fenstertitel}</div>}
+        {block.fenstertitel && (
+          <div className="truncate text-xs text-dim" title={block.fenstertitel}>
+            {fenster.titel || block.fenstertitel}
+          </div>
+        )}
         {block.notiz && <div className="truncate text-xs text-dim">{block.notiz}</div>}
       </div>
       <div className="w-16 shrink-0 text-right text-sm text-mute">{dauerText(sekunden)}</div>

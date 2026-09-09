@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactElement } from 'react'
 import { X } from 'lucide-react'
 import type { Bewertung, Block, RegelBewertung } from '@shared/typen'
+import { fensterInfo } from '@shared/fenster'
 import { musterVorschlag } from '@shared/regeln'
 import { berlinDatum, berlinTeile, berlinZuUtc } from '@shared/zeit'
 import { datumText, dauerText } from '../format'
@@ -10,6 +11,8 @@ interface Props {
   block: Block
   /** Mehrere Blöcke desselben Programms auf einmal: die Entscheidung gilt für alle */
   gruppe?: Block[]
+  /** Erkannte Seite der Gruppe (z. B. "YouTube"); dann bietet der Dialog eine Regel nach Fenstertitel an */
+  gruppeMuster?: string | null
   taetigkeiten: string[]
   /** Beim Durchgehen: Nummer und Gesamtzahl */
   fortschritt?: { nummer: number; gesamt: number }
@@ -60,6 +63,7 @@ function Wahl({
 export function BlockDialog({
   block,
   gruppe,
+  gruppeMuster = null,
   taetigkeiten,
   fortschritt,
   onSchliessen,
@@ -72,7 +76,9 @@ export function BlockDialog({
   const istGruppe = !!gruppe && gruppe.length > 1
   const gruppeIds = (gruppe ?? [block]).map((b) => b.id)
   const gruppeSekunden = (gruppe ?? [block]).reduce((s, b) => s + (Date.parse(b.ende) - Date.parse(b.start)) / 1000, 0)
-  const gruppeTitel = [...new Set((gruppe ?? []).map((b) => b.fenstertitel).filter((t): t is string => !!t))]
+  const gruppeTitel = [
+    ...new Set((gruppe ?? []).map((b) => fensterInfo(b.programm, b.fenstertitel).titel || b.fenstertitel).filter((t): t is string => !!t))
+  ]
   const [taetigkeit, setTaetigkeit] = useState(block.taetigkeit ?? '')
   const [bewertung, setBewertung] = useState<Bewertung>(
     block.bewertung === 'ungeklaert' ? 'produktiv' : block.bewertung
@@ -83,8 +89,11 @@ export function BlockDialog({
   // In der Gruppe: je Block eine eigene Bewertung oder Tätigkeit, sonst gilt die Vorgabe oben.
   const [einzeln, setEinzeln] = useState<Record<string, { bewertung?: Bewertung; taetigkeit?: string }>>({})
   const [immer, setImmer] = useState(false)
-  const [feld, setFeld] = useState<'programm' | 'titel'>(block.fenstertitel && istBrowser && !istGruppe ? 'titel' : 'programm')
-  const [muster, setMuster] = useState(musterVorschlag(block.fenstertitel))
+  const [feld, setFeld] = useState<'programm' | 'titel'>(
+    (istGruppe && gruppeMuster) || (block.fenstertitel && istBrowser && !istGruppe) ? 'titel' : 'programm'
+  )
+  const [muster, setMuster] = useState(istGruppe ? (gruppeMuster ?? '') : musterVorschlag(block.fenstertitel))
+  const fenster = fensterInfo(block.programm, block.fenstertitel)
   const [fuerAlle, setFuerAlle] = useState(false)
   const [loeschenBestaetigen, setLoeschenBestaetigen] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -182,7 +191,7 @@ export function BlockDialog({
   }
 
   const titel = istGruppe
-    ? `${block.programm ?? 'Unbekanntes Programm'} · ${gruppeIds.length} Blöcke`
+    ? `${block.programm ?? 'Unbekanntes Programm'}${gruppeMuster ? ` · ${gruppeMuster}` : ''} · ${gruppeIds.length} Blöcke`
     : istInaktiv
       ? 'Inaktive Zeit'
       : istManuell
@@ -220,8 +229,13 @@ export function BlockDialog({
               <>
                 <p className="text-sm text-mute">
                   {datumText(berlinDatum(new Date(block.start)))} · {zeitFeld(block.start)} bis {zeitFeld(block.ende)}
+                  {fenster.seite && <span className="ml-2 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs">{fenster.seite}</span>}
                 </p>
-                {block.fenstertitel && <p className="mt-1 truncate text-xs text-dim">{block.fenstertitel}</p>}
+                {block.fenstertitel && (
+                  <p className="mt-1 text-xs break-words text-dim" title={block.fenstertitel}>
+                    {fenster.titel || block.fenstertitel}
+                  </p>
+                )}
               </>
             )}
           </div>
@@ -309,7 +323,15 @@ export function BlockDialog({
                       </span>
                       <span className="shrink-0 text-dim">{dauerText(sekunden)}</span>
                     </div>
-                    <p className="mt-0.5 text-sm break-words text-ink">{b.fenstertitel ?? b.programm ?? 'ohne Fenstertitel'}</p>
+                    {(() => {
+                      const f = fensterInfo(b.programm, b.fenstertitel)
+                      return (
+                        <p className="mt-0.5 text-sm break-words text-ink" title={b.fenstertitel ?? undefined}>
+                          {f.seite && <span className="mr-2 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute">{f.seite}</span>}
+                          {f.titel || b.fenstertitel || b.programm || 'ohne Fenstertitel'}
+                        </p>
+                      )
+                    })()}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <div className="flex gap-1">
                         <Wahl aktiv={e.bewertung === undefined} onClick={() => setzen({ bewertung: undefined })} farbe="bg-inaktiv">
@@ -356,7 +378,7 @@ export function BlockDialog({
                     )}
                   </span>
                 </label>
-                {block.fenstertitel && !istGruppe && (
+                {((block.fenstertitel && !istGruppe) || (istGruppe && gruppeMuster)) && (
                   <label className="flex cursor-pointer items-center gap-2">
                     <input type="radio" checked={feld === 'titel'} onChange={() => setFeld('titel')} />
                     <span className="shrink-0">Immer wenn der Fenstertitel enthält</span>
