@@ -46,7 +46,14 @@ export function RangRing({ produktivSekunden, zielRang, groesse = 260, children 
     let anteil = i < aktuell ? 1 : i === aktuell ? fortschritt : 0
     if (aktuell >= abschnitte) anteil = 1
     if (anteil > 0.01) {
-      teile.push(<path key={`v${i}`} d={bogen(mitte, mitte, radius, a0, a0 + (a1 - a0) * anteil)} stroke={farbe} />)
+      teile.push(
+        <path
+          key={`v${i}`}
+          d={bogen(mitte, mitte, radius, a0, a0 + (a1 - a0) * anteil)}
+          stroke={farbe}
+          style={{ filter: `drop-shadow(0 0 8px ${farbe}70)` }}
+        />
+      )
     }
   }
 

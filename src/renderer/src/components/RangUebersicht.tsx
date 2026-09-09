@@ -34,7 +34,7 @@ export function RangUebersicht({ aktuellerRang, onSchliessen }: Props): ReactEle
   const raenge = Array.from({ length: MAX_RANG }, (_, i) => i + 1)
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6" onClick={onSchliessen}>
+    <div className="animate-aufblenden fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6" onClick={onSchliessen}>
       <div
         onClick={(e) => e.stopPropagation()}
         className="max-h-full w-full max-w-[720px] overflow-y-auto rounded-card bg-panel p-6"

@@ -5,7 +5,7 @@ interface Props {
   className?: string
 }
 
-/** Eine Fläche im Design: minimal heller als der Hintergrund, 16 px gerundet, kein Rahmen, kein Schatten. */
+/** Eine Fläche im Design: Milchglas über dem Hintergrund, 16 px gerundet, kein Rahmen. */
 export function Karte({ children, className = '' }: Props): ReactElement {
-  return <section className={`rounded-card bg-panel p-5 ${className}`}>{children}</section>
+  return <section className={`glas rounded-card p-5 ${className}`}>{children}</section>
 }

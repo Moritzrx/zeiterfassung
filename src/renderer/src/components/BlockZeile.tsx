@@ -41,7 +41,7 @@ export function BlockZeile({ block, laeuft = false, onClick, auswahlModus = fals
   return (
     <div
       onClick={klickbar ? onClick : undefined}
-      className={`flex items-center gap-4 py-3 ${klickbar ? 'cursor-pointer transition-colors hover:bg-panel-2/40' : ''} ${
+      className={`flex items-center gap-4 rounded-chip px-2 py-3 -mx-2 ${klickbar ? 'druckbar cursor-pointer transition-colors hover:bg-panel-2/50' : ''} ${
         ausgewaehlt ? 'bg-panel-2/60' : ''
       }`}
     >

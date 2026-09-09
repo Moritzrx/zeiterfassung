@@ -150,7 +150,7 @@ export function BlockDialog({
   const titel = istInaktiv ? 'Inaktive Zeit' : istManuell ? (block.taetigkeit ?? 'Von Hand eingetragen') : (block.programm ?? 'Block')
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={onSchliessen}>
+    <div className="animate-aufblenden fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={onSchliessen}>
       <form
         onSubmit={speichern}
         onClick={(e) => e.stopPropagation()}

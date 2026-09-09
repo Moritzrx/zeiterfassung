@@ -44,7 +44,7 @@ export function RangAufstieg(): ReactElement | null {
   if (gezeigt === null) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => schliessen(gezeigt)}>
+    <div className="animate-aufblenden fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => schliessen(gezeigt)}>
       <div className="flex flex-col items-center text-center">
         {/* Platz für die Level-Aufstieg-Grafik (levelup.png), bis dahin das Abzeichen selbst */}
         <RangAbzeichen rang={gezeigt} groesse={160} />

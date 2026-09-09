@@ -16,6 +16,42 @@
   --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --radius-card: 16px;
   --radius-chip: 8px;
+
+  /* Federnde Kurve wie bei macOS: schnell los, weich ausrollen. */
+  --ease-federnd: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --animate-einblenden: einblenden 0.35s var(--ease-federnd) both;
+  --animate-aufblenden: aufblenden 0.25s ease-out both;
+  --animate-aufsteigen: aufsteigen 0.45s var(--ease-federnd) both;
+
+  @keyframes einblenden {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes aufblenden {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes aufsteigen {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 html,
@@ -33,6 +69,87 @@ body {
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+}
+
+/* Tiefe im Hintergrund: zwei weiche Lichtflecken in den App-Farben und ein Hauch Licht von unten. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1000px 560px at 10% -14%, rgba(254, 83, 3, 0.24), transparent 62%),
+    radial-gradient(820px 520px at 94% -6%, rgba(0, 192, 118, 0.16), transparent 60%),
+    radial-gradient(700px 420px at 50% 40%, rgba(255, 255, 255, 0.025), transparent 65%),
+    radial-gradient(1400px 700px at 50% 125%, rgba(255, 255, 255, 0.05), transparent 60%);
+}
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Flächen wie Milchglas: leicht durchscheinend, weichgezeichnet, mit feiner Lichtkante oben. */
+.glas {
+  background-color: color-mix(in srgb, var(--color-panel) 78%, transparent);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+/* Knöpfe und klickbare Zeilen federn beim Drücken kurz ein. */
+@layer base {
+  button,
+  [role='button'],
+  .druckbar {
+    transition-property: color, background-color, border-color, opacity, transform, box-shadow, filter !important;
+    transition-duration: 0.2s;
+    transition-timing-function: var(--ease-federnd);
+  }
+  button:active:not(:disabled),
+  [role='button']:active,
+  .druckbar:active {
+    transform: scale(0.96);
+  }
+}
+
+/* Beim Wechsel des Screens gleiten die Karten nacheinander herein. */
+.screen-wechsel > * > * {
+  animation: aufsteigen 0.45s var(--ease-federnd) both;
+}
+.screen-wechsel > * > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.screen-wechsel > * > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.screen-wechsel > * > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.screen-wechsel > * > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.screen-wechsel > * > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+.screen-wechsel > * > *:nth-child(n + 7) {
+  animation-delay: 240ms;
+}
+
+/* Dialoge: der dunkle Schleier blendet auf, das Fenster darin federt herein. */
+.animate-aufblenden > * {
+  animation: einblenden 0.35s var(--ease-federnd) both;
+}
+
+/* Wer im System "Bewegung reduzieren" eingestellt hat, bekommt alles ohne Animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Desktop-App: Text ist nicht markierbar, außer in Eingabefeldern. */

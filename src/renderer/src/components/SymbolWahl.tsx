@@ -44,7 +44,7 @@ export function SymbolWahl({ name, aktuell, onWahl, onSchliessen }: Props): Reac
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6" onClick={onSchliessen}>
+    <div className="animate-aufblenden fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6" onClick={onSchliessen}>
       <div onClick={(e) => e.stopPropagation()} className="max-h-full w-full max-w-[640px] overflow-y-auto rounded-card bg-panel p-6">
         <div className="flex items-start justify-between gap-4">
           <div>

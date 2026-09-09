@@ -42,7 +42,8 @@ function Oberflaeche(): ReactElement {
     <div className="flex h-full flex-col">
       <Kopfzeile />
       <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-[800px] px-6 pt-4 pb-10">
+        {/* key={aktiv} baut den Screen beim Wechsel neu auf, damit die Karten hereingleiten. */}
+        <div key={aktiv} className="screen-wechsel mx-auto w-full max-w-[800px] px-6 pt-4 pb-10">
           <Screen />
         </div>
       </main>
