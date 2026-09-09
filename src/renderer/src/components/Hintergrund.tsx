@@ -37,11 +37,14 @@ const FARBEN = ['rgba(0, 192, 118, 0.75)', 'rgba(254, 83, 3, 0.6)', 'rgba(255, 2
 const RASTER =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M56 0H0V56' fill='none' stroke='white' stroke-opacity='0.16' stroke-width='1'/%3E%3Ccircle cx='0' cy='0' r='1' fill='white' fill-opacity='0.35'/%3E%3C/svg%3E\")"
 
-/** Die Lichtbahnen im Raster 1000 × 600, alle von unten links nach oben rechts geschwungen. */
+/**
+ * Die Lichtbahnen im Raster 1000 × 600, alle von unten links nach oben rechts geschwungen.
+ * Farben wie in der App: das Grün des Tages-Rings, das Orange der Ränge, das Lila aus dem Team (Wunsch des Auftraggebers).
+ */
 export const BAHNEN: Array<{ d: string; farbe: string; dauer: number; verzoegerung: number }> = [
   { d: 'M-60 560 C 180 520, 260 300, 480 330 S 820 300, 1060 60', farbe: '#FE5303', dauer: 7, verzoegerung: 0 },
   { d: 'M-60 660 C 240 640, 320 380, 560 420 S 900 340, 1060 160', farbe: '#00C076', dauer: 9, verzoegerung: -4 },
-  { d: 'M-60 420 C 160 460, 300 180, 520 220 S 860 120, 1060 -40', farbe: '#7DD3FC', dauer: 11, verzoegerung: -7 }
+  { d: 'M-60 420 C 160 460, 300 180, 520 220 S 860 120, 1060 -40', farbe: '#A78BFA', dauer: 11, verzoegerung: -7 }
 ]
 
 const RASTER_BREITE = 1000
@@ -177,10 +180,10 @@ export function Hintergrund(): ReactElement {
         </svg>
         {BAHNEN.map((b, i) =>
           Array.from({ length: GLIEDER }, (_, g) => {
-            // Leuchtkraft: in der Mitte der Kette am stärksten (dort ein weißer Kern), zu beiden Enden schwächer.
+            // Leuchtkraft: in der Mitte der Kette am stärksten, zu beiden Enden schwächer; durchgehend in der
+            // Bahnfarbe, bewusst ohne weißen Kern (der Auftraggeber will den Strich rein grün, orange, lila).
             const mitte = (GLIEDER - 1) / 2
             const staerke = 1 - (Math.abs(g - mitte) / mitte) * 0.85
-            const kern = Math.abs(g - mitte) < 1.5
             return (
               <div
                 key={`${i}-${g}`}
@@ -194,8 +197,8 @@ export function Hintergrund(): ReactElement {
                   width: 30,
                   height: 5,
                   borderRadius: 3,
-                  background: kern ? '#FFFFFF' : b.farbe,
-                  opacity: 0.2 + staerke * 0.8,
+                  background: b.farbe,
+                  opacity: 0.3 + staerke * 0.7,
                   boxShadow: `0 0 ${(5 + staerke * 8).toFixed(0)}px ${b.farbe}, 0 0 ${(12 + staerke * 16).toFixed(0)}px ${b.farbe}99`
                 }}
               />
