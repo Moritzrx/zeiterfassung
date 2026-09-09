@@ -90,7 +90,8 @@ function installieren(): void {
     void shell.openExternal(RELEASE_SEITE)
     return
   }
-  if (status.zustand === 'bereit') autoUpdater.quitAndInstall(false, true)
+  // Still installieren (/S), damit kein Installer-Fenster erscheint; danach die App wieder starten.
+  if (status.zustand === 'bereit') autoUpdater.quitAndInstall(true, true)
 }
 
 /** Einmal beim Start aufrufen; registriert die IPC-Kanäle und startet die regelmäßige Prüfung. */
