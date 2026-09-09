@@ -84,10 +84,13 @@ export class Sync {
     private readonly nachAbgleich: (anzahl: number) => void = () => {}
   ) {}
 
+  /** Erfüllt, sobald der erste Abgleich nach dem Start durch ist (auch wenn er scheiterte). */
+  erstAbgleich: Promise<void> = Promise.resolve()
+
   start(): void {
     if (this.timer) return
     this.timer = setInterval(() => void this.lauf(), TAKT_MS)
-    void this.anfangsAbgleich().then(() => this.lauf())
+    this.erstAbgleich = this.anfangsAbgleich().then(() => this.lauf())
   }
 
   stop(): void {
@@ -135,6 +138,9 @@ export class Sync {
     if (!supabaseKonfiguriert()) return
     try {
       const von = new Date(Date.now() - WOCHEN_ZURUECK * 7 * 86_400_000).toISOString()
+      // Blöcke der letzten Minuten könnten noch unterwegs sein, die werden nicht als verwaist gewertet.
+      const bisEnde = new Date(Date.now() - 10 * 60_000).toISOString()
+      const bekannt = new Set<string>()
       let ab = 0
       let uebernommen = 0
       for (;;) {
@@ -148,14 +154,15 @@ export class Sync {
           .range(ab, ab + SEITE - 1)
         if (error) throw new Error(error.message)
         const zeilen = (data ?? []) as Zeile[]
+        for (const z of zeilen) bekannt.add(z.id)
         uebernommen += this.speicher.vomServerUebernehmen(zeilen.map(vonZeile))
         if (zeilen.length < SEITE) break
         ab += SEITE
       }
-      if (uebernommen) {
-        console.log(`Sync: ${uebernommen} Blöcke aus der Datenbank übernommen`)
-        this.nachAbgleich(uebernommen)
-      }
+      const entfernt = this.speicher.verwaisteEntfernen(bekannt, von, bisEnde)
+      if (uebernommen) console.log(`Sync: ${uebernommen} Blöcke aus der Datenbank übernommen`)
+      if (entfernt) console.log(`Sync: ${entfernt} Blöcke lokal entfernt, die die Datenbank nicht mehr kennt`)
+      if (uebernommen || entfernt) this.nachAbgleich(uebernommen + entfernt)
       this.fehler = null
     } catch (e) {
       this.fehler = e instanceof Error ? e.message : String(e)

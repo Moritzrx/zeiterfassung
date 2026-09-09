@@ -303,7 +303,8 @@ function sitzungStarten(userId: string): void {
   })
   erfassung.start()
   sync.start()
-  void regelnAktualisieren(s).then(() => auszeichnungenPruefen(s))
+  // Auszeichnungen erst prüfen, wenn Regeln und der erste Abgleich da sind, sonst zählen veraltete Blöcke mit.
+  void Promise.all([regelnAktualisieren(s), sync.erstAbgleich]).then(() => auszeichnungenPruefen(s))
   void taetigkeiten.laden()
   statusVerteilen()
 }

@@ -210,6 +210,21 @@ export class Speicher {
     return uebernommen
   }
 
+  /**
+   * Wirft lokale Blöcke weg, die die Datenbank im abgefragten Zeitfenster nicht mehr kennt,
+   * zum Beispiel nach dem Entfernen der Testdaten oder nach dem Löschen auf einem anderen Gerät.
+   * Ausstehende (noch nicht gesendete) und ganz frische Blöcke bleiben unangetastet.
+   */
+  verwaisteEntfernen(bekannt: Set<string>, von: string, bisEnde: string): number {
+    const vorher = this.daten.bloecke.length
+    this.daten.bloecke = this.daten.bloecke.filter(
+      (b) => bekannt.has(b.id) || this.ausstehend.has(b.id) || b.ende < von || b.ende > bisEnde
+    )
+    const entfernt = vorher - this.daten.bloecke.length
+    if (entfernt) this.speichernBald()
+    return entfernt
+  }
+
   /** Blendet automatische Blöcke aus, die nur durch ein Systemfenster entstanden sind. */
   fehlbloeckeAusblenden(istFehlblock: (programmRoh: string | null) => boolean): number {
     let n = 0
