@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
+import { Portal } from './Portal'
 import { X } from 'lucide-react'
 import type { SymbolInfo } from '@shared/typen'
 import { LUCIDE_SYMBOLE, MARKEN, MARKEN_ERSATZ, SymbolBild } from '../symbole'
@@ -44,8 +45,9 @@ export function SymbolWahl({ name, aktuell, onWahl, onSchliessen }: Props): Reac
   }
 
   return (
+    <Portal>
     <div className="animate-aufblenden fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6" onClick={onSchliessen}>
-      <div onClick={(e) => e.stopPropagation()} className="max-h-[calc(100vh-3rem)] w-full max-w-[640px] overflow-y-auto rounded-card bg-panel p-6">
+      <div onClick={(e) => e.stopPropagation()} className="max-h-[calc(100vh-3rem)] w-full max-w-[640px] overscroll-contain overflow-y-auto rounded-card bg-panel p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl">Symbol für {name}</h2>
@@ -110,5 +112,6 @@ export function SymbolWahl({ name, aktuell, onWahl, onSchliessen }: Props): Reac
         {marken.length === 0 && symbole.length === 0 && <p className="mt-5 text-sm text-dim">Nichts gefunden.</p>}
       </div>
     </div>
+    </Portal>
   )
 }

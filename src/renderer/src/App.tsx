@@ -26,44 +26,37 @@ const SCREENS: Record<ScreenId, () => ReactElement> = {
 /** Wie lange der alte Screen beim Wechsel noch sichtbar hinausgleitet (passend zu styles.css). */
 const RAUS_MS = 260
 
-interface Auftritt {
-  id: ScreenId
-  phase: 'rein' | 'raus'
-  /** 1 = nach links weiterblättern, -1 = zurück */
-  richtung: 1 | -1
-  /** Wie weit der Screen gescrollt war, als er verabschiedet wurde */
-  scrollTop: number
-}
-
-/** Das eigentliche Fenster mit Kopfzeile, Inhalt und Navigation. */
+/**
+ * Screens bleiben nach dem ersten Besuch geladen und behalten ihre Scroll-Position.
+ * Ein Wechsel ist dann nur noch ein Gleiten zwischen zwei fertigen Screens: nichts
+ * wird neu aufgebaut, keine Diagramme animieren beim Wechsel.
+ */
 function Oberflaeche(): ReactElement {
   const [aktiv, setAktiv] = useState<ScreenId>('heute')
-  // Alle Screens, die gerade sichtbar sind: der aktive und höchstens kurz noch der vorherige.
-  const [auftritte, setAuftritte] = useState<Auftritt[]>([{ id: 'heute', phase: 'rein', richtung: 1, scrollTop: 0 }])
-  const inhalt = useRef<HTMLElement>(null)
+  const [besucht, setBesucht] = useState<ScreenId[]>(['heute'])
+  const [richtung, setRichtung] = useState<1 | -1>(1)
+  const [abgang, setAbgang] = useState<ScreenId | null>(null)
+  const zaehler = useRef(0)
 
   function wechseln(ziel: ScreenId): void {
     if (ziel === aktiv) return
-    const richtung: 1 | -1 = SCREEN_REIHENFOLGE.indexOf(ziel) > SCREEN_REIHENFOLGE.indexOf(aktiv) ? 1 : -1
-    const scrollTop = inhalt.current?.scrollTop ?? 0
-    // Erst sofort reagieren: Markierung wandert, alter Screen beginnt zu gleiten ...
+    const r: 1 | -1 = SCREEN_REIHENFOLGE.indexOf(ziel) > SCREEN_REIHENFOLGE.indexOf(aktiv) ? 1 : -1
+    setRichtung(r)
+    setAbgang(aktiv)
     setAktiv(ziel)
-    setAuftritte((alte) =>
-      alte.filter((a) => a.id !== ziel).map((a) => (a.phase === 'rein' ? { ...a, phase: 'raus' as const, richtung, scrollTop } : a))
-    )
-    inhalt.current?.scrollTo({ top: 0 })
-    // ... und den neuen Screen mit niedrigerer Priorität aufbauen, damit nichts hakt.
-    startTransition(() => {
-      setAuftritte((alte) => [...alte.filter((a) => a.id !== ziel), { id: ziel, phase: 'rein', richtung, scrollTop: 0 }])
-    })
+    zaehler.current++
+    if (!besucht.includes(ziel)) {
+      // Neuer Screen: mit niedriger Priorität aufbauen, damit die Reaktion sofort kommt.
+      startTransition(() => setBesucht((alte) => [...alte, ziel]))
+    }
   }
 
-  // Verabschiedete Screens nach der Animation wegräumen.
+  // Den verabschiedeten Screen nach der Animation verstecken.
   useEffect(() => {
-    if (!auftritte.some((a) => a.phase === 'raus')) return
-    const timer = window.setTimeout(() => setAuftritte((alte) => alte.filter((a) => a.phase !== 'raus')), RAUS_MS)
+    if (!abgang) return
+    const timer = window.setTimeout(() => setAbgang(null), RAUS_MS)
     return () => window.clearTimeout(timer)
-  }, [auftritte])
+  }, [abgang, aktiv])
 
   // Neue Auszeichnungen kurz unten einblenden, egal auf welchem Screen.
   useEffect(() => {
@@ -78,27 +71,30 @@ function Oberflaeche(): ReactElement {
   return (
     <div className="flex h-full flex-col">
       <Kopfzeile />
-      <main ref={inhalt} className="relative flex-1 overflow-y-auto">
-        {auftritte.map((a) => {
-          const Screen = SCREENS[a.id]
+      <main className="relative flex-1 overflow-hidden">
+        {SCREEN_REIHENFOLGE.filter((id) => besucht.includes(id)).map((id) => {
+          const Screen = SCREENS[id]
+          const zustand = id === aktiv ? 'rein' : id === abgang ? 'raus' : 'versteckt'
           const klasse =
-            a.phase === 'rein'
-              ? a.richtung === 1
+            zustand === 'rein'
+              ? richtung === 1
                 ? 'screen-rein-rechts'
                 : 'screen-rein-links'
-              : a.richtung === 1
-                ? 'screen-raus-links'
-                : 'screen-raus-rechts'
+              : zustand === 'raus'
+                ? richtung === 1
+                  ? 'screen-raus-links'
+                  : 'screen-raus-rechts'
+                : ''
           return (
             <div
-              key={a.id}
-              aria-hidden={a.phase === 'raus' || undefined}
-              className={`${klasse} mx-auto w-full max-w-[800px] px-6 pt-4 pb-10 ${
-                a.phase === 'raus' ? 'pointer-events-none absolute inset-x-0' : ''
-              }`}
-              style={a.phase === 'raus' ? { top: -a.scrollTop } : undefined}
+              key={id}
+              hidden={zustand === 'versteckt'}
+              aria-hidden={zustand !== 'rein' || undefined}
+              className={`${klasse} absolute inset-0 overflow-y-auto ${zustand === 'raus' ? 'pointer-events-none' : ''}`}
             >
-              <Screen />
+              <div className="mx-auto w-full max-w-[800px] px-6 pt-4 pb-10">
+                <Screen />
+              </div>
             </div>
           )
         })}

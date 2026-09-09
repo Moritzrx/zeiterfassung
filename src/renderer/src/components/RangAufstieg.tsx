@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
+import { Portal } from './Portal'
 import { rangName } from '@shared/rang'
 import { useErfassung } from '../erfassung'
 import { RangAbzeichen } from './RangAbzeichen'
@@ -44,6 +45,7 @@ export function RangAufstieg(): ReactElement | null {
   if (gezeigt === null) return null
 
   return (
+    <Portal>
     <div className="animate-aufblenden fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => schliessen(gezeigt)}>
       <div className="flex flex-col items-center text-center">
         {/* Platz für die Level-Aufstieg-Grafik (levelup.png), bis dahin das Abzeichen selbst */}
@@ -53,5 +55,6 @@ export function RangAufstieg(): ReactElement | null {
         <p className="mt-2 text-lg text-mute">{rangName(gezeigt)}</p>
       </div>
     </div>
+    </Portal>
   )
 }

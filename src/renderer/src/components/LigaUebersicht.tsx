@@ -1,4 +1,5 @@
 import { useEffect, type ReactElement } from 'react'
+import { Portal } from './Portal'
 import { X } from 'lucide-react'
 import {
   LIGA_FARBEN,
@@ -36,8 +37,9 @@ export function LigaUebersicht({ trophaeen, gesamtziel, onSchliessen }: Props): 
   const neutral = gesamtziel - LIGA_NEUTRAL_ABSTAND
 
   return (
+    <Portal>
     <div className="animate-aufblenden fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6" onClick={onSchliessen}>
-      <div onClick={(e) => e.stopPropagation()} className="glas max-h-[calc(100vh-3rem)] w-full max-w-[720px] overflow-y-auto rounded-card p-6">
+      <div onClick={(e) => e.stopPropagation()} className="glas max-h-[calc(100vh-3rem)] w-full max-w-[720px] overscroll-contain overflow-y-auto rounded-card p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl">Die Liga</h2>
@@ -88,5 +90,6 @@ export function LigaUebersicht({ trophaeen, gesamtziel, onSchliessen }: Props): 
         })}
       </div>
     </div>
+    </Portal>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactElement } from 'react'
+import { Portal } from './Portal'
 import { X } from 'lucide-react'
 import type { Bewertung, Block, RegelBewertung } from '@shared/typen'
 import { fensterInfo } from '@shared/fenster'
@@ -199,11 +200,12 @@ export function BlockDialog({
         : (block.programm ?? 'Block')
 
   return (
+    <Portal>
     <div className="animate-aufblenden fixed inset-0 z-40 flex items-end justify-center bg-black/60" onClick={onSchliessen}>
       <form
         onSubmit={speichern}
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[90vh] w-full max-w-[720px] overflow-y-auto rounded-t-card bg-panel p-6"
+        className="max-h-[90vh] w-full max-w-[720px] overscroll-contain overflow-y-auto rounded-t-card bg-panel p-6"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -439,5 +441,6 @@ export function BlockDialog({
         </div>
       </form>
     </div>
+    </Portal>
   )
 }

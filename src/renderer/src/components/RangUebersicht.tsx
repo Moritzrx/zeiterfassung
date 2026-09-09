@@ -1,4 +1,5 @@
 import { useEffect, type ReactElement } from 'react'
+import { Portal } from './Portal'
 import { X } from 'lucide-react'
 import {
   MAX_RANG,
@@ -34,10 +35,11 @@ export function RangUebersicht({ aktuellerRang, onSchliessen }: Props): ReactEle
   const raenge = Array.from({ length: MAX_RANG }, (_, i) => i + 1)
 
   return (
+    <Portal>
     <div className="animate-aufblenden fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6" onClick={onSchliessen}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[calc(100vh-3rem)] w-full max-w-[720px] overflow-y-auto rounded-card bg-panel p-6"
+        className="max-h-[calc(100vh-3rem)] w-full max-w-[720px] overscroll-contain overflow-y-auto rounded-card bg-panel p-6"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -89,5 +91,6 @@ export function RangUebersicht({ aktuellerRang, onSchliessen }: Props): ReactEle
         })}
       </div>
     </div>
+    </Portal>
   )
 }
