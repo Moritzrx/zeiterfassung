@@ -67,7 +67,7 @@ export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
       )}
       <text
         x="32"
-        y={stufe === 'champion' ? 46 : 41}
+        y={stufe === 'champion' ? 46 : stufe === 'diamant' ? 39 : 41}
         textAnchor="middle"
         fontSize={rang >= 10 ? 19 : 22}
         fontWeight={600}
@@ -79,9 +79,10 @@ export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
       {Array.from({ length: sterne }, (_, i) => (
         <polygon key={i} points={stern(32 + (i - (sterne - 1) / 2) * 9, 50, 3.4)} fill={farbe} />
       ))}
+      {/* Die Diamanten sitzen bei y 46, wo das Schild noch breit genug für fünf Stück ist. */}
       {Array.from({ length: diamanten }, (_, i) => {
-        const x = 32 + (i - (diamanten - 1) / 2) * 7.5
-        return <polygon key={i} points={`${x},47 ${x + 3},51 ${x},55 ${x - 3},51`} fill={farbe} />
+        const x = 32 + (i - (diamanten - 1) / 2) * 5.8
+        return <polygon key={i} points={`${x},43 ${x + 2.6},46 ${x},49 ${x - 2.6},46`} fill={farbe} />
       })}
     </svg>
   )
