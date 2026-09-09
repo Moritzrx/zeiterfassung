@@ -209,7 +209,7 @@ Die Namen, Ziele und Startregeln bekommen die Konten durch Skript 2. Es sucht di
 
 ## 7. Installer bauen
 
-Der Code liegt bei GitHub unter `Moritzrx/zeiterfassung` (privat). Der Ablauf "Installer bauen" (Reiter Actions) baut den Windows-Installer und das Mac-Abbild auf den Rechnern von GitHub; bei einer Versionsmarke wie `v1.1.0` entsteht zusätzlich eine Veröffentlichung mit beiden Dateien, aus der sich die App unter Windows selbst aktualisiert. Erster erfolgreicher Lauf am 9. September 2026, das Mac-Abbild liegt seitdem in Dokumente → Zeiterfassung App.
+Der Code liegt bei GitHub unter `Moritzrx/zeiterfassung` (öffentlich, ohne Zugangsdaten). Der Ablauf "Installer bauen" (Reiter Actions) baut den Windows-Installer und das Mac-Abbild auf den Rechnern von GitHub; bei einer Versionsmarke wie `v1.1.0` entsteht zusätzlich eine Veröffentlichung mit beiden Dateien, aus der sich die App unter Windows selbst aktualisiert. Erster erfolgreicher Lauf am 9. September 2026, das Mac-Abbild liegt seitdem in Dokumente → Zeiterfassung App.
 
 Die Zugangsdaten (Project URL und Publishable key) werden beim Bauen in die App eingebaut. Die Datei `.env` im Projektordner (Vorlage: `.env.example`) enthält sie und wandert nie ins Git.
 
