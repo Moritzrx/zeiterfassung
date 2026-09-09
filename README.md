@@ -138,12 +138,12 @@ Der Wochenrang fängt jeden Montag bei null an. Die Liga dagegen bleibt, wie die
 36 Medaillen in acht Gruppen, die man dauerhaft behält (einmal verdient, nie zurückgesetzt). Auf dem Wochen-Screen ganz unten; mit der Maus über eine Medaille fahren zeigt die Bedingung. Sie sind auf eine 50-Stunden-Woche von Montag bis Sonntag ausgelegt.
 
 - **Besondere**: Erster Champion (zum ersten Mal Rang 10), Comeback (nach einer Woche unter Rang 5 direkt Rang 10), Eternal (Rang 15).
-- **Serien**: Serie (3 Wochen in Folge Rang 10), Lange Serie (6), Eiserne Serie (12), Dauerbrenner (4 Wochen in Folge mindestens Rang 5).
+- **Serien**: Serie (3 Wochen in Folge Rang 10), Lange Serie (6), Eiserne Serie (12), Dauerbrenner (4 Wochen in Folge mindestens 55 h, also deutlich über dem Ziel).
 - **Stunden-Meilensteine**: 100, 500, 1.000, 2.500 und 5.000 produktive Stunden seit dem Start.
 - **Liga**: je eine Medaille beim ersten Erreichen von Bronze-, Silber-, Gold-, Kristall-, Meister-, Champion-, Titan- und Legenden-Liga.
 - **Tage**: Perfekte Woche (alle 7 Tage mindestens 5 h), Durchläufer (7 Tage in Folge mindestens 4 h), Marathon (10 h an einem Tag), Ultra (12 h an einem Tag), Sprint (3 h am Stück).
 - **Team**: Wochensieger (die meisten Stunden im Team in einer abgeschlossenen Woche), Dauersieger (3 Wochen in Folge), Team-Woche (alle drei erreichen in derselben Woche ihr Ziel).
-- **Lernen und Disziplin**: Alle Lernziele, Lernmeister (4 Wochen in Folge alle Lernziele), Fokus-Woche (höchstens 2 h unproduktiv, ab Rang 5), Aufgeräumt (abgeschlossene Woche mit 20 h ohne Ungeklärtes), Blitzsauber (4 solche Wochen in Folge).
+- **Lernen und Disziplin**: Alle Lernziele, Lernmeister (4 Wochen in Folge alle Lernziele), Fokus-Woche (Rang 10 mit höchstens 2 h unproduktiv), Aufgeräumt (abgeschlossene Woche mit 40 h ohne Ungeklärtes), Blitzsauber (4 solche Wochen in Folge).
 - **Uhrzeit**: Frühaufsteher (2 h vor 8 Uhr in einer Woche), Nachteule (2 h nach 22 Uhr), Wochenend-Krieger (15 h an einem Wochenende).
 
 Die Stunden-Meilensteine und die neuen Typen brauchen einmalig das Skript 13 in Supabase (siehe Abschnitt 5).

@@ -30,7 +30,7 @@ export const AUSZEICHNUNGEN: Record<AuszeichnungTyp, { titel: string; text: stri
   drei_wochen_level10: { titel: 'Serie', text: `Drei Wochen in Folge auf Rang ${RANG_ZIEL} oder höher.`, farbe: '#E8B923', gruppe: 'serien' },
   serie_6: { titel: 'Lange Serie', text: `Sechs Wochen in Folge auf Rang ${RANG_ZIEL} oder höher.`, farbe: '#C9CDD6', gruppe: 'serien' },
   serie_12: { titel: 'Eiserne Serie', text: `Zwölf Wochen in Folge auf Rang ${RANG_ZIEL} oder höher.`, farbe: '#FF4D4D', gruppe: 'serien' },
-  dauerbrenner: { titel: 'Dauerbrenner', text: 'Vier Wochen in Folge mindestens Rang 5.', farbe: '#FF8A3D', gruppe: 'serien' },
+  dauerbrenner: { titel: 'Dauerbrenner', text: 'Vier Wochen in Folge mindestens 55 produktive Stunden, also deutlich über dem Ziel.', farbe: '#FF8A3D', gruppe: 'serien' },
 
   stunden_100: { titel: '100 Stunden', text: '100 produktive Stunden seit dem Start.', farbe: '#C4834B', gruppe: 'stunden' },
   stunden_500: { titel: '500 Stunden', text: '500 produktive Stunden seit dem Start.', farbe: '#C9CDD6', gruppe: 'stunden' },
@@ -59,9 +59,9 @@ export const AUSZEICHNUNGEN: Record<AuszeichnungTyp, { titel: string; text: stri
 
   alle_lernziele: { titel: 'Alle Lernziele', text: 'Alle Lernziele einer Woche erreicht.', farbe: '#00C076', gruppe: 'lernen' },
   lernmeister: { titel: 'Lernmeister', text: 'Vier Wochen in Folge alle Lernziele erreicht.', farbe: '#34D399', gruppe: 'lernen' },
-  fokus_woche: { titel: 'Fokus-Woche', text: 'Eine Woche mit höchstens 2 Stunden unproduktiver Zeit, ab Rang 5.', farbe: '#FF4D4D', gruppe: 'lernen' },
-  aufgeraeumt: { titel: 'Aufgeräumt', text: 'Eine abgeschlossene Woche mit mindestens 20 produktiven Stunden und keinem ungeklärten Block.', farbe: '#C9CDD6', gruppe: 'lernen' },
-  blitzsauber: { titel: 'Blitzsauber', text: 'Vier abgeschlossene Wochen in Folge mit mindestens 20 produktiven Stunden und nichts Ungeklärtem.', farbe: '#E2E8F0', gruppe: 'lernen' },
+  fokus_woche: { titel: 'Fokus-Woche', text: `Eine abgeschlossene Woche auf Rang ${RANG_ZIEL} oder höher mit höchstens 2 Stunden unproduktiver Zeit.`, farbe: '#FF4D4D', gruppe: 'lernen' },
+  aufgeraeumt: { titel: 'Aufgeräumt', text: 'Eine abgeschlossene Woche mit mindestens 40 produktiven Stunden und keinem ungeklärten Block.', farbe: '#C9CDD6', gruppe: 'lernen' },
+  blitzsauber: { titel: 'Blitzsauber', text: 'Vier abgeschlossene Wochen in Folge mit mindestens 40 produktiven Stunden und nichts Ungeklärtem.', farbe: '#E2E8F0', gruppe: 'lernen' },
 
   fruehaufsteher: { titel: 'Frühaufsteher', text: 'In einer Woche mindestens 2 produktive Stunden vor 8 Uhr.', farbe: '#FDBA74', gruppe: 'uhrzeit' },
   nachteule: { titel: 'Nachteule', text: 'In einer Woche mindestens 2 produktive Stunden nach 22 Uhr.', farbe: '#A78BFA', gruppe: 'uhrzeit' },
@@ -276,7 +276,7 @@ export function auszeichnungenPruefen(
   meldenFolge('drei_wochen_level10', 3, aufZiel)
   meldenFolge('serie_6', 6, aufZiel)
   meldenFolge('serie_12', 12, aufZiel)
-  meldenFolge('dauerbrenner', 4, (w) => r(w) >= 5)
+  meldenFolge('dauerbrenner', 4, (w) => w.produktiv >= 55 * STUNDE)
 
   // Stunden-Meilensteine (aus der Datenbank, über alle Zeit)
   if (kontext.gesamtProduktiv !== null) {
@@ -349,8 +349,8 @@ export function auszeichnungenPruefen(
     melden('alle_lernziele', erste(alleZiele))
     meldenFolge('lernmeister', 4, alleZiele)
   }
-  melden('fokus_woche', erste((w) => abgeschlossen(w) && !w.leer && w.unproduktiv <= 2 * STUNDE && r(w) >= 5))
-  const sauber = (w: Wochenstatistik): boolean => abgeschlossen(w) && !w.leer && w.produktiv >= 20 * STUNDE && w.ungeklaert === 0
+  melden('fokus_woche', erste((w) => abgeschlossen(w) && !w.leer && w.unproduktiv <= 2 * STUNDE && aufZiel(w)))
+  const sauber = (w: Wochenstatistik): boolean => abgeschlossen(w) && !w.leer && w.produktiv >= 40 * STUNDE && w.ungeklaert === 0
   melden('aufgeraeumt', erste(sauber))
   meldenFolge('blitzsauber', 4, sauber)
 
