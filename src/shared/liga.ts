@@ -7,6 +7,8 @@
  * dieser Formel. Hier steht sie für die Vorschau der laufenden Woche und die Ligastufen.
  */
 
+import { berlinDatum, berlinTeile, datumVerschieben, wochenanfang } from './zeit'
+
 /** Erste Woche, die zählt (Montag). */
 export const LIGA_START_DATUM = '2026-09-07'
 /** Damit fängt jeder an: ohne Liga, Bronze III gibt es ab 400. */
@@ -122,6 +124,64 @@ export function urlaubstageInWoche(wocheStart: string, urlaube: Array<{ von: str
     if (urlaube.some((u) => u.von <= datum && datum <= u.bis)) tage++
   }
   return tage
+}
+
+export interface WochenPrognose {
+  /** zu-frueh: Montag vor Mittag, noch keine Prognose; prognose: hochgerechnet; stand: Woche ist durch (Wochenende oder Urlaub) */
+  art: 'zu-frueh' | 'prognose' | 'stand'
+  /** Trophäen, die die Woche voraussichtlich bringt (bei "stand": tatsächlich bringen würde) */
+  delta: number
+  /** voraussichtliche produktive Sekunden am Ende der Woche */
+  sekunden: number
+  /** neutraler Punkt in Stunden, schon um Urlaub gekürzt */
+  neutral: number
+  urlaubstage: number
+  /** Arbeitstage Mo–Fr, die bereits vorbei sind (heute anteilig, 8 bis 17 Uhr) */
+  gearbeitet: number
+  /** Arbeitstage, die noch kommen (heute anteilig) */
+  rest: number
+}
+
+/**
+ * Hochrechnung der laufenden Woche: der bisherige Schnitt je Arbeitstag wird auf die
+ * restlichen Arbeitstage (ohne Urlaub) übertragen. Heute zählt anteilig nach der Uhrzeit,
+ * ein Arbeitstag läuft von 8 bis 17 Uhr. Am Wochenende gibt es keine Prognose mehr, nur den Stand.
+ */
+export function wochenPrognose(
+  produktivSekunden: number,
+  gesamtziel: number,
+  urlaube: Array<{ von: string; bis: string }>,
+  jetzt = new Date()
+): WochenPrognose {
+  const start = berlinDatum(wochenanfang(jetzt))
+  const heute = berlinDatum(jetzt)
+  const t = berlinTeile(jetzt)
+  const tagesanteil = Math.max(0, Math.min(1, (t.stunde + t.minute / 60 - 8) / 9))
+  let urlaubstage = 0
+  let gearbeitet = 0
+  let rest = 0
+  for (let i = 0; i < 5; i++) {
+    const datum = datumVerschieben(start, i)
+    if (urlaube.some((u) => u.von <= datum && datum <= u.bis)) {
+      urlaubstage++
+      continue
+    }
+    if (datum < heute) gearbeitet += 1
+    else if (datum === heute) {
+      gearbeitet += tagesanteil
+      rest += 1 - tagesanteil
+    } else rest += 1
+  }
+  const neutral = neutralStunden(gesamtziel, urlaubstage)
+  const basis = { neutral, urlaubstage, gearbeitet, rest }
+  if (rest < 0.05) {
+    return { art: 'stand', delta: ligaDelta(produktivSekunden, gesamtziel, urlaubstage), sekunden: produktivSekunden, ...basis }
+  }
+  if (gearbeitet < 0.4) {
+    return { art: 'zu-frueh', delta: ligaDelta(produktivSekunden, gesamtziel, urlaubstage), sekunden: produktivSekunden, ...basis }
+  }
+  const sekunden = produktivSekunden + (produktivSekunden / gearbeitet) * rest
+  return { art: 'prognose', delta: ligaDelta(sekunden, gesamtziel, urlaubstage), sekunden, ...basis }
 }
 
 /** "+100", "−40" oder "±0". */

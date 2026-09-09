@@ -1,17 +1,6 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
-import {
-  LIGA_FARBEN,
-  LIGA_START_TROPHAEEN,
-  deltaText,
-  liga,
-  ligaDelta,
-  ligaFortschritt,
-  naechsteLiga,
-  neutralStunden,
-  urlaubstageInWoche
-} from '@shared/liga'
+import { LIGA_FARBEN, LIGA_START_TROPHAEEN, deltaText, liga, ligaFortschritt, naechsteLiga, wochenPrognose } from '@shared/liga'
 import type { LigaStand, Urlaub } from '@shared/typen'
-import { berlinDatum, wochenanfang } from '@shared/zeit'
 import { fehlerText, kurzDatum, stundenText, zahlText } from '../format'
 import { hinweisZeigen } from './Hinweis'
 import { Karte } from './Karte'
@@ -74,12 +63,30 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
   const naechste = naechsteLiga(trophaeen)
   const fortschritt = ligaFortschritt(trophaeen)
   const farbe = LIGA_FARBEN[l.stufe]
-  // Urlaubstage dieser Woche senken die Erwartung anteilig.
-  const urlaubstage = urlaubstageInWoche(berlinDatum(wochenanfang(new Date())), urlaube)
-  const neutral = neutralStunden(gesamtziel, urlaubstage)
-  const vorschau = ligaDelta(produktivSekunden, gesamtziel, urlaubstage)
-  // Bis zum neutralen Punkt fehlende Stunden, damit ein Minus am Wochenanfang nicht entmutigt.
-  const bisNeutral = Math.max(0, neutral * 3600 - produktivSekunden)
+  // Hochrechnung der laufenden Woche: bisheriger Schnitt je Arbeitstag auf den Rest übertragen.
+  const p = wochenPrognose(produktivSekunden, gesamtziel, urlaube)
+  const ganzeWocheUrlaub = p.urlaubstage >= 5
+  const farbeDelta = p.delta > 0 ? 'text-produktiv' : p.delta < 0 ? 'text-unproduktiv' : 'text-mute'
+  let titelRechts: string
+  let zahlRechts: string
+  let erklaerung: string
+  if (ganzeWocheUrlaub) {
+    titelRechts = 'Diese Woche'
+    zahlRechts = deltaText(p.delta)
+    erklaerung = 'ganze Woche Urlaub, kostet nichts'
+  } else if (p.art === 'stand') {
+    titelRechts = 'Diese Woche'
+    zahlRechts = deltaText(p.delta)
+    erklaerung = `${stundenText(produktivSekunden)} h produktiv, zählt nach Sonntag`
+  } else if (p.art === 'zu-frueh') {
+    titelRechts = 'Diese Woche'
+    zahlRechts = '–'
+    erklaerung = `Prognose ab Montagmittag, ±0 ab ${stundenText(p.neutral * 3600)} h`
+  } else {
+    titelRechts = 'Voraussichtlich'
+    zahlRechts = deltaText(p.delta)
+    erklaerung = `bei deinem Tempo etwa ${stundenText(p.sekunden)} h, ±0 ab ${stundenText(p.neutral * 3600)} h`
+  }
 
   return (
     <Karte>
@@ -99,21 +106,13 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
             />
           </div>
         </div>
-        <div className="shrink-0 text-right">
-          <p className="text-xs text-mute">Diese Woche bisher</p>
-          <p className={`text-2xl font-light ${vorschau > 0 ? 'text-produktiv' : vorschau < 0 ? 'text-unproduktiv' : 'text-mute'}`}>
-            {deltaText(vorschau)}
-          </p>
-          <p className="text-xs text-dim">
-            {urlaubstage >= 5
-              ? 'ganze Woche Urlaub, kostet nichts'
-              : vorschau < 0
-                ? `noch ${stundenText(bisNeutral)} h bis ±0`
-                : 'zählt nach Sonntag'}
-          </p>
-          {urlaubstage > 0 && urlaubstage < 5 && (
+        <div className="max-w-[220px] shrink-0 text-right">
+          <p className="text-xs text-mute">{titelRechts}</p>
+          <p className={`text-2xl font-light ${p.art === 'zu-frueh' ? 'text-dim' : farbeDelta}`}>{zahlRechts}</p>
+          <p className="text-xs text-dim">{erklaerung}</p>
+          {p.urlaubstage > 0 && !ganzeWocheUrlaub && (
             <p className="text-xs text-dim">
-              {urlaubstage} {urlaubstage === 1 ? 'Urlaubstag' : 'Urlaubstage'}, Erwartung {stundenText(neutral * 3600)} h
+              {p.urlaubstage} {p.urlaubstage === 1 ? 'Urlaubstag' : 'Urlaubstage'} diese Woche
             </p>
           )}
         </div>
