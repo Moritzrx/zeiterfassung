@@ -627,6 +627,8 @@ function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => voi
     [5, 0.38],
     [2.4, 1]
   ]
+  // Helligkeitsstufen der Kette (Anteil der vollen Deckkraft), aufsteigend; siehe unten.
+  const STUFEN = [0.05, 0.11, 0.18, 0.26, 0.35, 0.45, 0.56, 0.68, 0.81, 0.94]
   interface Punkt {
     x: number
     y: number
@@ -699,31 +701,38 @@ function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => voi
         lauf2.push(p)
       }
       if (lauf2.length > 1) laeufe.push(lauf2)
+      // Die Helligkeit folgt der BAHN, nicht der Luftlinie: Je Helligkeitsstufe wird der Teil der Kette, der mindestens
+      // so hell ist (vom Kopf aus ein zusammenhängendes Stück, an Blenden auch mehrere), als EIN durchgehender Zug mit
+      // runden Ecken und Kappen über die dunkleren Stufen gelegt; die Deckkraft jeder Stufe ist so gewählt, dass sich
+      // die gewünschte Gesamthelligkeit ergibt. Vorher lag ein linearer Farbverlauf entlang der Sehne Kopf → Schwanz
+      // über der Kette: in jeder Ecke drehte sich die Sehne, und die Grenze, an der das Licht verblasst, rutschte am
+      // Schwanz sichtbar zurück (Rückmeldung vom 10. September 2026, "der hintere Teil läuft wieder zurück").
       for (const r of laeufe) {
-        const kopfP = r[0]
-        const schwanz = r[r.length - 1]
-        const dx = schwanz.x - kopfP.x
-        const dy = schwanz.y - kopfP.y
-        const len2 = dx * dx + dy * dy
         for (const [dicke, staerke] of durchgaenge) {
           ctx.lineWidth = dicke
-          if (len2 < 1) {
-            ctx.strokeStyle = `rgba(254, 83, 3, ${(kopfP.a * staerke).toFixed(3)})`
-          } else {
-            // Farbverlauf vom Kopf zum Schwanz; jeder Punkt wird auf diese Linie projiziert (Stufen monoton).
-            const verlauf = ctx.createLinearGradient(kopfP.x, kopfP.y, schwanz.x, schwanz.y)
-            let letzteStufe = 0
-            for (const p of r) {
-              const t = Math.min(1, Math.max(letzteStufe, ((p.x - kopfP.x) * dx + (p.y - kopfP.y) * dy) / len2))
-              verlauf.addColorStop(t, `rgba(254, 83, 3, ${(p.a * staerke).toFixed(3)})`)
-              letzteStufe = t
+          let bisher = 0
+          for (const stufe of STUFEN) {
+            const ziel = stufe * staerke
+            const deckkraft = 1 - (1 - ziel) / (1 - bisher)
+            bisher = ziel
+            ctx.strokeStyle = `rgba(254, 83, 3, ${deckkraft.toFixed(3)})`
+            ctx.beginPath()
+            let offen = false
+            let gezeichnet = false
+            for (let i = 0; i < r.length; i++) {
+              const p = r[i]
+              if (p.a >= stufe) {
+                if (!offen) {
+                  ctx.moveTo(p.x, p.y)
+                  offen = true
+                } else {
+                  ctx.lineTo(p.x, p.y)
+                  gezeichnet = true
+                }
+              } else offen = false
             }
-            ctx.strokeStyle = verlauf
+            if (gezeichnet) ctx.stroke()
           }
-          ctx.beginPath()
-          ctx.moveTo(kopfP.x, kopfP.y)
-          for (let i = 1; i < r.length; i++) ctx.lineTo(r[i].x, r[i].y)
-          ctx.stroke()
         }
       }
     }
