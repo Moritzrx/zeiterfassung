@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { useHintergrundArt } from '../hintergrundart'
-import { WORTMARKE, WORTMARKE_LICHTWEG } from './wortmarke'
+import { WORTMARKE } from './wortmarke'
 
 /*
  * Der lebendige Hintergrund hinter allen Screens, in zwei Fassungen (Einstellungen → Darstellung):
  *
  * LOGO (Standard seit 10. September 2026, Wunsch des Auftraggebers): das Linienmuster des wessamedia-Logos
  * (dünne schräge Linien oben und unten) und die Wortmarke "wessamedia" als Wasserzeichen in der Mitte.
- * Orangene Lichter laufen von links nach rechts DURCH die Schrift (auf einer Mittellinie je Buchstabe, in
- * Schreibrichtung, `WORTMARKE_LICHTWEG`) und über die Musterlinien (mit abgerundeten Ecken, damit sie sauber
- * um die Zacken kommen). Sie laufen immer in eine Richtung, blenden am Ende aus und am Anfang wieder ein,
- * kein Hin und Her (Rückmeldung vom 10. September 2026). Die Wortmarke liegt als eigene Ebene ÜBER den Karten
+ * Orangene Lichter laufen von links nach rechts AM RAND der Schrift entlang (jeder Buchstabe einmal im
+ * Uhrzeigersinn um seinen Umriss, dann Sprung zum nächsten, `wortmarkeUmriss`) und über die Musterlinien
+ * (mit abgerundeten Ecken, damit sie sauber um die Zacken kommen). Sie laufen immer in eine Richtung, blenden
+ * am Ende aus und am Anfang wieder ein, kein Hin und Her; als Perlenketten statt starrer Striche, damit sie
+ * sich an spitzen Ecken nicht aufteilen (Rückmeldungen vom 10. September 2026). Die Wortmarke liegt als eigene Ebene ÜBER den Karten
  * (z-index 10, ohne Mausereignisse, unter Dialogen und Leisten), sonst wäre sie hinter dem Milchglas der
  * Karten unsichtbar; sie ist so blass, dass der Vordergrund lesbar bleibt.
  *
@@ -82,17 +83,17 @@ export const MUSTER: string[] = [
 
 /** Welche Musterlinien ein Licht bekommen, mit Tempo und Versatz (Sekunden). */
 const MUSTER_LICHTER: Array<{ muster: number; dauer: number; verzoegerung: number }> = [
-  { muster: 0, dauer: 11, verzoegerung: 0 },
-  { muster: 1, dauer: 9, verzoegerung: -3 },
-  { muster: 5, dauer: 12, verzoegerung: -6 },
-  { muster: 8, dauer: 10, verzoegerung: -2 },
-  { muster: 11, dauer: 11, verzoegerung: -5 }
+  { muster: 0, dauer: 8, verzoegerung: 0 },
+  { muster: 1, dauer: 6.5, verzoegerung: -3 },
+  { muster: 5, dauer: 9, verzoegerung: -6 },
+  { muster: 8, dauer: 7.5, verzoegerung: -2 },
+  { muster: 11, dauer: 8, verzoegerung: -5 }
 ]
-/** Lichter auf dem Weg durch die Schrift: drei gleich schnelle, gleichmäßig versetzt. */
-const WORTMARKE_LICHTER = 3
-const WORTMARKE_DAUER = 26
+/** Lichter am Rand der Schrift: vier gleich schnelle, gleichmäßig versetzt. */
+const WORTMARKE_LICHTER = 4
+const WORTMARKE_DAUER = 40
 /** Rundung der Ecken auf den Musterlinien (Rasterlängen), damit das Licht sauber um die Zacken kommt. */
-const ECKEN_RADIUS = 22
+const ECKEN_RADIUS = 40
 
 const RASTER_BREITE = 1000
 const RASTER_HOEHE = 600
@@ -246,6 +247,76 @@ function Glieder({
   )
 }
 
+/**
+ * Ein Licht als Kette runder Perlen: vorne am hellsten, nach hinten verglühend wie ein Komet. Runde Perlen
+ * brauchen keine Drehung und schmiegen sich an jede Kurve, auch an die spitzen Zacken des Musters, wo sich
+ * starre Striche sichtbar aufteilten (Rückmeldung vom 10. September 2026).
+ */
+function Perlen({
+  farbe,
+  setzen,
+  anzahl = 20,
+  groesse = 6
+}: {
+  farbe: string
+  setzen: (g: number, el: HTMLDivElement | null) => void
+  anzahl?: number
+  /** Durchmesser einer Perle in Pixeln */
+  groesse?: number
+}): ReactElement {
+  return (
+    <>
+      {Array.from({ length: anzahl }, (_, g) => {
+        const kraft = 1 - (g / Math.max(1, anzahl - 1)) * 0.9
+        return (
+          <div
+            key={g}
+            ref={(el) => setzen(g, el)}
+            className="hintergrund-funke absolute rounded-full"
+            style={{
+              left: -groesse / 2,
+              top: -groesse / 2,
+              width: groesse,
+              height: groesse,
+              background: farbe,
+              opacity: 0.15 + kraft * 0.85,
+              boxShadow: `0 0 ${(3 + kraft * 6).toFixed(0)}px ${farbe}, 0 0 ${(8 + kraft * 14).toFixed(0)}px ${farbe}99`
+            }}
+          />
+        )
+      })}
+    </>
+  )
+}
+
+/**
+ * Der Lichtweg am Rand der Schrift, aus den Konturen der Wortmarke: nur die äußeren Umrisse (Innenflächen
+ * liegen im Kasten eines anderen Umrisses), von links nach rechts sortiert; jeder beginnt an seinem linkesten
+ * Punkt und läuft im Uhrzeigersinn, also oben nach rechts, rechts hinunter, unten zurück, links hinauf. Danach
+ * springt das Licht zum nächsten Buchstaben.
+ */
+function wortmarkeUmriss(): string {
+  const konturen = WORTMARKE.pfade.map((d) => [...d.matchAll(/([-\d.]+) ([-\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])] as [number, number]))
+  const kasten = konturen.map((k) => ({
+    x0: Math.min(...k.map((p) => p[0])),
+    x1: Math.max(...k.map((p) => p[0])),
+    y0: Math.min(...k.map((p) => p[1])),
+    y1: Math.max(...k.map((p) => p[1]))
+  }))
+  const aussen = konturen
+    .map((k, i) => ({ k, box: kasten[i] }))
+    .filter(({ box }, i) => !kasten.some((b, j) => j !== i && b.x0 <= box.x0 && b.x1 >= box.x1 && b.y0 <= box.y0 && b.y1 >= box.y1))
+    .sort((a, b) => a.box.x0 - b.box.x0)
+  return aussen
+    .map(({ k }) => {
+      let s = 0
+      for (let i = 1; i < k.length; i++) if (k[i][0] < k[s][0] || (k[i][0] === k[s][0] && k[i][1] < k[s][1])) s = i
+      const r = k.slice(s).concat(k.slice(0, s))
+      return 'M' + r.map(([x, y]) => `${x} ${y}`).join('L') + 'Z'
+    })
+    .join(' ')
+}
+
 function Lichtpunkte({ partikel }: { partikel: Partikel[] }): ReactElement {
   return (
     <>
@@ -386,6 +457,7 @@ function HintergrundLogo(): ReactElement {
   const wortGlieder = useRef<Array<Array<HTMLDivElement | null>>>(Array.from({ length: WORTMARKE_LICHTER }, () => []))
 
   const alleD = useMemo(() => WORTMARKE.pfade.join(' '), [])
+  const umrissD = useMemo(() => wortmarkeUmriss(), [])
   const musterRund = useMemo(() => MUSTER.map((d) => eckenAbrunden(d, ECKEN_RADIUS)), [])
 
   useEffect(() => {
@@ -408,7 +480,7 @@ function HintergrundLogo(): ReactElement {
           dauer: mk.dauer,
           verzoegerung: mk.verzoegerung,
           richtung: 'normal',
-          abstand: 11,
+          abstand: 4,
           abbilden: (x, y) => [x * sx, y * sy]
         })
       })
@@ -420,7 +492,7 @@ function HintergrundLogo(): ReactElement {
         dauer: WORTMARKE_DAUER,
         verzoegerung: (-WORTMARKE_DAUER * i) / WORTMARKE_LICHTER,
         richtung: 'normal',
-        abstand: 8 / Math.max(0.2, massstab),
+        abstand: 3.5 / Math.max(0.2, massstab),
         abbilden: (x, y) => [kasten.left + x * massstab, kasten.top + y * massstab]
       }))
       const stopp1 = kettenStarten(musterKetten, musterGlieder.current)
@@ -466,12 +538,11 @@ function HintergrundLogo(): ReactElement {
             ))}
           </svg>
           {MUSTER_LICHTER.map((_, i) => (
-            <Glieder
+            <Perlen
               key={i}
               farbe={ORANGE}
-              anzahl={14}
-              laenge={22}
-              dicke={4}
+              anzahl={26}
+              groesse={7}
               setzen={(g, el) => {
                 musterGlieder.current[i][g] = el
               }}
@@ -490,16 +561,15 @@ function HintergrundLogo(): ReactElement {
             style={{ width: 'min(78vw, 1150px)', height: 'auto', overflow: 'visible' }}
           >
             <path d={alleD} fill="white" fillOpacity="0.04" fillRule="evenodd" stroke="white" strokeOpacity="0.07" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-            <path ref={lichtweg} d={WORTMARKE_LICHTWEG} fill="none" stroke="none" />
+            <path ref={lichtweg} d={umrissD} fill="none" stroke="none" />
           </svg>
         </div>
         {Array.from({ length: WORTMARKE_LICHTER }, (_, i) => (
-          <Glieder
+          <Perlen
             key={i}
             farbe={ORANGE}
-            anzahl={18}
-            laenge={16}
-            dicke={3.5}
+            anzahl={30}
+            groesse={6}
             setzen={(g, el) => {
               wortGlieder.current[i][g] = el
             }}
