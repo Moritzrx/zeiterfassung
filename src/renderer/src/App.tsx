@@ -1,6 +1,7 @@
 import { memo, startTransition, useEffect, useRef, useState, type ReactElement } from 'react'
 import { AUSZEICHNUNGEN } from '@shared/auszeichnungen'
 import { Fehlerschutz } from './components/Fehlerschutz'
+import { FokusDialogHalter, fokusDialogOeffnen } from './components/FokusDialog'
 import { Hinweise, hinweisZeigen } from './components/Hinweis'
 import { UpdateHinweis } from './components/UpdateHinweis'
 import { Wochenrueckblick } from './components/Wochenrueckblick'
@@ -97,6 +98,12 @@ function Oberflaeche(): ReactElement {
         wechselnRef.current(SCREEN_REIHENFOLGE[Number(e.key) - 1])
         return
       }
+      // Strg+F (Mac: Cmd+F) öffnet den Fokus-Dialog.
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        fokusDialogOeffnen()
+        return
+      }
       if (e.key === ' ' && !imFeld && (!ziel || ziel === document.body) && window.api) {
         e.preventDefault()
         void window.api.erfassung.status().then((s) => (s.zustand === 'pausiert' ? window.api.erfassung.fortsetzen() : window.api.erfassung.pause()))
@@ -176,6 +183,9 @@ function Oberflaeche(): ReactElement {
       </Fehlerschutz>
       <Fehlerschutz bereich="Wochenrückblick">
         <Wochenrueckblick />
+      </Fehlerschutz>
+      <Fehlerschutz bereich="Fokus">
+        <FokusDialogHalter />
       </Fehlerschutz>
     </div>
   )

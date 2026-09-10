@@ -53,6 +53,11 @@ export interface Api {
     /** Wird bei jedem Takt der Erfassung aufgerufen. */
     onStatus: (rueckruf: (status: ErfassungsStatus) => void) => Abmelden
   }
+  fokus: {
+    /** Startet einen Fokus mit dieser Tätigkeit ab dem Beginn (ISO, heute, darf in der Vergangenheit liegen). */
+    starten: (taetigkeit: string, beginn: string) => Promise<void>
+    beenden: () => Promise<void>
+  }
   bloecke: {
     /** Alle Blöcke eines Berliner Kalendertags ("JJJJ-MM-TT"). */
     tag: (datum: string) => Promise<Block[]>

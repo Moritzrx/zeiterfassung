@@ -9,6 +9,8 @@ interface Props {
   onBewertung: (bewertung: Bewertung) => void
   onLoeschen: () => void
   onAlleMitProgramm: () => void
+  /** Alle Blöcke zwischen dem frühesten und dem spätesten ausgewählten dazunehmen (ab 2 ausgewählten) */
+  onAlleDazwischen?: () => void
   onFertig: () => void
 }
 
@@ -24,6 +26,7 @@ export function Mehrfachleiste({
   onBewertung,
   onLoeschen,
   onAlleMitProgramm,
+  onAlleDazwischen,
   onFertig
 }: Props): ReactElement {
   const [name, setName] = useState('')
@@ -86,6 +89,16 @@ export function Mehrfachleiste({
         >
           {bestaetigen ? 'Wirklich löschen?' : 'Löschen'}
         </button>
+        {onAlleDazwischen && anzahl >= 2 && (
+          <button
+            type="button"
+            onClick={onAlleDazwischen}
+            className="rounded-chip px-3 py-1.5 text-mute hover:bg-inaktiv hover:text-ink"
+            title="Alle Blöcke zwischen dem ersten und dem letzten ausgewählten dazunehmen"
+          >
+            Alles dazwischen
+          </button>
+        )}
         {programm && (
           <button type="button" onClick={onAlleMitProgramm} className="rounded-chip px-3 py-1.5 text-mute hover:bg-inaktiv hover:text-ink">
             Alle mit „{programm}“ diese Woche

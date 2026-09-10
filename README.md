@@ -82,6 +82,12 @@ Das **rote X** oben im Fenster schließt nur das Fenster, die Erfassung läuft w
 5. **Eintragen**: Zeiten von Hand, etwa Kundentermine oder Fahrten. Überschneidet sich der Eintrag mit automatischen Blöcken, warnt die App und bietet an, diese zu ersetzen.
 6. **Einstellungen**: Untätigkeitsgrenze, Fenstertitel speichern, Autostart, Wochenziele, Regeln, Tätigkeiten und Symbole, Urlaubswochen für die Hochrechnung, Datenbank-Abgleich, Konto.
 
+### Fokus: eine Tätigkeit für alles
+
+Regeln kennen nur das Programm, nicht dein Thema. Wer sich über Instagram weiterbildet, springt zwischen Claude, Instagram und YouTube hin und her, und jeder Wechsel wäre ein eigener Block zum Zuordnen. Dafür gibt es den **Fokus**: Klick oben rechts auf **Fokus** (oder auf der Heute-Karte "Fokus starten", oder Strg+F, am Mac Cmd+F), Tätigkeit antippen, Beginn wählen (jetzt, vor 15/30/60 Minuten oder seit einer Uhrzeit), fertig. Ab dann zählt alles als produktiv mit dieser Tätigkeit, egal welches Programm vorne ist. Rückwirkend gestartet bekommen auch die Blöcke seit dem Beginn sofort die Tätigkeit. Oben steht "Fokus: Instagram Learning · seit 09:01" und daneben **Fokus beenden**; auch das Symbol-Menü kann ihn beenden. Der Fokus endet von selbst um Mitternacht oder wenn du eine Stunde lang nichts tust.
+
+Nachträglich geht es auch: In der Tagesliste **Auswählen**, den ersten und den letzten Block der Phase anklicken, **Alles dazwischen**, dann unten die Tätigkeit setzen.
+
 ### Regeln und das Ungeklärt-Postfach
 
 Neue Programme kennt die App nicht, solche Blöcke landen als **ungeklärt** im Postfach auf dem Heute-Screen. Dort sind sie **nach Programm gebündelt**, im Browser zusätzlich nach Seite: eine Zeile je Gruppe wie "Google Chrome · YouTube" mit Anzahl und Gesamtdauer. **"Alle 37 zuordnen"** öffnet einen Dialog mit einer Vorgabe für alle und darunter jedem Block einzeln, mit Datum, Uhrzeit, Dauer und dem Tab- oder Videotitel; jeder Block kann dort eine eigene Bewertung und Tätigkeit bekommen. In allen Listen steht bei Browser-Blöcken die Seite als kleiner Chip (YouTube, Google Sheets, Instagram ...) und darunter der Tab-Titel, etwa der Name des Videos. Das Häkchen **"Zuordnung künftig immer anwenden"** macht daraus eine Regel, dann bewertet die App dieses Programm ab sofort und rückwirkend für alle nicht von Hand geprüften Blöcke automatisch. Wer lieber jeden Block einzeln sehen will, klappt die Zeile auf oder nimmt "Einzeln durchgehen".

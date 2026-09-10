@@ -1,15 +1,30 @@
 import type { ReactElement } from 'react'
-import { Pause, Play } from 'lucide-react'
+import { Crosshair, Pause, Play, Square } from 'lucide-react'
 import { useErfassung } from '../erfassung'
 import { uhrzeit } from '../format'
+import { TaetigkeitSymbol } from '../symbole'
+import { tonSpielen } from '../toene'
+import { fokusDialogOeffnen } from './FokusDialog'
+import { hinweisZeigen } from './Hinweis'
 
 const istMac = window.electron?.process?.platform === 'darwin'
 
-/** Schmale Leiste ganz oben: Status der Erfassung links, Pause-Knopf rechts. Auf jedem Screen sichtbar. */
+const KNOPF =
+  'flex items-center gap-2 rounded-chip px-3 py-1.5 text-sm transition-colors [-webkit-app-region:no-drag] disabled:text-dim disabled:hover:bg-transparent'
+
+/** Schmale Leiste ganz oben: Status der Erfassung links, Fokus und Pause rechts. Auf jedem Screen sichtbar. */
 export function Kopfzeile(): ReactElement {
   const status = useErfassung()
   const pausiert = status.zustand === 'pausiert'
   const aktiv = status.zustand === 'laeuft' || status.zustand === 'inaktiv' || status.zustand === 'abwesend'
+  const fokus = status.fokus
+
+  async function fokusBeenden(): Promise<void> {
+    if (!window.api || !fokus) return
+    await window.api.fokus.beenden()
+    tonSpielen('schliessen')
+    hinweisZeigen(`Fokus „${fokus.taetigkeit}“ beendet. Ab jetzt gelten wieder die Regeln.`)
+  }
 
   let punkt = 'bg-dim'
   let text = 'Erfassung nicht aktiv'
@@ -47,18 +62,44 @@ export function Kopfzeile(): ReactElement {
             Datenbank nicht erreichbar, {status.unsynchronisiert} Blöcke warten
           </span>
         )}
+        {fokus && (
+          <span
+            className="ml-3 flex items-center gap-1.5 rounded-chip bg-produktiv/15 px-2.5 py-1 text-xs text-produktiv"
+            title="Alles, was du gerade tust, zählt als produktiv mit dieser Tätigkeit"
+          >
+            <Crosshair size={13} strokeWidth={2} />
+            Fokus: <TaetigkeitSymbol name={fokus.taetigkeit} groesse={13} /> {fokus.taetigkeit} · seit {uhrzeit(fokus.seit)}
+          </span>
+        )}
       </div>
-      <button
-        type="button"
-        disabled={!aktiv && !pausiert}
-        onClick={umschalten}
-        className={`flex items-center gap-2 rounded-chip px-3 py-1.5 text-sm transition-colors [-webkit-app-region:no-drag] ${
-          pausiert ? 'bg-ink text-ground' : 'text-ink hover:bg-panel-2 disabled:text-dim disabled:hover:bg-transparent'
-        }`}
-      >
-        {pausiert ? <Play size={16} strokeWidth={1.75} /> : <Pause size={16} strokeWidth={1.75} />}
-        {pausiert ? 'Fortsetzen' : 'Pause'}
-      </button>
+      <div className="flex items-center gap-1">
+        {fokus ? (
+          <button type="button" onClick={() => void fokusBeenden()} className={`${KNOPF} text-ink hover:bg-panel-2`} title="Fokus beenden">
+            <Square size={14} strokeWidth={2} />
+            Fokus beenden
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!aktiv && !pausiert}
+            onClick={fokusDialogOeffnen}
+            className={`${KNOPF} text-ink hover:bg-panel-2`}
+            title="Fokus: eine Tätigkeit für alles, was du jetzt tust (Strg+F)"
+          >
+            <Crosshair size={16} strokeWidth={1.75} />
+            Fokus
+          </button>
+        )}
+        <button
+          type="button"
+          disabled={!aktiv && !pausiert}
+          onClick={umschalten}
+          className={`${KNOPF} ${pausiert ? 'bg-ink text-ground' : 'text-ink hover:bg-panel-2'}`}
+        >
+          {pausiert ? <Play size={16} strokeWidth={1.75} /> : <Pause size={16} strokeWidth={1.75} />}
+          {pausiert ? 'Fortsetzen' : 'Pause'}
+        </button>
+      </div>
     </header>
   )
 }

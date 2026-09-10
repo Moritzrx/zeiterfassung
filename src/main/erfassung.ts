@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto'
 import { hostname } from 'os'
 import { powerMonitor } from 'electron'
 import { activeWindow } from 'get-windows'
-import type { Bewertung, Block, ErfassungsZustand, LaufenderBlock } from '@shared/typen'
+import type { Bewertung, Block, ErfassungsZustand, Fokus, LaufenderBlock } from '@shared/typen'
 import type { Zuordnung } from '@shared/regeln'
 import { naechsterTagesanfang } from '@shared/zeit'
 import { istEigenesProgramm, istSchreibtisch, istSystemUeberlagerung, programmNormalisieren } from './programme'
@@ -35,6 +35,8 @@ export class Erfassung extends EventEmitter {
   private kurz: Block | null = null // fertiger Block unter 60 s, wartet auf den Anschlussblock
   /** Seit wann das eigene App-Fenster ununterbrochen den Fokus hat (ms), sonst null. */
   private eigenesSeit: number | null = null
+  /** Laufender Fokus: jeder neue Arbeitsblock bekommt diese Tätigkeit und ist produktiv. */
+  private fokus: Fokus | null = null
   private letzterTakt = 0
   /** Vor diesen Zeitpunkt darf Untätigkeit nie rückwirkend gebucht werden (Start, Aufwachen, Fortsetzen). */
   private zeitgrenze = 0
@@ -69,8 +71,56 @@ export class Erfassung extends EventEmitter {
     if (this.timer) clearInterval(this.timer)
     this.timer = null
     this.alleSchliessen(new Date())
+    this.fokus = null
     this.zustand = 'gestoppt'
     this.melden()
+  }
+
+  fokusStand(): Fokus | null {
+    return this.fokus
+  }
+
+  /**
+   * Startet einen Fokus: ab `beginn` (darf in der Vergangenheit liegen) zählt alles als produktiv mit dieser
+   * Tätigkeit. Der laufende Block wird am Beginn geteilt bzw. ganz übernommen; die schon gespeicherten
+   * Blöcke behandelt `fokusRueckwirkend` (src/main/fokus.ts).
+   */
+  fokusStarten(taetigkeit: string, beginn: Date, jetzt: Date): void {
+    this.fokus = { taetigkeit, seit: beginn.toISOString() }
+    const b = this.aktuell
+    if (b) {
+      if (Date.parse(b.start) < beginn.getTime() - KURZ_MS) {
+        // Vorne bleibt der alte Block, ab dem Beginn läuft ein neuer mit dem Fokus weiter.
+        const { programm, programmRoh, fenstertitel } = b
+        this.schliessen(b, beginn)
+        this.aktuell = this.neuerBlock(beginn, 'ungeklaert', programm, programmRoh, fenstertitel)
+        this.aktuell.ende = jetzt.toISOString()
+        this.speicher.aktualisieren(this.aktuell)
+      } else {
+        this.fokusAnwenden(b)
+        this.speicher.aktualisieren(b)
+        this.emit('bloecke')
+      }
+    }
+    this.melden()
+  }
+
+  /** Beendet den Fokus; der laufende Block endet jetzt, der nächste wird wieder nach den Regeln bewertet. */
+  fokusBeenden(jetzt: Date): void {
+    if (!this.fokus) return
+    this.fokus = null
+    if (this.aktuell) {
+      this.schliessen(this.aktuell, jetzt)
+      this.aktuell = null
+    }
+    this.melden()
+  }
+
+  private fokusAnwenden(block: Block): void {
+    if (!this.fokus || block.bewertung === 'inaktiv') return
+    block.taetigkeit = this.fokus.taetigkeit
+    block.bewertung = 'produktiv'
+    block.manuellGeprueft = true
   }
 
   pause(): void {
@@ -111,6 +161,7 @@ export class Erfassung extends EventEmitter {
     inaktivSeit: string | null
     pausiertSeit: string | null
     eigenesFenster: boolean
+    fokus: Fokus | null
   } {
     const b = this.aktuell
     return {
@@ -127,7 +178,8 @@ export class Erfassung extends EventEmitter {
         : null,
       inaktivSeit: this.inaktivSeit?.toISOString() ?? null,
       pausiertSeit: this.pausiertSeit?.toISOString() ?? null,
-      eigenesFenster: this.eigenesSeit !== null
+      eigenesFenster: this.eigenesSeit !== null,
+      fokus: this.fokus
     }
   }
 
@@ -162,6 +214,9 @@ export class Erfassung extends EventEmitter {
       if (this.pausiertSeit && jetzt >= naechsterTagesanfang(this.pausiertSeit)) this.fortsetzen()
       return
     }
+
+    // Ein Fokus endet spätestens um Mitternacht, damit er nicht vergessen am nächsten Tag weiterläuft.
+    if (this.fokus && jetzt >= naechsterTagesanfang(new Date(this.fokus.seit))) this.fokusBeenden(jetzt)
 
     const idleSekunden = powerMonitor.getSystemIdleTime()
     if (idleSekunden >= this.idleSchwelleSekunden) {
@@ -281,6 +336,8 @@ export class Erfassung extends EventEmitter {
       this.schliessen(this.inaktiv, new Date(maxEnde))
       this.inaktiv = null
       this.zustand = 'abwesend'
+      // Wer eine Stunde weg ist, hat den Fokus beendet; sonst zählt der Abend nach der Rückkehr falsch.
+      this.fokus = null
     } else {
       this.inaktiv.ende = jetzt.toISOString()
       this.speicher.aktualisieren(this.inaktiv)
@@ -332,6 +389,8 @@ export class Erfassung extends EventEmitter {
       geaendertAm: jetzt,
       geloeschtAm: null
     }
+    // Ein laufender Fokus schlägt die Regeln: Tätigkeit des Fokus, produktiv, von Hand geprüft.
+    this.fokusAnwenden(block)
     this.speicher.hinzufuegen(block)
     this.emit('bloecke')
     return block

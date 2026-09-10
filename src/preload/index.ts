@@ -21,6 +21,10 @@ const api: Api = {
       return () => ipcRenderer.removeListener('erfassung:status', handler)
     }
   },
+  fokus: {
+    starten: (taetigkeit, beginn) => ipcRenderer.invoke('fokus:starten', taetigkeit, beginn),
+    beenden: () => ipcRenderer.invoke('fokus:beenden')
+  },
   bloecke: {
     tag: (datum) => ipcRenderer.invoke('bloecke:tag', datum),
     zeitraum: (von, bis) => ipcRenderer.invoke('bloecke:zeitraum', von, bis),

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Crosshair } from 'lucide-react'
 import type { Bewertung, Block } from '@shared/typen'
 import {
   berlinDatum,
@@ -12,6 +12,7 @@ import { fensterInfo } from '@shared/fenster'
 import { AnimierteZahl } from '../components/AnimierteZahl'
 import { BlockDialog } from '../components/BlockDialog'
 import { BlockZeile } from '../components/BlockZeile'
+import { fokusDialogOeffnen } from '../components/FokusDialog'
 import { hinweisZeigen } from '../components/Hinweis'
 import { tonSpielen } from '../toene'
 import { Karte } from '../components/Karte'
@@ -19,7 +20,7 @@ import { Mehrfachleiste } from '../components/Mehrfachleiste'
 import { TagesRing, type RingAnteile } from '../components/TagesRing'
 import { UngeklaertPostfach } from '../components/UngeklaertPostfach'
 import { useErfassung, useSekundentakt, useTakt } from '../erfassung'
-import { datumText, laufzeitText, stundenText } from '../format'
+import { datumText, laufzeitText, stundenText, uhrzeit } from '../format'
 import { useTaetigkeiten } from '../taetigkeiten'
 
 /** Sekunden je Bewertung innerhalb eines Tages, am Rand anteilig. */
@@ -152,13 +153,16 @@ export function HeuteScreen(): ReactElement {
 
   function zeileKlick(zeile: Zeile): void {
     if (auswahl) {
-      const neu = new Set(auswahl)
-      const alleDrin = zeile.bloecke.every((b) => neu.has(b.id))
-      for (const b of zeile.bloecke) {
-        if (alleDrin) neu.delete(b.id)
-        else neu.add(b.id)
-      }
-      setAuswahl(neu)
+      // Funktionale Änderung, damit auch zwei schnelle Klicks hintereinander beide zählen.
+      setAuswahl((alt) => {
+        const neu = new Set(alt)
+        const alleDrin = zeile.bloecke.every((b) => neu.has(b.id))
+        for (const b of zeile.bloecke) {
+          if (alleDrin) neu.delete(b.id)
+          else neu.add(b.id)
+        }
+        return neu
+      })
     } else if (zeile.bloecke.length > 1) {
       setGruppe({ bloecke: zeile.bloecke, muster: null })
     } else {
@@ -209,6 +213,27 @@ export function HeuteScreen(): ReactElement {
     }
     setAuswahl(neu)
     hinweisZeigen(`${neu.size} Blöcke mit „${erster.programm}“ ausgewählt, auch an anderen Tagen dieser Woche.`)
+  }
+
+  /** Alle Arbeitsblöcke zwischen dem frühesten und dem spätesten ausgewählten dazunehmen (für eine ganze Arbeitsphase). */
+  function alleDazwischen(): void {
+    if (!auswahl || auswahl.size < 2) return
+    const gewaehlt = liste.filter((b) => auswahl.has(b.id))
+    const von = gewaehlt[0].start
+    const bis = gewaehlt[gewaehlt.length - 1].ende
+    const neu = new Set(auswahl)
+    for (const b of liste) {
+      if (b.start >= von && b.ende <= bis && b.bewertung !== 'inaktiv' && b.id !== laufendId) neu.add(b.id)
+    }
+    setAuswahl(neu)
+    hinweisZeigen(`${neu.size} Blöcke von ${uhrzeit(von)} bis ${uhrzeit(bis)} ausgewählt.`)
+  }
+
+  async function fokusBeenden(): Promise<void> {
+    if (!window.api || !status.fokus) return
+    await window.api.fokus.beenden()
+    tonSpielen('schliessen')
+    hinweisZeigen(`Fokus „${status.fokus.taetigkeit}“ beendet. Ab jetzt gelten wieder die Regeln.`)
   }
 
   function weiterDurchgehen(): void {
@@ -262,7 +287,32 @@ export function HeuteScreen(): ReactElement {
 
       {istHeute && (
         <Karte>
-          <p className="text-xs tracking-wide text-mute uppercase">Gerade</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs tracking-wide text-mute uppercase">Gerade</p>
+            {status.fokus ? (
+              <button type="button" onClick={() => void fokusBeenden()} className="rounded-chip bg-panel-2 px-3 py-1.5 text-xs text-ink hover:bg-inaktiv">
+                Fokus beenden
+              </button>
+            ) : (
+              status.zustand !== 'nicht-angemeldet' && (
+                <button
+                  type="button"
+                  onClick={fokusDialogOeffnen}
+                  className="knopf-primaer flex items-center gap-1.5 rounded-chip px-3 py-1.5 text-xs"
+                  title="Eine Tätigkeit für alles, was du jetzt tust, egal welches Programm"
+                >
+                  <Crosshair size={13} strokeWidth={2} />
+                  Fokus starten
+                </button>
+              )
+            )}
+          </div>
+          {status.fokus && (
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-produktiv">
+              <Crosshair size={14} strokeWidth={2} />
+              Fokus „{status.fokus.taetigkeit}“ seit {uhrzeit(status.fokus.seit)}: alles zählt als produktiv dazu, egal welches Programm.
+            </p>
+          )}
           {laufend ? (
             <div className="mt-2 flex items-center gap-4">
               <div className="min-w-0 flex-1">
@@ -349,6 +399,7 @@ export function HeuteScreen(): ReactElement {
           onBewertung={(bewertung) => void mehrere({ bewertung })}
           onLoeschen={() => void mehrere({ loeschen: true })}
           onAlleMitProgramm={() => void alleMitProgramm()}
+          onAlleDazwischen={alleDazwischen}
           onFertig={() => setAuswahl(null)}
         />
       )}

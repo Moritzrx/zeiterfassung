@@ -7,6 +7,7 @@ export interface TrayAktionen {
   oeffnen: () => void
   pause: () => void
   fortsetzen: () => void
+  fokusBeenden: () => void
   beenden: () => void
 }
 
@@ -15,6 +16,8 @@ export interface TrayStand {
   heuteText: string
   rang: number
   pausiert: boolean
+  /** Tätigkeit des laufenden Fokus, sonst null */
+  fokus: string | null
 }
 
 /**
@@ -38,17 +41,19 @@ export class TrayLeiste {
     this.tray = new Tray(this.bild)
     this.tray.setToolTip('wessamedia Zeit')
     this.tray.on('click', () => this.aktionen.oeffnen())
-    this.aktualisieren({ angemeldet: false, heuteText: '0,0 h', rang: 0, pausiert: false })
+    this.aktualisieren({ angemeldet: false, heuteText: '0,0 h', rang: 0, pausiert: false, fokus: null })
   }
 
   aktualisieren(stand: TrayStand): void {
     const zeile = stand.angemeldet ? `Heute ${stand.heuteText} · Rang ${stand.rang}` : 'Nicht angemeldet'
     const menue = Menu.buildFromTemplate([
       { label: zeile, enabled: false },
-      { type: 'separator' },
+      ...(stand.fokus ? [{ label: `Fokus: ${stand.fokus}`, enabled: false }] : []),
+      { type: 'separator' as const },
       stand.pausiert
         ? { label: 'Erfassung fortsetzen', click: () => this.aktionen.fortsetzen(), enabled: stand.angemeldet }
         : { label: 'Pause', click: () => this.aktionen.pause(), enabled: stand.angemeldet },
+      ...(stand.fokus ? [{ label: 'Fokus beenden', click: () => this.aktionen.fokusBeenden() }] : []),
       { label: 'Fenster öffnen', click: () => this.aktionen.oeffnen() },
       { type: 'separator' },
       { label: 'Beenden', click: () => this.aktionen.beenden() }

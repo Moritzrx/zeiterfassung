@@ -41,6 +41,7 @@ import { alleNeuBewerten } from './bewertung'
 import { Erfassung } from './erfassung'
 import { Feier } from './feier'
 import { Profil } from './profil'
+import { fokusRueckwirkend } from './fokus'
 import { istFehlblock } from './programme'
 import { Regelwerk } from './regelwerk'
 import { Speicher } from './speicher'
@@ -155,6 +156,7 @@ function statusBerechnen(): ErfassungsStatus {
       inaktivSeit: null,
       pausiertSeit: null,
       eigenesFenster: false,
+      fokus: null,
       heuteProduktivSekunden: 0,
       wocheProduktivSekunden: 0,
       rang: 0,
@@ -177,6 +179,7 @@ function statusBerechnen(): ErfassungsStatus {
     inaktivSeit: e.inaktivSeit,
     pausiertSeit: e.pausiertSeit,
     eigenesFenster: e.eigenesFenster,
+    fokus: e.fokus,
     heuteProduktivSekunden: heute,
     wocheProduktivSekunden: woche,
     rang: aktuellerRang,
@@ -194,8 +197,17 @@ function statusVerteilen(): void {
     angemeldet: sitzung !== null,
     heuteText: stundenText(status.heuteProduktivSekunden),
     rang: status.rang,
-    pausiert: status.zustand === 'pausiert'
+    pausiert: status.zustand === 'pausiert',
+    fokus: status.fokus?.taetigkeit ?? null
   })
+}
+
+/** Fokus über das Fenster oder das Symbol-Menü beenden. */
+function fokusBeenden(): void {
+  if (!sitzung) return
+  sitzung.erfassung.fokusBeenden(new Date())
+  bloeckeGeaendert()
+  statusVerteilen()
 }
 
 function bloeckeGeaendert(): void {
@@ -339,6 +351,23 @@ function ipcRegistrieren(): void {
   ipcMain.handle('erfassung:fortsetzen', () => {
     sitzung?.erfassung.fortsetzen()
   })
+
+  // Fokus: ab dem Beginn (heute, darf zurückliegen) zählt alles als produktiv mit dieser Tätigkeit.
+  ipcMain.handle('fokus:starten', (_ereignis, taetigkeit: string, beginnIso: string): void => {
+    if (!sitzung) return
+    const name = sitzung.taetigkeiten.merken(taetigkeit)
+    if (!name) throw new Error('Bitte eine Tätigkeit angeben.')
+    const jetzt = new Date()
+    const gewuenscht = Date.parse(beginnIso) || jetzt.getTime()
+    const beginn = new Date(Math.min(jetzt.getTime(), Math.max(gewuenscht, tagesanfang(jetzt).getTime())))
+    sitzung.erfassung.fokusStarten(name, beginn, jetzt)
+    const n = fokusRueckwirkend(sitzung.speicher, name, beginn, jetzt, sitzung.erfassung.laufendeId())
+    if (n) console.log(`Fokus „${name}“: ${n} Blöcke rückwirkend übernommen`)
+    bloeckeGeaendert()
+    statusVerteilen()
+    auszeichnungenBaldPruefen(sitzung)
+  })
+  ipcMain.handle('fokus:beenden', () => fokusBeenden())
 
   ipcMain.handle('bloecke:tag', (_ereignis, datum: string): Block[] => {
     if (!sitzung) return []
@@ -633,6 +662,7 @@ void app.whenReady().then(async () => {
     oeffnen: fensterZeigen,
     pause: () => sitzung?.erfassung.pause(),
     fortsetzen: () => sitzung?.erfassung.fortsetzen(),
+    fokusBeenden,
     beenden: () => {
       beendet = true
       app.quit()

@@ -239,6 +239,16 @@ export interface LaufenderBlock {
   bewertung: Bewertung
 }
 
+/**
+ * Ein laufender Fokus: alles, was in dieser Zeit passiert, zählt als produktiv mit dieser Tätigkeit,
+ * egal welches Programm vorne ist (Instagram Learning quer über Claude, Instagram und YouTube).
+ */
+export interface Fokus {
+  taetigkeit: string
+  /** Beginn als ISO-Zeit, kann rückwirkend liegen */
+  seit: string
+}
+
 /** Was das Fenster über den Stand der Erfassung wissen muss. Wird alle 5 Sekunden geschickt. */
 export interface ErfassungsStatus {
   zustand: ErfassungsZustand
@@ -247,6 +257,8 @@ export interface ErfassungsStatus {
   pausiertSeit: string | null
   /** Das eigene App-Fenster hat gerade den Fokus; diese Zeit zählt nicht als Arbeit */
   eigenesFenster: boolean
+  /** Laufender Fokus (Tätigkeit für alles), sonst null */
+  fokus: Fokus | null
   heuteProduktivSekunden: number
   wocheProduktivSekunden: number
   rang: number
