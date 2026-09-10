@@ -33,7 +33,7 @@ export function Kopfzeile(): ReactElement {
     text = 'Erfassung läuft'
   } else if (status.zustand === 'inaktiv') {
     punkt = 'bg-ungeklaert'
-    text = status.inaktivSeit ? `Inaktiv seit ${uhrzeit(status.inaktivSeit)}` : 'Inaktiv'
+    text = status.inaktivSeit ? `Nicht am Rechner seit ${uhrzeit(status.inaktivSeit)}, zählt als unproduktiv` : 'Nicht am Rechner'
   } else if (status.zustand === 'abwesend') {
     punkt = 'bg-ungeklaert'
     text = 'Abwesend, Erfassung ruht'

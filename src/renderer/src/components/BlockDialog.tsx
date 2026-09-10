@@ -3,6 +3,7 @@ import { Portal } from './Portal'
 import { X } from 'lucide-react'
 import type { Bewertung, Block, RegelBewertung } from '@shared/typen'
 import { anzeigeName, fensterInfo } from '@shared/fenster'
+import { RUHE_NAME, istRuhe } from '@shared/ruhe'
 import { musterVorschlag } from '@shared/regeln'
 import { berlinDatum, berlinTeile, berlinZuUtc } from '@shared/zeit'
 import { datumText, dauerText } from '../format'
@@ -201,9 +202,11 @@ export function BlockDialog({
       ? 'Inaktive Zeit'
       : istManuell
         ? (block.taetigkeit ?? 'Von Hand eingetragen')
-        : name.neben
-          ? `${name.haupt} · ${name.neben}`
-          : (block.programm ?? 'Block')
+        : istRuhe(block)
+          ? RUHE_NAME
+          : name.neben
+            ? `${name.haupt} · ${name.neben}`
+            : (block.programm ?? 'Block')
 
   return (
     <Portal>

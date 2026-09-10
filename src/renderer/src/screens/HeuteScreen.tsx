@@ -148,7 +148,7 @@ export function HeuteScreen(): ReactElement {
   }, [liste, laufendId, istHeute])
 
   let geradeText = 'Keine Erfassung aktiv'
-  if (status.zustand === 'inaktiv') geradeText = 'Inaktiv, keine Eingabe seit mehr als 3 Minuten'
+  if (status.zustand === 'inaktiv') geradeText = 'Nicht am Rechner, keine Eingabe seit mehr als 3 Minuten. Zählt als unproduktiv; unterwegs gearbeitet? Unter „Eintragen“ nachtragen.'
   else if (status.zustand === 'abwesend') geradeText = 'Abwesend'
   else if (status.zustand === 'pausiert') geradeText = 'Pausiert'
   else if (status.zustand === 'laeuft' && status.eigenesFenster) geradeText = 'Du bist gerade in wessamedia Zeit. Diese Zeit zählt nicht als Arbeit.'

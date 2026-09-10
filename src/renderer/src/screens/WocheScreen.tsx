@@ -1,3 +1,4 @@
+import { fokusQuote } from '@shared/ruhe'
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Auszeichnung, Block, Ziel } from '@shared/typen'
@@ -199,6 +200,16 @@ export function WocheScreen(): ReactElement {
           } sind das ${stundenText(rest / tageUebrig)} h pro Tag.`
   }
 
+  // Fokus-Quote der Woche: produktiv geteilt durch alles Gezählte (unproduktiv schließt "Nicht am Rechner" ein).
+  const wochenSumme = tage.reduce(
+    (s, t) => ({ produktiv: s.produktiv + t.produktiv, unproduktiv: s.unproduktiv + t.unproduktiv, ungeklaert: s.ungeklaert + t.ungeklaert }),
+    { produktiv: 0, unproduktiv: 0, ungeklaert: 0 }
+  )
+  const fokusText =
+    wochenSumme.produktiv + wochenSumme.unproduktiv + wochenSumme.ungeklaert > 0
+      ? `Fokus-Quote ${Math.round(fokusQuote(wochenSumme) * 100)} %, ${stundenText(wochenSumme.unproduktiv * 3600)} h unproduktiv (Ablenkung am Rechner und Zeit ohne Eingabe).`
+      : null
+
   // Auffällige Blöcke: ungeklärt, sehr lang, jeweils noch nicht von Hand geprüft
   const auffaellige = useMemo(
     () =>
@@ -280,6 +291,7 @@ export function WocheScreen(): ReactElement {
         </RangRing>
         <p className={`mt-4 text-center text-sm ${geschafft ? 'text-produktiv' : 'text-mute'}`}>{rangText}</p>
         {restlaufzeit && <p className="mt-1 text-center text-sm text-dim">{restlaufzeit}</p>}
+        {fokusText && <p className="mt-1 text-center text-sm text-dim">{fokusText}</p>}
         <button
           type="button"
           onClick={() => setUebersichtOffen(true)}

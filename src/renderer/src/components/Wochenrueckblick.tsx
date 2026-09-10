@@ -1,3 +1,4 @@
+import { FOKUS_QUOTE_ZIEL, fokusQuote } from '@shared/ruhe'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactElement } from 'react'
 import { Portal } from './Portal'
 import { AUSZEICHNUNGEN, wochenstatistik, type Wochenstatistik } from '@shared/auszeichnungen'
@@ -204,7 +205,12 @@ export function Wochenrueckblick(): ReactElement | null {
 
   const kacheln: Array<{ titel: string; wert: string; zusatz: string; farbe?: string }> = [
     { titel: 'Produktiv', wert: `${stundenText(stat.produktiv)} h`, zusatz: `Ziel ${stundenText(daten.gesamtziel * 3600)} h`, farbe: '#00C076' },
-    { titel: 'Unproduktiv', wert: `${stundenText(stat.unproduktiv)} h`, zusatz: stat.ungeklaert > 0 ? `${stundenText(stat.ungeklaert)} h ungeklärt` : 'alles eingeordnet', farbe: '#FF4D4D' },
+    {
+      titel: 'Fokus-Quote',
+      wert: `${Math.round(fokusQuote(stat) * 100)} %`,
+      zusatz: `${stundenText(stat.unproduktiv)} h unproduktiv${stat.ungeklaert > 0 ? `, ${stundenText(stat.ungeklaert)} h ungeklärt` : ''}`,
+      farbe: fokusQuote(stat) >= FOKUS_QUOTE_ZIEL ? '#00C076' : '#FF4D4D'
+    },
     { titel: 'Bester Tag', wert: WOCHENTAGE[besterTag], zusatz: `${stundenText(stat.tage[besterTag])} h produktiv` }
   ]
   if (daten.liga) {

@@ -14,7 +14,10 @@ const LUECKE_MS = 30_000 // längere Pause zwischen zwei Abfragen = Rechner hat 
 const KURZ_MS = 60_000 // Blöcke darunter werden in den Nachbarblock eingerechnet
 const ANSCHLUSS_MS = 5_000 // so nah muss ein Nachbarblock liegen
 const MAX_BLOCK_MS = 4 * 3_600_000 // Sicherung: nie länger als 4 Stunden
-const MAX_INAKTIV_MS = 60 * 60_000 // danach gilt man als abwesend, kein Block mehr
+// Ohne Eingabe läuft ein "Nicht am Rechner"-Block (zählt als unproduktiv) höchstens so lange, danach gilt man
+// als abwesend und es wird nichts mehr aufgezeichnet (bis zur nächsten Eingabe). Seit 10. September 2026 zwei
+// Stunden statt einer, weil diese Zeit jetzt rot zählt und ein Handy-Nachmittag sonst kaum auffiele.
+const MAX_INAKTIV_MS = 120 * 60_000
 const EIGENES_KURZ_MS = 2 * 60_000 // so lange läuft beim Blick in die eigene App der vorherige Block weiter
 
 type Zustand = Exclude<ErfassungsZustand, 'nicht-angemeldet'>
@@ -117,7 +120,8 @@ export class Erfassung extends EventEmitter {
   }
 
   private fokusAnwenden(block: Block): void {
-    if (!this.fokus || block.bewertung === 'inaktiv') return
+    // Zeit ohne Eingabe ("Nicht am Rechner", programm null) bleibt auch im Fokus unproduktiv.
+    if (!this.fokus || block.programm === null) return
     block.taetigkeit = this.fokus.taetigkeit
     block.bewertung = 'produktiv'
     block.manuellGeprueft = true
@@ -370,8 +374,11 @@ export class Erfassung extends EventEmitter {
       this.kurz = null
     }
     const jetzt = new Date().toISOString()
-    // Arbeitsblöcke werden sofort nach den Regeln bewertet; inaktive bleiben inaktiv.
-    const zuordnung = bewertung === 'inaktiv' ? null : this.bewerter(programm, fenstertitel)
+    // Arbeitsblöcke werden sofort nach den Regeln bewertet. Zeit ohne Eingabe (intern "inaktiv" angefragt)
+    // wird seit 10. September 2026 als UNPRODUKTIV gespeichert, ohne Programm ("Nicht am Rechner"): der
+    // Rechner sieht Handy und Sofa nicht, und neutrales Grau ließ diese Zeit verschwinden (Auftraggeber).
+    const ruhe = bewertung === 'inaktiv'
+    const zuordnung = ruhe ? null : this.bewerter(programm, fenstertitel)
     const block: Block = {
       id: randomUUID(),
       userId: this.userId,
@@ -382,7 +389,7 @@ export class Erfassung extends EventEmitter {
       programmRoh,
       fenstertitel,
       taetigkeit: zuordnung?.taetigkeit ?? null,
-      bewertung: bewertung === 'inaktiv' ? 'inaktiv' : (zuordnung?.bewertung ?? 'ungeklaert'),
+      bewertung: ruhe ? 'unproduktiv' : (zuordnung?.bewertung ?? 'ungeklaert'),
       notiz: null,
       manuellGeprueft: false,
       geraet: this.geraet,

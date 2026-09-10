@@ -28,7 +28,8 @@ export function blockBewerten(block: Block, regeln: Regel[], userId: string): bo
 
 /** Darf von Regeln und Kurzwechsel-Übernahme verändert werden. */
 function frei(b: Block): boolean {
-  return b.quelle === 'auto' && !b.manuellGeprueft && b.bewertung !== 'inaktiv' && !b.geloeschtAm
+  // Blöcke ohne Programm ("Nicht am Rechner", alt "inaktiv") bleiben, wie sie sind: keine Regel greift dort.
+  return b.quelle === 'auto' && !b.manuellGeprueft && b.bewertung !== 'inaktiv' && b.programm !== null && !b.geloeschtAm
 }
 
 function sekunden(b: Block): number {

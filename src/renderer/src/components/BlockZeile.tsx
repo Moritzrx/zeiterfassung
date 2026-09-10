@@ -2,6 +2,7 @@ import { memo, type ReactElement } from 'react'
 import { Check } from 'lucide-react'
 import type { Block } from '@shared/typen'
 import { anzeigeName } from '@shared/fenster'
+import { RUHE_NAME, istRuhe } from '@shared/ruhe'
 import { dauerText, uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
 
@@ -50,7 +51,9 @@ function BlockZeileInnen({
       ? 'Inaktiv'
       : block.quelle === 'manuell'
         ? (block.taetigkeit ?? 'Von Hand eingetragen')
-        : fenster.haupt
+        : istRuhe(block)
+          ? RUHE_NAME
+          : fenster.haupt
   const klickbar = !!onClick && !laeuft
 
   return (

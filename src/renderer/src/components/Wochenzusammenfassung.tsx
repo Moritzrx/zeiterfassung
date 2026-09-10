@@ -1,3 +1,4 @@
+import { FOKUS_QUOTE_ZIEL, fokusQuote } from '@shared/ruhe'
 import type { ReactElement } from 'react'
 import { AUSZEICHNUNGEN, zieleErreicht, type Wochenstatistik } from '@shared/auszeichnungen'
 import { STANDARD_GESAMTZIEL, rang, rangName, zielRang } from '@shared/rang'
@@ -56,8 +57,11 @@ export function Wochenzusammenfassung({ stat, ziele, zwischenstand, neueAuszeich
           <p className="text-2xl font-light text-produktiv">{stundenText(stat.produktiv)}</p>
         </div>
         <div>
-          <p className="text-xs text-mute">Unproduktiv</p>
-          <p className="text-2xl font-light text-unproduktiv">{stundenText(stat.unproduktiv)}</p>
+          <p className="text-xs text-mute">Fokus-Quote</p>
+          <p className={`text-2xl font-light ${fokusQuote(stat) >= FOKUS_QUOTE_ZIEL ? 'text-produktiv' : 'text-unproduktiv'}`}>
+            {Math.round(fokusQuote(stat) * 100)} %
+          </p>
+          <p className="text-xs text-dim">{stundenText(stat.unproduktiv)} h unproduktiv</p>
         </div>
       </div>
 

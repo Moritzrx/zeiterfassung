@@ -71,7 +71,9 @@ Das **rote X** oben im Fenster schließt nur das Fenster, die Erfassung läuft w
 - Die Zeit in wessamedia Zeit selbst zählt nicht als Arbeit. Ein kurzer Blick in die App (bis 2 Minuten) läuft beim vorherigen Programm einfach mit, bleibst du länger, endet der vorherige Block beim Wechsel in die App und es wird nichts aufgezeichnet, bis du wieder in einem anderen Programm bist.
 - **Untätigkeit**: Kommt 3 Minuten lang keine Eingabe (einstellbar in den Einstellungen), gilt die Zeit rückwirkend ab dem letzten Tastendruck als inaktiv. Nach 60 Minuten Untätigkeit hört die Erfassung auf und wartet auf die nächste Eingabe.
 - Ruhezustand, Sperren und Mitternacht beenden den laufenden Block sauber.
-- Jeder Block bekommt eine **Bewertung**: produktiv (grün), unproduktiv (rot), inaktiv (grau) oder ungeklärt (hellgrau). Nur produktive Zeit zählt für Ränge und Ziele.
+- Jeder Block bekommt eine **Bewertung**: produktiv (grün), unproduktiv (rot) oder ungeklärt (hellgrau). Nur produktive Zeit zählt für Ränge und Ziele.
+- **Nicht am Rechner zählt als unproduktiv.** Tippst du länger als die eingestellte Zeit (Standard 3 Minuten) nichts, entsteht ein roter Block "Nicht am Rechner", rückwirkend ab der letzten Eingabe, höchstens 2 Stunden am Stück. Die App sieht nur den Rechner, Handy oder Sofa kann sie nicht unterscheiden. Warst du in der Zeit beim Kunden, am Telefon oder am Handy für die Arbeit, trag es unter **Eintragen** nach; der Eintrag ersetzt die rote Zeit. Ältere Blöcke stehen noch als "inaktiv" (grau).
+- Die **Fokus-Quote** (Woche, Wochenzusammenfassung, Wochenrückblick) sagt, wie viel von allem Gezählten produktiv war. Ab 85 Prozent in einer Woche auf Zielrang gibt es die Medaille "Fokus-Woche".
 
 ### Die sechs Screens (Navigation unten)
 
