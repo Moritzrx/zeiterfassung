@@ -583,10 +583,26 @@ function HintergrundLogo(): ReactElement {
             />
           ))}
         </div>
+        {/*
+          Die Lichter am Rand der Schrift liegen HINTEN (hinter Ring, Karten und Text), obwohl die Wortmarke selbst
+          vorn liegt: Rückmeldung vom 10. September 2026, die Lichter zogen über den grünen Ring und über Text.
+          Beide Ebenen füllen das Fenster, darum passen die Bildschirmkoordinaten aus der Wortmarke auch hier.
+        */}
+        {Array.from({ length: WORTMARKE_LICHTER }, (_, i) => (
+          <Perlen
+            key={`wort-${i}`}
+            farbe={ORANGE}
+            anzahl={28}
+            groesse={6}
+            setzen={(g, el) => {
+              wortGlieder.current[i][g] = el
+            }}
+          />
+        ))}
         <Lichtpunkte partikel={partikel} hof />
       </div>
 
-      {/* Ebene vorn: die Wortmarke als blasses Wasserzeichen über den Karten, mit Lichtern auf dem Weg durch die Schrift */}
+      {/* Ebene vorn: nur die Wortmarke als blasses Wasserzeichen über den Karten (die Lichter dazu liegen hinten) */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 10 }}>
         <div className="absolute inset-0 flex items-center justify-center">
           <svg
@@ -598,17 +614,6 @@ function HintergrundLogo(): ReactElement {
             <path ref={lichtweg} d={umrissD} fill="none" stroke="none" />
           </svg>
         </div>
-        {Array.from({ length: WORTMARKE_LICHTER }, (_, i) => (
-          <Perlen
-            key={i}
-            farbe={ORANGE}
-            anzahl={28}
-            groesse={6}
-            setzen={(g, el) => {
-              wortGlieder.current[i][g] = el
-            }}
-          />
-        ))}
       </div>
     </>
   )
