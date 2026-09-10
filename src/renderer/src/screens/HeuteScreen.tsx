@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { ChevronLeft, ChevronRight, Crosshair } from 'lucide-react'
 import type { Bewertung, Block } from '@shared/typen'
 import {
@@ -13,6 +13,8 @@ import { AnimierteZahl } from '../components/AnimierteZahl'
 import { BlockDialog } from '../components/BlockDialog'
 import { BlockZeile } from '../components/BlockZeile'
 import { fokusDialogOeffnen } from '../components/FokusDialog'
+import { wortmarkeLage } from '../components/wortmarke'
+import { useHintergrundArt } from '../hintergrundart'
 import { hinweisZeigen } from '../components/Hinweis'
 import { tonSpielen } from '../toene'
 import { Karte } from '../components/Karte'
@@ -251,6 +253,33 @@ export function HeuteScreen(): ReactElement {
   const auswahlProgramm = auswahl ? (liste.find((b) => auswahl.has(b.id))?.programm ?? null) : null
   const dialogBlock = durchgehen ? durchgehen.liste[durchgehen.index] : bearbeiten
 
+  // Beim Logo-Hintergrund schwebt die Wortmarke fest in der Fenstermitte, die Karten hängen aber oben fest.
+  // Damit in der Grundstellung keine Karte über der Schrift liegt (das Licht wäre dort gedämpft, oben
+  // nicht: "nervt"), misst der Screen, wo der Bereich unter dem Ring beginnt, und schiebt ihn per Abstand
+  // unter die Schrift. Bei jeder Fenstergröße und beim Umschalten des Hintergrunds neu.
+  const unterRing = useRef<HTMLDivElement>(null)
+  const [abstand, setAbstand] = useState(0)
+  const hintergrund = useHintergrundArt()
+  useLayoutEffect(() => {
+    const el = unterRing.current
+    if (!el) return
+    const messen = (): void => {
+      if (hintergrund !== 'logo') {
+        setAbstand(0)
+        return
+      }
+      const behaelter = el.closest('.screen-ebene')
+      const gescrollt = behaelter instanceof HTMLElement ? behaelter.scrollTop : 0
+      // Wo der Bereich ohne Abstand und ungescrollt beginnen würde.
+      const start = el.getBoundingClientRect().top + gescrollt - Number.parseFloat(el.style.marginTop || '0')
+      const { unten } = wortmarkeLage(window.innerWidth, window.innerHeight)
+      setAbstand(Math.max(0, Math.round(unten + 14 - start)))
+    }
+    messen()
+    window.addEventListener('resize', messen)
+    return () => window.removeEventListener('resize', messen)
+  }, [hintergrund])
+
   return (
     <div className="flex flex-col gap-4">
       <section className="flex items-center justify-between pt-2">
@@ -286,6 +315,8 @@ export function HeuteScreen(): ReactElement {
         </TagesRing>
       </section>
 
+      {/* Alles unter dem Ring rückt so weit nach unten, dass die fest schwebende Wortmarke in der Grundstellung frei bleibt. */}
+      <div ref={unterRing} className="flex flex-col gap-4" style={{ marginTop: abstand }}>
       {istHeute && (
         <Karte>
           <div className="flex items-center justify-between gap-3">
@@ -393,6 +424,7 @@ export function HeuteScreen(): ReactElement {
         )}
         {auswahl && <div className="h-16" />}
       </Karte>
+      </div>
 
       {auswahl && (
         <Mehrfachleiste

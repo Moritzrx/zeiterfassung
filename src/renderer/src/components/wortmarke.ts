@@ -23,3 +23,17 @@ export const WORTMARKE = {
   ]
 }
 
+
+/** Breite der Wortmarke auf dem Bildschirm in Pixeln (gleiche Regel wie das CSS in Hintergrund.tsx: min(78vw, 1150px)). */
+export function wortmarkeBreite(fensterBreite: number): number {
+  return Math.min(0.78 * fensterBreite, 1150)
+}
+
+/**
+ * Wo die fest im Fenster schwebende Wortmarke liegt (Logo-Hintergrund): mittig, Höhe aus dem Seitenverhältnis.
+ * Der Heute-Screen rückt damit seine Karten unter die Schrift (Entscheidung vom 10. September 2026).
+ */
+export function wortmarkeLage(fensterBreite: number, fensterHoehe: number): { oben: number; unten: number } {
+  const hoehe = (wortmarkeBreite(fensterBreite) * WORTMARKE.hoehe) / WORTMARKE.breite
+  return { oben: fensterHoehe / 2 - hoehe / 2, unten: fensterHoehe / 2 + hoehe / 2 }
+}
