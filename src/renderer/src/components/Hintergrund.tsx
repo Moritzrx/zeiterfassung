@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { useHintergrundArt } from '../hintergrundart'
-import { WORTMARKE, WORTMARKE_LICHTWEG } from './wortmarke'
+import { WORTMARKE, WORTMARKE_BAHN_OBEN, WORTMARKE_BAHN_UNTEN } from './wortmarke'
 
 /*
  * Der lebendige Hintergrund hinter allen Screens, in zwei Fassungen (Einstellungen → Darstellung):
  *
  * LOGO (Standard seit 10. September 2026, Wunsch des Auftraggebers): das Linienmuster des wessamedia-Logos
  * (dünne schräge Linien oben und unten) und die Wortmarke "wessamedia" als Wasserzeichen in der Mitte.
- * Orangene Lichter laufen auf EINEM durchgehenden Weg durch die Schrift (`WORTMARKE_LICHTWEG`: jeder Buchstabe
- * einmal ganz um seinen Rand, dann oben weiter und als gerade Brücke in den nächsten) und über die Musterlinien, die
- * 1:1 aus dem Logo-Bild abgenommen sind (`MUSTER`). Sie laufen immer vorwärts, blenden am Ende aus und am Anfang
- * wieder ein; gezeichnet auf einer Leinwand als durchgehende Linien mit Komet-Verlauf (Rückmeldungen vom 10. September 2026). Die Wortmarke liegt als eigene Ebene ÜBER den Karten
+ * Orangene Lichter laufen auf ZWEI Bahnen von links nach rechts durch die Schrift: jeder Buchstabe ist an seinem
+ * linkesten und rechtesten Punkt geteilt, eine Bahn fährt die obere Hälfte seines Randes ab, die andere die untere
+ * (`WORTMARKE_BAHN_OBEN/UNTEN`, exakt die Konturen, zusammen der ganze Rand); am Buchstabenende blendet das Licht
+ * aus und beim nächsten wieder ein, keine Brücke. Dazu die Musterlinien, 1:1 aus dem Logo-Bild (`MUSTER`).
+ * Gezeichnet auf einer Leinwand als durchgehende Linien mit Komet-Verlauf (Rückmeldungen vom 10. September 2026). Die Wortmarke liegt als eigene Ebene ÜBER den Karten
  * (z-index 10, ohne Mausereignisse, unter Dialogen und Leisten), sonst wäre sie hinter dem Milchglas der
  * Karten unsichtbar; sie ist so blass, dass der Vordergrund lesbar bleibt.
  *
@@ -110,8 +111,9 @@ export const MUSTER: string[] = [
 const MUSTER_LICHTER = 6
 const MUSTER_TEMPO = 150
 const MUSTER_GLIEDER = 22
-/** Lichter auf dem Lichtweg der Wortmarke: fünf, gleichmäßig verteilt; Tempo in Wortmarken-Einheiten je Sekunde, 44 Glieder. */
-const WORTMARKE_LICHTER = 5
+/** Lichter auf den Rand-Bahnen der Wortmarke: drei oben, zwei unten; Tempo in Wortmarken-Einheiten je Sekunde, 44 Glieder. */
+const WORTMARKE_LICHTER_OBEN = 3
+const WORTMARKE_LICHTER_UNTEN = 2
 const WORTMARKE_TEMPO = 90
 const WORTMARKE_GLIEDER = 44
 /** Abstand der Kettenglieder auf der Leinwand (Einheiten der jeweiligen Bahn). */
@@ -752,7 +754,8 @@ function HintergrundLogo(): ReactElement {
   const hinten = useRef<HTMLDivElement>(null)
   const leinwand = useRef<HTMLCanvasElement>(null)
   const wortmarkeSvg = useRef<SVGSVGElement>(null)
-  const lichtweg = useRef<SVGPathElement>(null)
+  const bahnOben = useRef<SVGPathElement>(null)
+  const bahnUnten = useRef<SVGPathElement>(null)
   const musterWeg = useRef<SVGPathElement>(null)
 
   const alleD = useMemo(() => WORTMARKE.pfade.join(' '), [])
@@ -761,12 +764,14 @@ function HintergrundLogo(): ReactElement {
     const h = hinten.current
     const canvas = leinwand.current
     const svg = wortmarkeSvg.current
-    const pfad = lichtweg.current
+    const oben = bahnOben.current
+    const unten = bahnUnten.current
     const weg = musterWeg.current
-    if (!h || !canvas || !svg || !pfad || !weg || bewegungReduziert()) return
+    if (!h || !canvas || !svg || !oben || !unten || !weg || bewegungReduziert()) return
     const musterTabelle = abtasten(weg)
     const musterTeile = teileAusSpruengen(musterTabelle)
-    const wortTabelle = abtasten(pfad)
+    const obenTabelle = abtasten(oben)
+    const untenTabelle = abtasten(unten)
     // Maßstäbe, die bei Größenänderung nur überschrieben werden; die Bahnen bleiben in Einheiten.
     const mass = { sx: 1, sy: 1, dx: 0, dy: 0, links: 0, oben: 0, m: 1 }
     const musterAbbilden = (x: number, y: number): [number, number] => [mass.dx + x * mass.sx, mass.dy + y * mass.sy]
@@ -782,15 +787,18 @@ function HintergrundLogo(): ReactElement {
       const { plan, zyklus } = planBauen(musterTeile, eigene, MUSTER_TEMPO, MUSTER_GLIEDER * GLIED, () => 0.8 + z() * 1.6)
       lichter.push({ tabelle: musterTabelle, teile: musterTeile, plan, zyklus, tempo: MUSTER_TEMPO, versatz: z() * zyklus, glieder: MUSTER_GLIEDER, abstand: GLIED, blende: 14, abbilden: musterAbbilden })
     }
-    // Wortmarke: ein durchgehender Weg durch alle Buchstaben; die Lichter sind gleichmäßig über den Zyklus verteilt,
-    // ohne Pause, sodass immer fünf Lichter unterwegs sind.
-    {
-      const teile = [{ anfang: 0, ende: wortTabelle.laenge }]
+    // Wortmarke: obere und untere Rand-Bahn, beide von links nach rechts; die Lichter einer Bahn sind gleichmäßig über
+    // den Zyklus verteilt (ohne Pause), die untere Bahn um eine halbe Lücke versetzt. An den Buchstabengrenzen (M)
+    // blendet das Licht über blende/2 aus und wieder ein (siehe lichterZeichnen).
+    const wortLichter = (tabelle: Abtastung, anzahl: number, phase: number): void => {
+      const teile = [{ anfang: 0, ende: tabelle.laenge }]
       const { plan, zyklus } = planBauen(teile, [0], WORTMARKE_TEMPO, WORTMARKE_GLIEDER * GLIED, () => 0)
-      for (let i = 0; i < WORTMARKE_LICHTER; i++) {
-        lichter.push({ tabelle: wortTabelle, teile, plan, zyklus, tempo: WORTMARKE_TEMPO, versatz: (i * zyklus) / WORTMARKE_LICHTER, glieder: WORTMARKE_GLIEDER, abstand: GLIED, blende: 12, abbilden: wortAbbilden })
+      for (let i = 0; i < anzahl; i++) {
+        lichter.push({ tabelle, teile, plan, zyklus, tempo: WORTMARKE_TEMPO, versatz: ((i + phase) * zyklus) / anzahl, glieder: WORTMARKE_GLIEDER, abstand: GLIED, blende: 16, abbilden: wortAbbilden })
       }
     }
+    wortLichter(obenTabelle, WORTMARKE_LICHTER_OBEN, 0)
+    wortLichter(untenTabelle, WORTMARKE_LICHTER_UNTEN, 0.5)
     const anpassen = (): void => {
       const dpr = window.devicePixelRatio || 1
       const breite = h.clientWidth
@@ -859,8 +867,9 @@ function HintergrundLogo(): ReactElement {
             style={{ width: 'min(78vw, 1150px)', height: 'auto', overflow: 'visible' }}
           >
             <path d={alleD} fill="white" fillOpacity="0.04" fillRule="evenodd" stroke="white" strokeOpacity="0.07" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-            {/* Der Lichtweg durch alle Buchstaben, unsichtbar, nur zum Messen */}
-            <path ref={lichtweg} d={WORTMARKE_LICHTWEG} fill="none" stroke="none" />
+            {/* Die zwei Rand-Bahnen (obere und untere Hälfte jedes Buchstabens), unsichtbar, nur zum Messen */}
+            <path ref={bahnOben} d={WORTMARKE_BAHN_OBEN} fill="none" stroke="none" />
+            <path ref={bahnUnten} d={WORTMARKE_BAHN_UNTEN} fill="none" stroke="none" />
           </svg>
         </div>
       </div>
