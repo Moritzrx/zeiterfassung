@@ -6,6 +6,7 @@ const LEER: ErfassungsStatus = {
   laufenderBlock: null,
   inaktivSeit: null,
   pausiertSeit: null,
+  eigenesFenster: false,
   heuteProduktivSekunden: 0,
   wocheProduktivSekunden: 0,
   rang: 0,

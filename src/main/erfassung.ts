@@ -6,7 +6,7 @@ import { activeWindow } from 'get-windows'
 import type { Bewertung, Block, ErfassungsZustand, LaufenderBlock } from '@shared/typen'
 import type { Zuordnung } from '@shared/regeln'
 import { naechsterTagesanfang } from '@shared/zeit'
-import { istSchreibtisch, istSystemUeberlagerung, programmNormalisieren } from './programme'
+import { istEigenesProgramm, istSchreibtisch, istSystemUeberlagerung, programmNormalisieren } from './programme'
 import type { Speicher } from './speicher'
 
 const TAKT_MS = 5_000 // alle 5 Sekunden das aktive Fenster abfragen
@@ -15,6 +15,7 @@ const KURZ_MS = 60_000 // Blöcke darunter werden in den Nachbarblock eingerechn
 const ANSCHLUSS_MS = 5_000 // so nah muss ein Nachbarblock liegen
 const MAX_BLOCK_MS = 4 * 3_600_000 // Sicherung: nie länger als 4 Stunden
 const MAX_INAKTIV_MS = 60 * 60_000 // danach gilt man als abwesend, kein Block mehr
+const EIGENES_KURZ_MS = 2 * 60_000 // so lange läuft beim Blick in die eigene App der vorherige Block weiter
 
 type Zustand = Exclude<ErfassungsZustand, 'nicht-angemeldet'>
 
@@ -32,6 +33,8 @@ export class Erfassung extends EventEmitter {
   private aktuell: Block | null = null
   private inaktiv: Block | null = null
   private kurz: Block | null = null // fertiger Block unter 60 s, wartet auf den Anschlussblock
+  /** Seit wann das eigene App-Fenster ununterbrochen den Fokus hat (ms), sonst null. */
+  private eigenesSeit: number | null = null
   private letzterTakt = 0
   /** Vor diesen Zeitpunkt darf Untätigkeit nie rückwirkend gebucht werden (Start, Aufwachen, Fortsetzen). */
   private zeitgrenze = 0
@@ -107,6 +110,7 @@ export class Erfassung extends EventEmitter {
     laufenderBlock: LaufenderBlock | null
     inaktivSeit: string | null
     pausiertSeit: string | null
+    eigenesFenster: boolean
   } {
     const b = this.aktuell
     return {
@@ -122,7 +126,8 @@ export class Erfassung extends EventEmitter {
           }
         : null,
       inaktivSeit: this.inaktivSeit?.toISOString() ?? null,
-      pausiertSeit: this.pausiertSeit?.toISOString() ?? null
+      pausiertSeit: this.pausiertSeit?.toISOString() ?? null,
+      eigenesFenster: this.eigenesSeit !== null
     }
   }
 
@@ -186,6 +191,16 @@ export class Erfassung extends EventEmitter {
       return
     }
 
+    // Das eigene Fenster dieser App ist keine Arbeit: nie ein eigener Block. Ein kurzer Blick
+    // (bis 2 Minuten) zählt zum vorherigen Programm weiter, ein längerer Aufenthalt beendet den
+    // vorherigen Block rückwirkend beim Wechsel in die App.
+    if (fenster?.owner?.processId === process.pid || istEigenesProgramm(roh)) {
+      this.eigenesVerarbeiten(jetzt)
+      this.melden()
+      return
+    }
+    this.eigenesSeit = null
+
     const programm = programmNormalisieren(roh)
     const titel = this.fenstertitelSpeichern && fenster?.title ? fenster.title : null
 
@@ -223,6 +238,18 @@ export class Erfassung extends EventEmitter {
       }
     }
     this.melden()
+  }
+
+  private eigenesVerarbeiten(jetzt: Date): void {
+    if (this.eigenesSeit === null) this.eigenesSeit = jetzt.getTime()
+    if (!this.aktuell) return
+    if (jetzt.getTime() - this.eigenesSeit <= EIGENES_KURZ_MS) {
+      this.aktuell.ende = jetzt.toISOString()
+      this.speicher.aktualisieren(this.aktuell)
+    } else {
+      this.schliessen(this.aktuell, new Date(this.eigenesSeit))
+      this.aktuell = null
+    }
   }
 
   private inaktivVerarbeiten(jetzt: Date, idleSekunden: number): void {
@@ -349,6 +376,7 @@ export class Erfassung extends EventEmitter {
       this.inaktiv = null
     }
     this.inaktivSeit = null
+    this.eigenesSeit = null
     if (this.zustand === 'inaktiv' || this.zustand === 'abwesend') this.zustand = 'laeuft'
   }
 }

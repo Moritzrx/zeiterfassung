@@ -123,3 +123,20 @@ export function programmNormalisieren(roh: string | null | undefined): string | 
     .trim()
   return TABELLE[schluessel] ?? bereinigt
 }
+
+/**
+ * Das eigene Fenster dieser App: in der gebauten App heißt der Prozess "wessamedia Zeit",
+ * in der Entwicklung "Electron". Zeit darin ist keine Arbeit (Entscheidung vom 10. September 2026).
+ * Die Erfassung prüft zusätzlich die Prozess-Kennung, dieser Name ist nur die Rückfallebene.
+ */
+const EIGENE_PROGRAMME = new Set(['wessamedia zeit', 'electron'])
+
+export function istEigenesProgramm(roh: string | null | undefined): boolean {
+  if (!roh) return false
+  return EIGENE_PROGRAMME.has(roh.trim().replace(/\.exe$/i, '').toLowerCase())
+}
+
+/** Blöcke, die es nie hätte geben dürfen: Systemfenster und das eigene Fenster (werden beim Start ausgeblendet). */
+export function istFehlblock(roh: string | null | undefined): boolean {
+  return istSystemUeberlagerung(roh) || istEigenesProgramm(roh)
+}

@@ -26,11 +26,23 @@ interface Props {
   /** Mehrfachauswahl: Kästchen anzeigen */
   auswahlModus?: boolean
   ausgewaehlt?: boolean
+  /** Mehrere zusammenhängende Abschnitte desselben Programms in einer Zeile (Anzahl > 1 zeigt einen Chip) */
+  abschnitte?: number
+  /** Dauer in Sekunden, falls sie nicht der Spanne start–ende entspricht (Summe der Abschnitte) */
+  sekunden?: number
 }
 
 /** Eine Zeile in der Blockliste: Zeit, Dauer, Programm, Tätigkeit, farbige Bewertung. */
-function BlockZeileInnen({ block, laeuft = false, onClick, auswahlModus = false, ausgewaehlt = false }: Props): ReactElement {
-  const sekunden = (Date.parse(block.ende) - Date.parse(block.start)) / 1000
+function BlockZeileInnen({
+  block,
+  laeuft = false,
+  onClick,
+  auswahlModus = false,
+  ausgewaehlt = false,
+  abschnitte = 1,
+  sekunden: sekundenVorgabe
+}: Props): ReactElement {
+  const sekunden = sekundenVorgabe ?? (Date.parse(block.ende) - Date.parse(block.start)) / 1000
   const hauptzeile =
     block.bewertung === 'inaktiv'
       ? 'Inaktiv'
@@ -66,6 +78,11 @@ function BlockZeileInnen({ block, laeuft = false, onClick, auswahlModus = false,
           {fenster.seite && block.quelle === 'auto' && (
             <span className="shrink-0 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute">{fenster.seite}</span>
           )}
+          {abschnitte > 1 && (
+            <span className="shrink-0 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute" title="Mehrere Blöcke desselben Programms direkt hintereinander, zusammen angezeigt">
+              {abschnitte} Abschnitte
+            </span>
+          )}
           {block.taetigkeit && block.quelle === 'auto' && (
             <span className="flex shrink-0 items-center gap-1 text-xs text-mute">
               · <TaetigkeitSymbol name={block.taetigkeit} groesse={12} /> {block.taetigkeit}
@@ -82,7 +99,7 @@ function BlockZeileInnen({ block, laeuft = false, onClick, auswahlModus = false,
         )}
         {block.notiz && <div className="truncate text-xs text-dim">{block.notiz}</div>}
       </div>
-      <div className="w-16 shrink-0 text-right text-sm text-mute">{dauerText(sekunden)}</div>
+      <div className="w-20 shrink-0 text-right text-sm text-mute">{dauerText(sekunden)}</div>
       <div className="flex w-24 shrink-0 items-center justify-end gap-2 text-xs text-mute">
         <span className={`inline-block h-2 w-2 rounded-full ${PUNKT[block.bewertung]}`} />
         {BEWERTUNG[block.bewertung]}
@@ -102,5 +119,7 @@ export const BlockZeile = memo(
     a.laeuft === b.laeuft &&
     a.auswahlModus === b.auswahlModus &&
     a.ausgewaehlt === b.ausgewaehlt &&
+    a.abschnitte === b.abschnitte &&
+    a.sekunden === b.sekunden &&
     !!a.onClick === !!b.onClick
 )

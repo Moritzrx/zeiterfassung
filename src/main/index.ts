@@ -41,7 +41,7 @@ import { alleNeuBewerten } from './bewertung'
 import { Erfassung } from './erfassung'
 import { Feier } from './feier'
 import { Profil } from './profil'
-import { istSystemUeberlagerung } from './programme'
+import { istFehlblock } from './programme'
 import { Regelwerk } from './regelwerk'
 import { Speicher } from './speicher'
 import { supabase, supabaseKonfiguriert } from './supabase'
@@ -154,6 +154,7 @@ function statusBerechnen(): ErfassungsStatus {
       laufenderBlock: null,
       inaktivSeit: null,
       pausiertSeit: null,
+      eigenesFenster: false,
       heuteProduktivSekunden: 0,
       wocheProduktivSekunden: 0,
       rang: 0,
@@ -175,6 +176,7 @@ function statusBerechnen(): ErfassungsStatus {
     laufenderBlock: e.laufenderBlock,
     inaktivSeit: e.inaktivSeit,
     pausiertSeit: e.pausiertSeit,
+    eigenesFenster: e.eigenesFenster,
     heuteProduktivSekunden: heute,
     wocheProduktivSekunden: woche,
     rang: aktuellerRang,
@@ -272,11 +274,11 @@ function sitzungStarten(userId: string): void {
   const erfassung = new Erfassung(speicher, userId, (programm, titel) =>
     regelnAnwenden(programm, titel, regelwerk.liste(), userId)
   )
-  const fehlbloecke = speicher.fehlbloeckeAusblenden(istSystemUeberlagerung)
-  if (fehlbloecke) console.log(`Speicher: ${fehlbloecke} Blöcke von Systemfenstern ausgeblendet`)
+  const fehlbloecke = speicher.fehlbloeckeAusblenden(istFehlblock)
+  if (fehlbloecke) console.log(`Speicher: ${fehlbloecke} Blöcke von Systemfenstern und der App selbst ausgeblendet`)
   const sync = new Sync(speicher, userId, () => {
     // Aus der Datenbank geholte Blöcke nach den aktuellen Regeln bewerten.
-    speicher.fehlbloeckeAusblenden(istSystemUeberlagerung)
+    speicher.fehlbloeckeAusblenden(istFehlblock)
     taetigkeiten.ausBloecken(speicher.alle())
     alleNeuBewerten(speicher, regelwerk.liste(), userId)
     bloeckeGeaendert()

@@ -245,6 +245,8 @@ export interface ErfassungsStatus {
   laufenderBlock: LaufenderBlock | null
   inaktivSeit: string | null
   pausiertSeit: string | null
+  /** Das eigene App-Fenster hat gerade den Fokus; diese Zeit zählt nicht als Arbeit */
+  eigenesFenster: boolean
   heuteProduktivSekunden: number
   wocheProduktivSekunden: number
   rang: number

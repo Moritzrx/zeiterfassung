@@ -67,7 +67,8 @@ Das **rote X** oben im Fenster schließt nur das Fenster, die Erfassung läuft w
 
 ### Wie die Erfassung arbeitet
 
-- Alle 5 Sekunden schaut die App nach, welches Programm vorne ist. Wechselt das Programm (unter Windows auch der Fenstertitel), beginnt ein neuer Block. Blöcke unter einer Minute werden mit dem Nachbarn zusammengelegt.
+- Alle 5 Sekunden schaut die App nach, welches Programm vorne ist. Wechselt das Programm (unter Windows auch der Fenstertitel), beginnt ein neuer Block. Blöcke unter einer Minute werden mit dem Nachbarn zusammengelegt. In der Tagesliste erscheinen mehrere Blöcke desselben Programms direkt hintereinander als eine Zeile mit dem Chip "3 Abschnitte"; ein Klick darauf öffnet alle Abschnitte zusammen.
+- Die Zeit in wessamedia Zeit selbst zählt nicht als Arbeit. Ein kurzer Blick in die App (bis 2 Minuten) läuft beim vorherigen Programm einfach mit, bleibst du länger, endet der vorherige Block beim Wechsel in die App und es wird nichts aufgezeichnet, bis du wieder in einem anderen Programm bist.
 - **Untätigkeit**: Kommt 3 Minuten lang keine Eingabe (einstellbar in den Einstellungen), gilt die Zeit rückwirkend ab dem letzten Tastendruck als inaktiv. Nach 60 Minuten Untätigkeit hört die Erfassung auf und wartet auf die nächste Eingabe.
 - Ruhezustand, Sperren und Mitternacht beenden den laufenden Block sauber.
 - Jeder Block bekommt eine **Bewertung**: produktiv (grün), unproduktiv (rot), inaktiv (grau) oder ungeklärt (hellgrau). Nur produktive Zeit zählt für Ränge und Ziele.

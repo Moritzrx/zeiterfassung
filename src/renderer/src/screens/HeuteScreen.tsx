@@ -8,6 +8,7 @@ import {
   naechsterTagesanfang,
   wochenanfang
 } from '@shared/zeit'
+import { fensterInfo } from '@shared/fenster'
 import { AnimierteZahl } from '../components/AnimierteZahl'
 import { BlockDialog } from '../components/BlockDialog'
 import { BlockZeile } from '../components/BlockZeile'
@@ -32,6 +33,68 @@ function anteileBerechnen(bloecke: Block[], datum: string): RingAnteile {
     if (e > s) summe[b.bewertung] += (e - s) / 1000
   }
   return summe
+}
+
+/** Eine Zeile der Tagesliste: ein Block oder mehrere zusammenhängende Abschnitte desselben Programms. */
+interface Zeile {
+  /** Kennung des ersten Blocks, dient als Schlüssel */
+  id: string
+  /** Was die Zeile zeigt: bei mehreren Abschnitten der längste mit der Zeitspanne der ganzen Gruppe */
+  block: Block
+  bloecke: Block[]
+  sekunden: number
+}
+
+/** Bis zu dieser Lücke gelten zwei Blöcke desselben Programms als zusammenhängend. */
+const ZEILEN_LUECKE_MS = 2 * 60_000
+
+function blockSekunden(b: Block): number {
+  return (Date.parse(b.ende) - Date.parse(b.start)) / 1000
+}
+
+/**
+ * Fasst direkt aufeinanderfolgende automatische Blöcke mit gleichem Programm (bei Browsern gleicher
+ * Seite), gleicher Bewertung und gleicher Tätigkeit zu einer Zeile zusammen ("5 Abschnitte"), damit die
+ * Liste nicht in Vier-Minuten-Stücke zerfällt (Wunsch vom 10. September 2026). Der laufende Block bleibt
+ * für sich. Erwartet die Blöcke in zeitlicher Reihenfolge.
+ */
+function zeilenBilden(sortiert: Block[], laufendId: string | null): Zeile[] {
+  const zeilen: Zeile[] = []
+  for (const b of sortiert) {
+    const letzte = zeilen[zeilen.length - 1]
+    const vorher = letzte?.bloecke[letzte.bloecke.length - 1]
+    const passt =
+      !!letzte &&
+      !!vorher &&
+      b.id !== laufendId &&
+      vorher.id !== laufendId &&
+      b.quelle === 'auto' &&
+      vorher.quelle === 'auto' &&
+      b.bewertung !== 'inaktiv' &&
+      b.programm === vorher.programm &&
+      b.bewertung === vorher.bewertung &&
+      b.taetigkeit === vorher.taetigkeit &&
+      fensterInfo(b.programm, b.fenstertitel).seite === fensterInfo(vorher.programm, vorher.fenstertitel).seite &&
+      Date.parse(b.start) - Date.parse(vorher.ende) <= ZEILEN_LUECKE_MS
+    if (passt && letzte) {
+      letzte.bloecke.push(b)
+      letzte.sekunden += blockSekunden(b)
+    } else {
+      zeilen.push({ id: b.id, block: b, bloecke: [b], sekunden: blockSekunden(b) })
+    }
+  }
+  for (const z of zeilen) {
+    if (z.bloecke.length < 2) continue
+    const laengster = z.bloecke.reduce((a, b) => (blockSekunden(b) > blockSekunden(a) ? b : a))
+    z.block = {
+      ...laengster,
+      id: z.id,
+      start: z.bloecke[0].start,
+      ende: z.bloecke[z.bloecke.length - 1].ende,
+      manuellGeprueft: z.bloecke.every((b) => b.manuellGeprueft)
+    }
+  }
+  return zeilen
 }
 
 /** Screen 1: Heute. Tages-Ring, laufender Block, Ungeklärt-Postfach, Tagesliste mit Bearbeiten und Mehrfachauswahl. */
@@ -73,42 +136,50 @@ export function HeuteScreen(): ReactElement {
   const anteile = useMemo(() => anteileBerechnen(bloecke, datum), [bloecke, datum])
   const produktiv = istHeute ? status.heuteProduktivSekunden : anteile.produktiv
   const laufend = istHeute ? status.laufenderBlock : null
-  const liste = useMemo(() => {
-    const sortiert = [...bloecke].sort((a, b) => a.start.localeCompare(b.start))
-    return istHeute ? sortiert.reverse() : sortiert
-  }, [bloecke, istHeute])
+  const liste = useMemo(() => [...bloecke].sort((a, b) => a.start.localeCompare(b.start)), [bloecke])
+  const laufendId = laufend?.id ?? null
+  const zeilen = useMemo(() => {
+    const z = zeilenBilden(liste, laufendId)
+    return istHeute ? z.reverse() : z
+  }, [liste, laufendId, istHeute])
 
   let geradeText = 'Keine Erfassung aktiv'
   if (status.zustand === 'inaktiv') geradeText = 'Inaktiv, keine Eingabe seit mehr als 3 Minuten'
   else if (status.zustand === 'abwesend') geradeText = 'Abwesend'
   else if (status.zustand === 'pausiert') geradeText = 'Pausiert'
+  else if (status.zustand === 'laeuft' && status.eigenesFenster) geradeText = 'Du bist gerade in wessamedia Zeit. Diese Zeit zählt nicht als Arbeit.'
   else if (status.zustand === 'laeuft' && !laufend) geradeText = 'Kein Fenster im Vordergrund'
 
-  function zeileKlick(block: Block): void {
+  function zeileKlick(zeile: Zeile): void {
     if (auswahl) {
       const neu = new Set(auswahl)
-      if (neu.has(block.id)) neu.delete(block.id)
-      else neu.add(block.id)
+      const alleDrin = zeile.bloecke.every((b) => neu.has(b.id))
+      for (const b of zeile.bloecke) {
+        if (alleDrin) neu.delete(b.id)
+        else neu.add(b.id)
+      }
       setAuswahl(neu)
+    } else if (zeile.bloecke.length > 1) {
+      setGruppe({ bloecke: zeile.bloecke, muster: null })
     } else {
-      setBearbeiten(block)
+      setBearbeiten(zeile.bloecke[0])
     }
   }
 
-  // Stabile Klick-Funktionen je Block-Kennung, damit die gemerkten Zeilen (memo) nicht bei jedem Rendern
-  // neu entstehen; sie greifen immer auf die aktuelle Liste und die aktuelle zeileKlick zu.
+  // Stabile Klick-Funktionen je Zeilen-Kennung, damit die gemerkten Zeilen (memo) nicht bei jedem Rendern
+  // neu entstehen; sie greifen immer auf die aktuellen Zeilen und die aktuelle zeileKlick zu.
   const zeileKlickAktuell = useRef(zeileKlick)
   zeileKlickAktuell.current = zeileKlick
-  const listeAktuell = useRef(liste)
-  listeAktuell.current = liste
+  const zeilenAktuell = useRef(zeilen)
+  zeilenAktuell.current = zeilen
   const klickFuer = useMemo(() => {
     const handler = new Map<string, () => void>()
     return (id: string): (() => void) => {
       let h = handler.get(id)
       if (!h) {
         h = () => {
-          const b = listeAktuell.current.find((x) => x.id === id)
-          if (b) zeileKlickAktuell.current(b)
+          const z = zeilenAktuell.current.find((x) => x.id === id)
+          if (z) zeileKlickAktuell.current(z)
         }
         handler.set(id, h)
       }
@@ -215,6 +286,11 @@ export function HeuteScreen(): ReactElement {
           ) : (
             <p className="mt-2 text-sm text-dim">{geradeText}</p>
           )}
+          {laufend && status.eigenesFenster && (
+            <p className="mt-2 text-xs text-dim">
+              Kurzer Blick in wessamedia Zeit: {laufend.programm ?? 'der vorherige Block'} läuft noch bis zu 2 Minuten weiter, danach endet der Block beim Wechsel in die App.
+            </p>
+          )}
         </Karte>
       )}
 
@@ -247,14 +323,16 @@ export function HeuteScreen(): ReactElement {
           <p className="mt-2 text-sm text-dim">Keine Blöcke an diesem Tag.</p>
         ) : (
           <div className="mt-1 divide-y divide-panel-2">
-            {liste.map((b) => (
+            {zeilen.map((z) => (
               <BlockZeile
-                key={b.id}
-                block={b}
-                laeuft={b.id === laufend?.id}
-                onClick={klickFuer(b.id)}
+                key={z.id}
+                block={z.block}
+                laeuft={z.id === laufendId}
+                onClick={klickFuer(z.id)}
                 auswahlModus={auswahl !== null}
-                ausgewaehlt={auswahl?.has(b.id) ?? false}
+                ausgewaehlt={auswahl ? z.bloecke.every((b) => auswahl.has(b.id)) : false}
+                abschnitte={z.bloecke.length}
+                sekunden={z.sekunden}
               />
             ))}
           </div>
