@@ -8,7 +8,8 @@ import {
   naechsterTagesanfang,
   wochenanfang
 } from '@shared/zeit'
-import { anzeigeName, fensterInfo } from '@shared/fenster'
+import { anzeigeName } from '@shared/fenster'
+import { zeilenBilden, type Zeile } from '../zeilen'
 import { AnimierteZahl } from '../components/AnimierteZahl'
 import { BlockDialog } from '../components/BlockDialog'
 import { BlockZeile } from '../components/BlockZeile'
@@ -36,68 +37,6 @@ function anteileBerechnen(bloecke: Block[], datum: string): RingAnteile {
     if (e > s) summe[b.bewertung] += (e - s) / 1000
   }
   return summe
-}
-
-/** Eine Zeile der Tagesliste: ein Block oder mehrere zusammenhängende Abschnitte desselben Programms. */
-interface Zeile {
-  /** Kennung des ersten Blocks, dient als Schlüssel */
-  id: string
-  /** Was die Zeile zeigt: bei mehreren Abschnitten der längste mit der Zeitspanne der ganzen Gruppe */
-  block: Block
-  bloecke: Block[]
-  sekunden: number
-}
-
-/** Bis zu dieser Lücke gelten zwei Blöcke desselben Programms als zusammenhängend. */
-const ZEILEN_LUECKE_MS = 2 * 60_000
-
-function blockSekunden(b: Block): number {
-  return (Date.parse(b.ende) - Date.parse(b.start)) / 1000
-}
-
-/**
- * Fasst direkt aufeinanderfolgende automatische Blöcke mit gleichem Programm (bei Browsern gleicher
- * Seite), gleicher Bewertung und gleicher Tätigkeit zu einer Zeile zusammen ("5 Abschnitte"), damit die
- * Liste nicht in Vier-Minuten-Stücke zerfällt (Wunsch vom 10. September 2026). Der laufende Block bleibt
- * für sich. Erwartet die Blöcke in zeitlicher Reihenfolge.
- */
-function zeilenBilden(sortiert: Block[], laufendId: string | null): Zeile[] {
-  const zeilen: Zeile[] = []
-  for (const b of sortiert) {
-    const letzte = zeilen[zeilen.length - 1]
-    const vorher = letzte?.bloecke[letzte.bloecke.length - 1]
-    const passt =
-      !!letzte &&
-      !!vorher &&
-      b.id !== laufendId &&
-      vorher.id !== laufendId &&
-      b.quelle === 'auto' &&
-      vorher.quelle === 'auto' &&
-      b.bewertung !== 'inaktiv' &&
-      b.programm === vorher.programm &&
-      b.bewertung === vorher.bewertung &&
-      b.taetigkeit === vorher.taetigkeit &&
-      fensterInfo(b.programm, b.fenstertitel).seite === fensterInfo(vorher.programm, vorher.fenstertitel).seite &&
-      Date.parse(b.start) - Date.parse(vorher.ende) <= ZEILEN_LUECKE_MS
-    if (passt && letzte) {
-      letzte.bloecke.push(b)
-      letzte.sekunden += blockSekunden(b)
-    } else {
-      zeilen.push({ id: b.id, block: b, bloecke: [b], sekunden: blockSekunden(b) })
-    }
-  }
-  for (const z of zeilen) {
-    if (z.bloecke.length < 2) continue
-    const laengster = z.bloecke.reduce((a, b) => (blockSekunden(b) > blockSekunden(a) ? b : a))
-    z.block = {
-      ...laengster,
-      id: z.id,
-      start: z.bloecke[0].start,
-      ende: z.bloecke[z.bloecke.length - 1].ende,
-      manuellGeprueft: z.bloecke.every((b) => b.manuellGeprueft)
-    }
-  }
-  return zeilen
 }
 
 /** Screen 1: Heute. Tages-Ring, laufender Block, Ungeklärt-Postfach, Tagesliste mit Bearbeiten und Mehrfachauswahl. */

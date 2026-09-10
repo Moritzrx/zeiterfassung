@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactElement } from 'react'
 import type { Block } from '@shared/typen'
-import { berlinDatum, berlinZuUtc } from '@shared/zeit'
+import { berlinDatum, berlinTeile, berlinZuUtc } from '@shared/zeit'
+import { zeilenBilden } from '../zeilen'
 import { BlockDialog } from '../components/BlockDialog'
 import { BlockZeile } from '../components/BlockZeile'
 import { hinweisZeigen } from '../components/Hinweis'
@@ -127,6 +128,22 @@ export function EintragenScreen(): ReactElement {
     return z > a ? s + (z - a) / 1000 : s
   }, 0)
 
+  // Die überschneidenden Blöcke als Liste (zusammenhängende Abschnitte gebündelt), damit man sieht, was der
+  // Rechner in der Zeit aufgezeichnet hat, z. B. "Nicht am Rechner 12:10 bis 12:30" während des Telefonats.
+  const ueberschneidungZeilen = useMemo(
+    () => zeilenBilden([...ueberschneidungen].sort((a, b) => a.start.localeCompare(b.start)), null),
+    [ueberschneidungen]
+  )
+
+  /** Zeiten eines Blocks in die Felder übernehmen (Uhrzeit in Berliner Zeit, auf den Tag begrenzt). */
+  function zeitenUebernehmen(startIso: string, endeIso: string): void {
+    const a = berlinTeile(new Date(startIso))
+    const z = berlinTeile(new Date(endeIso))
+    const gleicherTag = berlinDatum(new Date(endeIso)) === datum
+    setVon(`${zweistellig(a.stunde)}:${zweistellig(a.minute)}`)
+    setBis(gleicherTag ? `${zweistellig(z.stunde)}:${zweistellig(z.minute)}` : '23:59')
+  }
+
   return (
     <div className="flex flex-col gap-4 pt-6">
       <h1 className="text-2xl font-light">Eintragen</h1>
@@ -180,9 +197,21 @@ export function EintragenScreen(): ReactElement {
               <p>
                 Überschneidet sich mit {ueberschneidungen.length}{' '}
                 {ueberschneidungen.length === 1 ? 'automatischen Block' : 'automatischen Blöcken'} (
-                {dauerText(ueberschneidungsSekunden)}). Der Rechner lief in dieser Zeit mit.
+                {dauerText(ueberschneidungsSekunden)}). Der Rechner lief in dieser Zeit mit. Das hat er aufgezeichnet:
               </p>
-              <label className="mt-2 flex cursor-pointer items-center gap-3 text-mute">
+              <div className="mt-2 divide-y divide-panel-2">
+                {ueberschneidungZeilen.map((z) => (
+                  <BlockZeile
+                    key={z.id}
+                    block={z.block}
+                    abschnitte={z.bloecke.length}
+                    sekunden={z.sekunden}
+                    onClick={() => zeitenUebernehmen(z.block.start, z.block.ende)}
+                  />
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-dim">Zeile antippen: Von und Bis übernehmen, etwa für ein Telefonat, das genau in „Nicht am Rechner“ fällt.</p>
+              <label className="mt-3 flex cursor-pointer items-center gap-3 text-mute">
                 <input type="checkbox" checked={loeschen} onChange={(e) => setLoeschen(e.target.checked)} className="h-4 w-4" />
                 Diese automatischen Blöcke löschen, damit die Zeit nicht doppelt zählt
               </label>
