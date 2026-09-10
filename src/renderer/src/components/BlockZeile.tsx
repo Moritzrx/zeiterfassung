@@ -2,21 +2,21 @@ import { memo, type ReactElement } from 'react'
 import { Check } from 'lucide-react'
 import type { Block } from '@shared/typen'
 import { anzeigeName } from '@shared/fenster'
-import { RUHE_NAME, istRuhe } from '@shared/ruhe'
+import { ABWESEND_NAME, RUHE_NAME, istRuhe } from '@shared/ruhe'
 import { dauerText, uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
 
 const PUNKT: Record<Block['bewertung'], string> = {
   produktiv: 'bg-produktiv',
   unproduktiv: 'bg-unproduktiv',
-  inaktiv: 'bg-inaktiv',
+  inaktiv: 'bg-abwesend',
   ungeklaert: 'border border-ungeklaert'
 }
 
 const BEWERTUNG: Record<Block['bewertung'], string> = {
   produktiv: 'produktiv',
   unproduktiv: 'unproduktiv',
-  inaktiv: 'inaktiv',
+  inaktiv: 'abwesend',
   ungeklaert: 'ungeklärt'
 }
 
@@ -48,7 +48,7 @@ function BlockZeileInnen({
   const fenster = anzeigeName(block.programm, block.fenstertitel)
   const hauptzeile =
     block.bewertung === 'inaktiv'
-      ? 'Inaktiv'
+      ? ABWESEND_NAME
       : block.quelle === 'manuell'
         ? (block.taetigkeit ?? 'Von Hand eingetragen')
         : istRuhe(block)

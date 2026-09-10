@@ -12,7 +12,7 @@ export interface RingAnteile {
 const FARBEN = {
   produktiv: '#00C076',
   unproduktiv: '#FF4D4D',
-  inaktiv: '#3A3A3E',
+  inaktiv: '#38BDF8',
   ungeklaert: '#8A8A8F',
   leer: '#151517'
 }
@@ -20,7 +20,7 @@ const FARBEN = {
 const TEXTE = {
   produktiv: 'produktiv',
   unproduktiv: 'unproduktiv',
-  inaktiv: 'inaktiv',
+  inaktiv: 'abwesend',
   ungeklaert: 'ungeklärt'
 }
 

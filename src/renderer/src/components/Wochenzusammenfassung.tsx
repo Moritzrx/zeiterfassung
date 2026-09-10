@@ -50,7 +50,7 @@ export function Wochenzusammenfassung({ stat, ziele, zwischenstand, neueAuszeich
         <div>
           <p className="text-xs text-mute">Stunden gesamt</p>
           <p className="text-2xl font-light">{stundenText(gesamt)}</p>
-          <p className="text-xs text-dim">ohne inaktive Zeit</p>
+          <p className="text-xs text-dim">ohne Abwesenheit</p>
         </div>
         <div>
           <p className="text-xs text-mute">Produktiv</p>

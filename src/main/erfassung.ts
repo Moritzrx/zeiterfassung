@@ -14,10 +14,13 @@ const LUECKE_MS = 30_000 // längere Pause zwischen zwei Abfragen = Rechner hat 
 const KURZ_MS = 60_000 // Blöcke darunter werden in den Nachbarblock eingerechnet
 const ANSCHLUSS_MS = 5_000 // so nah muss ein Nachbarblock liegen
 const MAX_BLOCK_MS = 4 * 3_600_000 // Sicherung: nie länger als 4 Stunden
-// Ohne Eingabe läuft ein "Nicht am Rechner"-Block (zählt als unproduktiv) höchstens so lange, danach gilt man
-// als abwesend und es wird nichts mehr aufgezeichnet (bis zur nächsten Eingabe). Seit 10. September 2026 zwei
-// Stunden statt einer, weil diese Zeit jetzt rot zählt und ein Handy-Nachmittag sonst kaum auffiele.
-const MAX_INAKTIV_MS = 120 * 60_000
+// Zeit ohne Eingabe (Entscheidung des Auftraggebers vom 10. September 2026):
+//   bis ABWESEND_MS ist sie "Nicht am Rechner" und zählt als unproduktiv (rot): Handy, Sofa, lange Pause;
+//   dauert die Abwesenheit länger, wird der ganze Block "Abwesend" (Bewertung inaktiv, blau, zählt nicht):
+//   Schlafen, Feierabend, langer Termin. Läuft der Rechner wach weiter, endet der blaue Block spätestens
+//   nach MAX_INAKTIV_MS; danach wird bis zur nächsten Eingabe nichts mehr aufgezeichnet.
+const ABWESEND_MS = 90 * 60_000
+const MAX_INAKTIV_MS = 12 * 3_600_000
 const EIGENES_KURZ_MS = 2 * 60_000 // so lange läuft beim Blick in die eigene App der vorherige Block weiter
 
 type Zustand = Exclude<ErfassungsZustand, 'nicht-angemeldet'>
@@ -319,7 +322,8 @@ export class Erfassung extends EventEmitter {
       this.schliessen(this.aktuell, inaktivStart)
       this.aktuell = null
     }
-    if (this.zustand === 'abwesend') return
+    // Höchstdauer erreicht: bis zur nächsten Eingabe wird nichts mehr aufgezeichnet.
+    if (this.zustand === 'abwesend' && !this.inaktiv) return
 
     if (!this.inaktiv) {
       this.inaktiv = this.neuerBlock(inaktivStart, 'inaktiv', null, null, null)
@@ -327,21 +331,34 @@ export class Erfassung extends EventEmitter {
       this.zustand = 'inaktiv'
     }
 
+    // Ab 90 Minuten Abwesenheit (seit dem letzten Tastendruck) wird der ganze Block "Abwesend" und zählt nicht.
+    const abwesendSeit = this.inaktivSeit?.getTime() ?? Date.parse(this.inaktiv.start)
+    if (jetzt.getTime() - abwesendSeit >= ABWESEND_MS) {
+      if (this.inaktiv.bewertung !== 'inaktiv') {
+        this.inaktiv.bewertung = 'inaktiv'
+        this.speicher.aktualisieren(this.inaktiv)
+        this.emit('bloecke')
+      }
+      this.zustand = 'abwesend'
+      // Wer so lange weg ist, hat den Fokus beendet; sonst zählt der Abend nach der Rückkehr falsch.
+      this.fokus = null
+    }
+
     const start = Date.parse(this.inaktiv.start)
     const mitternacht = naechsterTagesanfang(new Date(start)).getTime()
-    const maxEnde = start + MAX_INAKTIV_MS
+    const maxEnde = abwesendSeit + MAX_INAKTIV_MS
     if (jetzt.getTime() >= mitternacht && mitternacht < maxEnde) {
       const m = new Date(mitternacht)
+      const blau = this.inaktiv.bewertung === 'inaktiv'
       this.schliessen(this.inaktiv, m)
       this.inaktiv = this.neuerBlock(m, 'inaktiv', null, null, null)
+      if (blau) this.inaktiv.bewertung = 'inaktiv'
       this.inaktiv.ende = jetzt.toISOString()
       this.speicher.aktualisieren(this.inaktiv)
     } else if (jetzt.getTime() >= maxEnde) {
       this.schliessen(this.inaktiv, new Date(maxEnde))
       this.inaktiv = null
       this.zustand = 'abwesend'
-      // Wer eine Stunde weg ist, hat den Fokus beendet; sonst zählt der Abend nach der Rückkehr falsch.
-      this.fokus = null
     } else {
       this.inaktiv.ende = jetzt.toISOString()
       this.speicher.aktualisieren(this.inaktiv)

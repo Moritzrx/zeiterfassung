@@ -3,7 +3,7 @@ import { Portal } from './Portal'
 import { X } from 'lucide-react'
 import type { Bewertung, Block, RegelBewertung } from '@shared/typen'
 import { anzeigeName, fensterInfo } from '@shared/fenster'
-import { RUHE_NAME, istRuhe } from '@shared/ruhe'
+import { ABWESEND_NAME, RUHE_NAME, istRuhe } from '@shared/ruhe'
 import { musterVorschlag } from '@shared/regeln'
 import { berlinDatum, berlinTeile, berlinZuUtc } from '@shared/zeit'
 import { datumText, dauerText } from '../format'
@@ -199,7 +199,7 @@ export function BlockDialog({
   const titel = istGruppe
     ? `${gruppeMuster ? `${gruppeMuster} · ` : ''}${block.programm ?? 'Unbekanntes Programm'} · ${gruppeIds.length} Blöcke`
     : istInaktiv
-      ? 'Inaktive Zeit'
+      ? ABWESEND_NAME
       : istManuell
         ? (block.taetigkeit ?? 'Von Hand eingetragen')
         : istRuhe(block)
@@ -280,8 +280,8 @@ export function BlockDialog({
                 produktiv
               </Wahl>
               {istInaktiv ? (
-                <Wahl aktiv={bewertung === 'inaktiv'} onClick={() => setBewertung('inaktiv')} farbe="bg-inaktiv">
-                  inaktiv
+                <Wahl aktiv={bewertung === 'inaktiv'} onClick={() => setBewertung('inaktiv')} farbe="bg-abwesend">
+                  abwesend
                 </Wahl>
               ) : (
                 <Wahl

@@ -309,7 +309,7 @@ export function EinstellungenScreen(): ReactElement {
       <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">Erfassung</p>
         <div className="mt-1 divide-y divide-panel-2">
-          <Zeile titel="Untätigkeit nach" hinweis="Minuten ohne Maus und Tastatur, bis die Zeit als inaktiv zählt. Standard 3.">
+          <Zeile titel="Untätigkeit nach" hinweis="Minuten ohne Maus und Tastatur, bis die Zeit als „Nicht am Rechner“ (unproduktiv, rot) zählt. Standard 3. Ab 90 Minuten weg wird daraus „Abwesend“ (blau) und zählt gar nicht.">
             {profil && (
               <Zahl
                 wert={Math.round(profil.idleSchwelleSekunden / 60)}

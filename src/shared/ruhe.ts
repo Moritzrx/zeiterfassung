@@ -9,6 +9,8 @@ import type { Block } from './typen'
  */
 
 export const RUHE_NAME = 'Nicht am Rechner'
+/** Bewertung "inaktiv" heißt in der Oberfläche "Abwesend" (blau): länger als 90 Minuten weg, zählt nicht. */
+export const ABWESEND_NAME = 'Abwesend'
 
 /** Block ohne Programm aus der automatischen Erfassung (neu: unproduktiv, alt: inaktiv). */
 export function istRuhe(b: Pick<Block, 'quelle' | 'programm'>): boolean {
@@ -24,5 +26,5 @@ export function fokusQuote(stat: { produktiv: number; unproduktiv: number; ungek
   return gesamt > 0 ? stat.produktiv / gesamt : 0
 }
 
-/** Ab dieser Quote gilt eine Woche als Fokus-Woche (Auszeichnung). */
-export const FOKUS_QUOTE_ZIEL = 0.85
+/** Ab dieser Quote gilt eine Woche als Fokus-Woche (Auszeichnung); 80 % seit 10. September 2026 ("muss realistisch sein"). */
+export const FOKUS_QUOTE_ZIEL = 0.8

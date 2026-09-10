@@ -32,11 +32,11 @@ export function Kopfzeile(): ReactElement {
     punkt = 'bg-produktiv'
     text = 'Erfassung läuft'
   } else if (status.zustand === 'inaktiv') {
-    punkt = 'bg-ungeklaert'
+    punkt = 'bg-unproduktiv'
     text = status.inaktivSeit ? `Nicht am Rechner seit ${uhrzeit(status.inaktivSeit)}, zählt als unproduktiv` : 'Nicht am Rechner'
   } else if (status.zustand === 'abwesend') {
-    punkt = 'bg-ungeklaert'
-    text = 'Abwesend, Erfassung ruht'
+    punkt = 'bg-abwesend'
+    text = status.inaktivSeit ? `Abwesend seit ${uhrzeit(status.inaktivSeit)}, zählt nicht` : 'Abwesend, zählt nicht'
   } else if (pausiert) {
     punkt = 'bg-unproduktiv'
     text = status.pausiertSeit ? `Erfassung pausiert seit ${uhrzeit(status.pausiertSeit)}` : 'Erfassung pausiert'
