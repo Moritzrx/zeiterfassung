@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { useHintergrundArt } from '../hintergrundart'
-import { WORTMARKE } from './wortmarke'
+import { WORTMARKE, WORTMARKE_LICHTWEG } from './wortmarke'
 
 /*
  * Der lebendige Hintergrund hinter allen Screens, in zwei Fassungen (Einstellungen → Darstellung):
  *
  * LOGO (Standard seit 10. September 2026, Wunsch des Auftraggebers): das Linienmuster des wessamedia-Logos
  * (dünne schräge Linien oben und unten) und die Wortmarke "wessamedia" als Wasserzeichen in der Mitte.
- * Orangene Lichter laufen von links nach rechts an der oberen und der unteren SILHOUETTE der Schrift entlang
- * (`wortmarkeBahnen`) und über die Musterlinien, die 1:1 aus dem Logo-Bild abgenommen sind (`MUSTER`). Sie laufen
- * immer in eine Richtung, nie zurück, blenden am Ende aus und am Anfang wieder ein; gezeichnet auf einer Leinwand
- * als durchgehende Linien mit Komet-Verlauf (Rückmeldungen vom 10. September 2026). Die Wortmarke liegt als eigene Ebene ÜBER den Karten
+ * Orangene Lichter laufen auf EINEM durchgehenden Weg durch die Schrift (`WORTMARKE_LICHTWEG`: jeder Buchstabe
+ * einmal ganz um seinen Rand, dann oben weiter und als gerade Brücke in den nächsten) und über die Musterlinien, die
+ * 1:1 aus dem Logo-Bild abgenommen sind (`MUSTER`). Sie laufen immer vorwärts, blenden am Ende aus und am Anfang
+ * wieder ein; gezeichnet auf einer Leinwand als durchgehende Linien mit Komet-Verlauf (Rückmeldungen vom 10. September 2026). Die Wortmarke liegt als eigene Ebene ÜBER den Karten
  * (z-index 10, ohne Mausereignisse, unter Dialogen und Leisten), sonst wäre sie hinter dem Milchglas der
  * Karten unsichtbar; sie ist so blass, dass der Vordergrund lesbar bleibt.
  *
@@ -110,9 +110,8 @@ export const MUSTER: string[] = [
 const MUSTER_LICHTER = 6
 const MUSTER_TEMPO = 150
 const MUSTER_GLIEDER = 22
-/** Lichter an der Silhouette der Wortmarke: drei oben, zwei unten, Tempo in Wortmarken-Einheiten je Sekunde, 44 Glieder. */
-const WORTMARKE_LICHTER_OBEN = 3
-const WORTMARKE_LICHTER_UNTEN = 2
+/** Lichter auf dem Lichtweg der Wortmarke: fünf, gleichmäßig verteilt; Tempo in Wortmarken-Einheiten je Sekunde, 44 Glieder. */
+const WORTMARKE_LICHTER = 5
 const WORTMARKE_TEMPO = 90
 const WORTMARKE_GLIEDER = 44
 /** Abstand der Kettenglieder auf der Leinwand (Einheiten der jeweiligen Bahn). */
@@ -381,128 +380,6 @@ function Glieder({
       })}
     </>
   )
-}
-
-/**
- * Die beiden Lichtbahnen der Wortmarke: die OBERE und die UNTERE SILHOUETTE des ganzen Schriftzugs, jeweils von
- * links nach rechts (vierte Fassung, 10. September 2026: Ketten, die um jeden Buchstaben herumliefen, "blieben
- * hängen, gingen ein Stück zurück und teilten sich auf", nämlich an Einschnitten wie der Öffnung des e und beim
- * Rücklauf unter dem Buchstaben). Für jede Spalte x (Schritt 0,5) der oberste bzw. unterste Punkt aller Konturen;
- * senkrechte Kanten (Oberlänge des d) ergeben steile Stücke; wo kein Buchstabe ist (Lücken), beginnt ein neues
- * Teilstück (M), an dem das Licht kurz aus- und wieder einblendet. Douglas-Peucker mit 0,25 hält die Bahnen kompakt.
- */
-function wortmarkeBahnen(): { oben: string; unten: string } {
-  const konturen = WORTMARKE.pfade.map((d) => [...d.matchAll(/([-\d.]+) ([-\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])] as [number, number]))
-  const SCHRITT = 0.5
-  const spalten = Math.round(WORTMARKE.breite / SCHRITT)
-  const oben: Array<[number, number] | null> = []
-  const unten: Array<[number, number] | null> = []
-  for (let i = 0; i <= spalten; i++) {
-    const x = i * SCHRITT
-    let min = Infinity
-    let max = -Infinity
-    for (const k of konturen) {
-      for (let j = 0; j < k.length; j++) {
-        const p = k[j]
-        const q = k[(j + 1) % k.length]
-        if (p[0] === q[0]) continue
-        const [links, rechts] = p[0] < q[0] ? [p, q] : [q, p]
-        if (x < links[0] || x >= rechts[0]) continue
-        const y = links[1] + ((x - links[0]) * (rechts[1] - links[1])) / (rechts[0] - links[0])
-        if (y < min) min = y
-        if (y > max) max = y
-      }
-    }
-    oben.push(min === Infinity ? null : [x, min])
-    unten.push(max === -Infinity ? null : [x, max])
-  }
-  // Schmale KERBEN (die Schlitze unter dem m, die Öffnung unter dem a: 5 bis 13 Einheiten breit, über 50 tief)
-  // werden überbrückt: die Kette faltete sich darin zusammen, Kopf und Schwanz liefen nebeneinander, das sah
-  // "aufgeteilt" aus. Eine Kerbe ist ein Stück bis 16 Einheiten Breite, dessen beide Ränder auf gleicher Höhe
-  // liegen (±2) und das dazwischen mindestens 6 Einheiten und mindestens 2,5-mal so tief wie breit ins Innere
-  // geht; sie wird durch die Gerade zwischen ihren Rändern ersetzt. Die Zacken des w (39 breit, 67 tief) und alle
-  // Rundungen bleiben unverändert (ein morphologisches Schließen kappte die Zacken zur Hälfte und die Ränder).
-  const kerbenFuellen = (werte: Array<[number, number] | null>, istOben: boolean): void => {
-    const maxBreite = Math.round(16 / SCHRITT)
-    let i = 0
-    while (i < werte.length) {
-      const a = werte[i]
-      if (!a) {
-        i++
-        continue
-      }
-      let treffer = -1
-      for (let j = Math.min(werte.length - 1, i + maxBreite); j >= i + 2; j--) {
-        const b = werte[j]
-        if (!b || Math.abs(b[1] - a[1]) > 2) continue
-        let innen = 0
-        let luecke = false
-        for (let k = i + 1; k < j; k++) {
-          const w = werte[k]
-          if (!w) {
-            luecke = true
-            break
-          }
-          // oben: Kerbe geht nach unten (größeres y); unten: Kerbe geht nach oben (kleineres y)
-          const tiefe = istOben ? w[1] - Math.max(a[1], b[1]) : Math.min(a[1], b[1]) - w[1]
-          if (tiefe > innen) innen = tiefe
-        }
-        if (luecke) break
-        const breite = (j - i) * SCHRITT
-        if (innen >= 6 && innen >= 2.5 * breite) {
-          treffer = j
-          break
-        }
-      }
-      if (treffer > 0) {
-        const b = werte[treffer] as [number, number]
-        for (let k = i + 1; k < treffer; k++) {
-          const f = (k - i) / (treffer - i)
-          werte[k] = [werte[k]![0], a[1] * (1 - f) + b[1] * f]
-        }
-        i = treffer
-      } else i++
-    }
-  }
-  kerbenFuellen(oben, true)
-  kerbenFuellen(unten, false)
-  const bahn = (werte: Array<[number, number] | null>): string => {
-    const teile: string[] = []
-    let lauf: Array<[number, number]> = []
-    const abschliessen = (): void => {
-      if (lauf.length >= 2) teile.push('M' + vereinfachen(lauf, 0.25).map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(2)}`).join(' L'))
-      lauf = []
-    }
-    for (const w of werte) {
-      if (w) lauf.push(w)
-      else abschliessen()
-    }
-    abschliessen()
-    return teile.join(' ')
-  }
-  return { oben: bahn(oben), unten: bahn(unten) }
-}
-
-/** Douglas-Peucker: entfernt Punkte, die weniger als `toleranz` von der Verbindung ihrer Nachbarn abweichen. */
-function vereinfachen(punkte: Array<[number, number]>, toleranz: number): Array<[number, number]> {
-  if (punkte.length < 3) return punkte
-  const a = punkte[0]
-  const b = punkte[punkte.length - 1]
-  const dx = b[0] - a[0]
-  const dy = b[1] - a[1]
-  const l = Math.hypot(dx, dy) || 1
-  let max = 0
-  let idx = 0
-  for (let i = 1; i < punkte.length - 1; i++) {
-    const p = punkte[i]
-    const d = Math.abs((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / l
-    if (d > max) {
-      max = d
-      idx = i
-    }
-  }
-  if (max <= toleranz) return [a, b]
-  return vereinfachen(punkte.slice(0, idx + 1), toleranz).slice(0, -1).concat(vereinfachen(punkte.slice(idx), toleranz))
 }
 
 /** Die aufsteigenden Lichtpunkte; `hof` gibt jedem einen atmenden weichen Hof (Logo-Fassung). */
@@ -875,25 +752,21 @@ function HintergrundLogo(): ReactElement {
   const hinten = useRef<HTMLDivElement>(null)
   const leinwand = useRef<HTMLCanvasElement>(null)
   const wortmarkeSvg = useRef<SVGSVGElement>(null)
-  const bahnOben = useRef<SVGPathElement>(null)
-  const bahnUnten = useRef<SVGPathElement>(null)
+  const lichtweg = useRef<SVGPathElement>(null)
   const musterWeg = useRef<SVGPathElement>(null)
 
   const alleD = useMemo(() => WORTMARKE.pfade.join(' '), [])
-  const bahnen = useMemo(() => wortmarkeBahnen(), [])
 
   useEffect(() => {
     const h = hinten.current
     const canvas = leinwand.current
     const svg = wortmarkeSvg.current
-    const oben = bahnOben.current
-    const unten = bahnUnten.current
+    const pfad = lichtweg.current
     const weg = musterWeg.current
-    if (!h || !canvas || !svg || !oben || !unten || !weg || bewegungReduziert()) return
+    if (!h || !canvas || !svg || !pfad || !weg || bewegungReduziert()) return
     const musterTabelle = abtasten(weg)
     const musterTeile = teileAusSpruengen(musterTabelle)
-    const obenTabelle = abtasten(oben)
-    const untenTabelle = abtasten(unten)
+    const wortTabelle = abtasten(pfad)
     // Maßstäbe, die bei Größenänderung nur überschrieben werden; die Bahnen bleiben in Einheiten.
     const mass = { sx: 1, sy: 1, dx: 0, dy: 0, links: 0, oben: 0, m: 1 }
     const musterAbbilden = (x: number, y: number): [number, number] => [mass.dx + x * mass.sx, mass.dy + y * mass.sy]
@@ -909,17 +782,15 @@ function HintergrundLogo(): ReactElement {
       const { plan, zyklus } = planBauen(musterTeile, eigene, MUSTER_TEMPO, MUSTER_GLIEDER * GLIED, () => 0.8 + z() * 1.6)
       lichter.push({ tabelle: musterTabelle, teile: musterTeile, plan, zyklus, tempo: MUSTER_TEMPO, versatz: z() * zyklus, glieder: MUSTER_GLIEDER, abstand: GLIED, blende: 14, abbilden: musterAbbilden })
     }
-    // Wortmarke: eine Bahn ist die obere, eine die untere Silhouette, beide von links nach rechts; die Lichter
-    // einer Bahn sind gleichmäßig über den Zyklus verteilt, die untere Bahn um eine halbe Lücke versetzt.
-    const wortLichter = (tabelle: Abtastung, anzahl: number, phase: number): void => {
-      const teile = [{ anfang: 0, ende: tabelle.laenge }]
+    // Wortmarke: ein durchgehender Weg durch alle Buchstaben; die Lichter sind gleichmäßig über den Zyklus verteilt,
+    // ohne Pause, sodass immer fünf Lichter unterwegs sind.
+    {
+      const teile = [{ anfang: 0, ende: wortTabelle.laenge }]
       const { plan, zyklus } = planBauen(teile, [0], WORTMARKE_TEMPO, WORTMARKE_GLIEDER * GLIED, () => 0)
-      for (let i = 0; i < anzahl; i++) {
-        lichter.push({ tabelle, teile, plan, zyklus, tempo: WORTMARKE_TEMPO, versatz: ((i + phase) * zyklus) / anzahl, glieder: WORTMARKE_GLIEDER, abstand: GLIED, blende: 12, abbilden: wortAbbilden })
+      for (let i = 0; i < WORTMARKE_LICHTER; i++) {
+        lichter.push({ tabelle: wortTabelle, teile, plan, zyklus, tempo: WORTMARKE_TEMPO, versatz: (i * zyklus) / WORTMARKE_LICHTER, glieder: WORTMARKE_GLIEDER, abstand: GLIED, blende: 12, abbilden: wortAbbilden })
       }
     }
-    wortLichter(obenTabelle, WORTMARKE_LICHTER_OBEN, 0)
-    wortLichter(untenTabelle, WORTMARKE_LICHTER_UNTEN, 0.5)
     const anpassen = (): void => {
       const dpr = window.devicePixelRatio || 1
       const breite = h.clientWidth
@@ -988,9 +859,8 @@ function HintergrundLogo(): ReactElement {
             style={{ width: 'min(78vw, 1150px)', height: 'auto', overflow: 'visible' }}
           >
             <path d={alleD} fill="white" fillOpacity="0.04" fillRule="evenodd" stroke="white" strokeOpacity="0.07" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-            {/* Die beiden Lichtbahnen (obere und untere Silhouette), unsichtbar, nur zum Messen */}
-            <path ref={bahnOben} d={bahnen.oben} fill="none" stroke="none" />
-            <path ref={bahnUnten} d={bahnen.unten} fill="none" stroke="none" />
+            {/* Der Lichtweg durch alle Buchstaben, unsichtbar, nur zum Messen */}
+            <path ref={lichtweg} d={WORTMARKE_LICHTWEG} fill="none" stroke="none" />
           </svg>
         </div>
       </div>
