@@ -338,7 +338,7 @@ body::after {
  */
 .hintergrund-hof {
   position: absolute;
-  inset: -120%;
+  inset: -140%;
   border-radius: 50%;
   background: radial-gradient(circle, var(--farbe, rgba(254, 83, 3, 0.6)) 0%, transparent 62%);
   opacity: 0.35;

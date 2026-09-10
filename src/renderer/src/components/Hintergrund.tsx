@@ -78,7 +78,12 @@ export const MUSTER: string[] = [
   'M270 610 L350 425 L410 610 L470 430',
   'M540 610 L600 410 L700 610',
   'M560 520 L680 540',
-  'M800 610 L870 420 L960 610 L1020 470'
+  'M800 610 L870 420 L960 610 L1020 470',
+  // Seit 10. September 2026 ("oben und unten ein paar Linien mehr, etwas mehr Bewegung"): je zwei dazu.
+  'M470 -10 L515 130 L560 20',
+  'M720 175 L765 15 L810 120',
+  'M190 610 L235 475 L285 610',
+  'M470 445 L515 610 L555 480'
 ]
 
 /**
@@ -87,10 +92,10 @@ export const MUSTER: string[] = [
  * unsichtbar. So leuchtet jede Linie ab und zu, mit 3 statt 12 Ketten (der Compositor tickt jede Animation
  * in jedem Bild, 328 Glieder ließen ihn beim Maximieren ins Stocken kommen).
  */
-const MUSTER_LICHTER = 3
-const MUSTER_DAUER = 36
-/** Lichter am Rand der Schrift: drei gleich schnelle, gleichmäßig versetzt; 64 s je Durchlauf (40 s waren "zu schnell"). */
-const WORTMARKE_LICHTER = 3
+const MUSTER_LICHTER = 4
+const MUSTER_DAUER = 40
+/** Lichter am Rand der Schrift: fünf gleich schnelle, gleichmäßig versetzt, lang gezogen; 64 s je Durchlauf (40 s waren "zu schnell"). */
+const WORTMARKE_LICHTER = 5
 const WORTMARKE_DAUER = 64
 /** Rundung der Ecken der Musterlinien (Rasterlängen): Linie und Licht nutzen dieselbe runde Fassung, damit das Licht exakt auf der Linie bleibt. */
 const ECKEN_RADIUS = 16
@@ -576,19 +581,47 @@ function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => voi
         if (p.y > maxY) maxY = p.y
       }
       flecken.push([minX - RAND, minY - RAND, maxX - minX + 2 * RAND, maxY - minY + 2 * RAND])
-      for (const [dicke, staerke] of durchgaenge) {
-        ctx.lineWidth = dicke
-        for (let g = 0; g < l.glieder; g++) {
-          const p = punkte[g]
-          const q = punkte[g + 1]
-          // Kein Strich über einen Sprung zwischen zwei Teilstücken (z. B. von einer Musterlinie zur nächsten).
-          if (p.teil !== q.teil || p.lage < 0 || q.lage > laenge) continue
-          const a = Math.min(p.a, q.a) * staerke
-          if (a < 0.01) continue
-          ctx.strokeStyle = `rgba(254, 83, 3, ${a.toFixed(3)})`
+      // Zusammenhängende Läufe (kein Sprung zwischen Teilstücken, innerhalb der Bahn) in EINEM Zug zeichnen:
+      // einzelne Stücke mit runden Enden überlagerten sich an den Nähten und wirkten "gepunktet".
+      // Der Verlauf (vorne hell, hinten dunkel) kommt aus einem Farbverlauf entlang der Kette.
+      const laeufe: Array<typeof punkte> = []
+      let lauf: typeof punkte = []
+      for (let g = 0; g <= l.glieder; g++) {
+        const p = punkte[g]
+        const vorher = punkte[g - 1]
+        const bruch = g > 0 && (vorher.teil !== p.teil || p.lage < 0 || vorher.lage > laenge)
+        if (bruch || p.a <= 0.005) {
+          if (lauf.length > 1) laeufe.push(lauf)
+          lauf = p.a > 0.005 && !bruch ? [p] : p.a > 0.005 ? [p] : []
+          continue
+        }
+        lauf.push(p)
+      }
+      if (lauf.length > 1) laeufe.push(lauf)
+      for (const r of laeufe) {
+        const kopfP = r[0]
+        const schwanz = r[r.length - 1]
+        const dx = schwanz.x - kopfP.x
+        const dy = schwanz.y - kopfP.y
+        const len2 = dx * dx + dy * dy
+        for (const [dicke, staerke] of durchgaenge) {
+          ctx.lineWidth = dicke
+          if (len2 < 1) {
+            ctx.strokeStyle = `rgba(254, 83, 3, ${(kopfP.a * staerke).toFixed(3)})`
+          } else {
+            // Farbverlauf vom Kopf zum Schwanz; jeder Punkt wird auf diese Linie projiziert (Stufen monoton).
+            const verlauf = ctx.createLinearGradient(kopfP.x, kopfP.y, schwanz.x, schwanz.y)
+            let letzteStufe = 0
+            for (const p of r) {
+              const t = Math.min(1, Math.max(letzteStufe, ((p.x - kopfP.x) * dx + (p.y - kopfP.y) * dy) / len2))
+              verlauf.addColorStop(t, `rgba(254, 83, 3, ${(p.a * staerke).toFixed(3)})`)
+              letzteStufe = t
+            }
+            ctx.strokeStyle = verlauf
+          }
           ctx.beginPath()
-          ctx.moveTo(p.x, p.y)
-          ctx.lineTo(q.x, q.y)
+          ctx.moveTo(kopfP.x, kopfP.y)
+          for (let i = 1; i < r.length; i++) ctx.lineTo(r[i].x, r[i].y)
           ctx.stroke()
         }
       }
@@ -616,7 +649,7 @@ function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => voi
 /** Die Logo-Fassung: Linienmuster hinten, Wortmarke als Wasserzeichen vorn, orangene Lichter auf beidem (Leinwand). */
 function HintergrundLogo(): ReactElement {
   // Etwas mehr und etwas größere Punkte als klassisch ("minimal auffälliger, aber nicht viel"), sie funkeln per CSS.
-  const partikel = useMemo(() => partikelErzeugen(36, FARBEN_LOGO, 11, 1.25), [])
+  const partikel = useMemo(() => partikelErzeugen(36, FARBEN_LOGO, 11, 1.5), [])
   const hinten = useRef<HTMLDivElement>(null)
   const leinwand = useRef<HTMLCanvasElement>(null)
   const wortmarkeSvg = useRef<SVGSVGElement>(null)
@@ -652,7 +685,7 @@ function HintergrundLogo(): ReactElement {
         grenzen,
         dauer: MUSTER_DAUER,
         versatz: (MUSTER_DAUER * i) / MUSTER_LICHTER,
-        glieder: 16,
+        glieder: 22,
         abstand: 3.5,
         abbilden: (x: number, y: number): [number, number] => [x * mass.sx, y * mass.sy]
       })),
@@ -661,7 +694,7 @@ function HintergrundLogo(): ReactElement {
         grenzen: [wortTabelle.laenge],
         dauer: WORTMARKE_DAUER,
         versatz: (WORTMARKE_DAUER * i) / WORTMARKE_LICHTER,
-        glieder: 22,
+        glieder: 44,
         abstand: 3.5,
         abbilden: (x: number, y: number): [number, number] => [mass.links + x * mass.m, mass.oben + y * mass.m]
       }))
