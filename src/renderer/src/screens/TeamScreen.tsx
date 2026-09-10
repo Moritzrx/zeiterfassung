@@ -163,7 +163,7 @@ export function TeamScreen(): ReactElement {
           <button
             type="button"
             onClick={() => setUebersichtOffen(true)}
-            className="rounded-chip px-3 py-1.5 text-xs text-mute transition-colors hover:bg-panel hover:text-ink"
+            className="knopf-primaer rounded-chip px-4 py-2 text-sm"
           >
             Alle Ränge
           </button>

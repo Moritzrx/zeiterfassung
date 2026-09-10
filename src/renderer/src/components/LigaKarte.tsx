@@ -188,7 +188,7 @@ export function LigaKarte({ produktivSekunden, gesamtziel }: Props): ReactElemen
         <button
           type="button"
           onClick={() => setUebersichtOffen(true)}
-          className="shrink-0 rounded-chip px-3 py-1.5 text-xs text-mute transition-colors hover:bg-panel-2 hover:text-ink"
+          className="knopf-primaer shrink-0 rounded-chip px-4 py-2 text-sm"
         >
           So funktioniert die Liga
         </button>

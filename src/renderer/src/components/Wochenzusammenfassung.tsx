@@ -89,7 +89,7 @@ export function Wochenzusammenfassung({ stat, ziele, zwischenstand, neueAuszeich
         <div className="mt-4 flex items-center justify-between gap-3 text-sm">
           <span className="text-mute">Noch {stundenText(stat.ungeklaert)} h ungeklärt, die nicht zählen.</span>
           {onDurchgehen && (
-            <button type="button" onClick={onDurchgehen} className="rounded-chip bg-panel-2 px-3 py-1.5 text-ink hover:bg-inaktiv">
+            <button type="button" onClick={onDurchgehen} className="knopf-primaer rounded-chip px-4 py-2 text-sm">
               Jetzt durchgehen
             </button>
           )}

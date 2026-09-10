@@ -66,7 +66,7 @@ export function UngeklaertPostfach({ anzahl, stand, onOeffnen, onGruppe, onDurch
             {sortiert.length > 1 && <span className="text-mute"> · {sortiert.length} Gruppen</span>}
           </span>
         </div>
-        <button type="button" onClick={() => onDurchgehen(liste)} className="text-xs text-mute transition-colors hover:text-ink">
+        <button type="button" onClick={() => onDurchgehen(liste)} className="knopf-primaer rounded-chip px-3 py-1.5 text-xs">
           Einzeln durchgehen
         </button>
       </div>
@@ -99,7 +99,7 @@ export function UngeklaertPostfach({ anzahl, stand, onOeffnen, onGruppe, onDurch
                 <button
                   type="button"
                   onClick={() => onGruppe(g.bloecke, g.seite)}
-                  className="shrink-0 rounded-chip bg-ink px-3 py-1.5 text-sm text-ground transition-colors hover:bg-white"
+                  className="knopf-primaer shrink-0 rounded-chip px-3 py-1.5 text-sm"
                 >
                   {g.bloecke.length === 1 ? 'Zuordnen' : `Alle ${g.bloecke.length} zuordnen`}
                 </button>

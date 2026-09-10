@@ -283,7 +283,7 @@ export function WocheScreen(): ReactElement {
         <button
           type="button"
           onClick={() => setUebersichtOffen(true)}
-          className="mt-3 rounded-chip px-3 py-1.5 text-xs text-mute transition-colors hover:bg-panel hover:text-ink"
+          className="knopf-primaer mt-4 rounded-chip px-4 py-2 text-sm"
         >
           Alle {MAX_RANG} Ränge ansehen
         </button>
@@ -307,7 +307,7 @@ export function WocheScreen(): ReactElement {
             <button
               type="button"
               onClick={() => setDurchgehen({ liste: auffaellige, index: 0 })}
-              className="rounded-chip bg-panel-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-inaktiv"
+              className="knopf-primaer rounded-chip px-4 py-2 text-sm"
             >
               Woche durchgehen ({auffaellige.length})
             </button>
