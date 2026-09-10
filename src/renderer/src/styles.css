@@ -336,32 +336,45 @@ body::after {
  * "Alle Ränge ansehen", "So funktioniert die Liga", "Alle zuordnen".
  */
 .knopf-primaer {
+  position: relative;
   background-color: var(--color-produktiv);
   color: #062b1c;
   font-weight: 600;
   box-shadow:
-    0 0 10px rgba(0, 192, 118, 0.6),
-    0 0 26px rgba(0, 192, 118, 0.3);
+    0 0 8px rgba(0, 192, 118, 0.5),
+    0 0 22px rgba(0, 192, 118, 0.22);
+}
+/*
+ * Das Atmen animiert nicht den box-shadow selbst (das zeichnet jedes Bild auf dem Hauptthread neu und
+ * ließ die Übergänge stottern), sondern die Deckkraft eines zweiten Scheins auf einem Pseudo-Element.
+ */
+.knopf-primaer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    0 0 14px rgba(0, 192, 118, 0.85),
+    0 0 36px rgba(0, 192, 118, 0.42);
+  opacity: 0;
   animation: knopf-atmen 2.8s ease-in-out infinite;
+  will-change: opacity;
 }
 .knopf-primaer:hover {
   background-color: #1ad78a;
-  box-shadow:
-    0 0 14px rgba(0, 192, 118, 0.9),
-    0 0 36px rgba(0, 192, 118, 0.45);
+}
+.knopf-primaer:hover::after {
   animation: none;
+  opacity: 1;
 }
 @keyframes knopf-atmen {
   0%,
   100% {
-    box-shadow:
-      0 0 8px rgba(0, 192, 118, 0.5),
-      0 0 22px rgba(0, 192, 118, 0.22);
+    opacity: 0;
   }
   50% {
-    box-shadow:
-      0 0 14px rgba(0, 192, 118, 0.85),
-      0 0 36px rgba(0, 192, 118, 0.42);
+    opacity: 1;
   }
 }
 

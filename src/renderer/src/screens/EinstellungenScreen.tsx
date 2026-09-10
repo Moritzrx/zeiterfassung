@@ -13,6 +13,7 @@ import { SymbolBild, useSymbolZuordnung } from '../symbole'
 import { useTaetigkeiten } from '../taetigkeiten'
 import { KLICK_ARTEN, klickProbe, tonProbe, tonSpielen, toneEinstellung, toneEinstellungSetzen, type Ton } from '../toene'
 import { arbeitstageSetzen, useArbeitstage } from '../arbeitstage'
+import { hintergrundArtSetzen, useHintergrundArt } from '../hintergrundart'
 
 const PROBEN: { ton: Ton; label: string }[] = [
   { ton: 'tick', label: 'Klick' },
@@ -123,6 +124,7 @@ export function EinstellungenScreen(): ReactElement {
   const [toene, setToene] = useState(toneEinstellung)
   const [update, setUpdate] = useState<UpdateStatus | null>(null)
   const arbeitstageWert = useArbeitstage()
+  const hintergrundWert = useHintergrundArt()
   useEffect(() => {
     if (!window.api?.update) return
     void window.api.update.status().then(setUpdate)
@@ -578,6 +580,32 @@ export function EinstellungenScreen(): ReactElement {
             <span className="text-sm text-mute">Wochen</span>
           </Zeile>
         </div>
+      </Karte>
+
+      <Karte>
+        <p className="text-xs tracking-wide text-mute uppercase">Darstellung</p>
+        <Zeile
+          titel="Hintergrund"
+          hinweis="Logo: die wessamedia-Wortmarke als Wasserzeichen mit dem Linienmuster und orangenen Lichtketten. Klassisch: Raster, Zifferblätter und farbige Lichtbahnen."
+        >
+          <div className="flex gap-1.5">
+            {(
+              [
+                ['logo', 'Logo'],
+                ['klassisch', 'Klassisch']
+              ] as const
+            ).map(([art, name]) => (
+              <button
+                key={art}
+                type="button"
+                onClick={() => hintergrundArtSetzen(art)}
+                className={`rounded-chip px-3 py-1.5 text-xs transition-colors ${hintergrundWert === art ? 'bg-ink text-ground' : 'bg-panel-2 text-ink hover:bg-inaktiv'}`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </Zeile>
       </Karte>
 
       <Karte>

@@ -124,6 +124,10 @@ Die App sieht kurz nach dem Start und danach alle vier Stunden auf GitHub nach, 
 
 Jeden Montag, sobald die App sichtbar ist, erscheint einmal ein Wochenrückblick als Vollbild: erreichter Rang mit Wappen, produktive und unproduktive Stunden, bester Tag, Trophäen der Woche, Platz im Team und die neu freigeschalteten Auszeichnungen. Ein Klick auf „Auf in die neue Woche" schließt ihn. In der Liga-Rangliste auf dem Team-Screen steht bei jeder Person außerdem, wie viele Trophäen die laufende Woche voraussichtlich bringt.
 
+### Hintergrund
+
+Seit 1.0.12 liegt hinter der App das wessamedia-Logo: die Wortmarke als blasses Wasserzeichen in der Mitte, das Linienmuster oben und unten, und orangene Lichtketten, die die Buchstaben und Linien entlangfahren. Wer den bisherigen Hintergrund (Raster, Zifferblätter, grüne, orangene und lila Lichtbahnen) lieber mag, stellt unter Einstellungen → Darstellung → Hintergrund auf **Klassisch** um. Die Einstellung gilt je Rechner.
+
 ### Töne
 
 Die App klickt leise bei Knöpfen, wischt beim Screen-Wechsel und spielt Klänge bei Aufstieg und Auszeichnungen. Alle Töne entstehen in der App selbst, es werden keine Dateien geladen. Unter Einstellungen → Töne lassen sie sich ausschalten, in der Lautstärke regeln und probehören; für den Klick stehen mehrere Arten zur Wahl (Tock, Pop, Tap, Fein oder kein Klick).
