@@ -7,11 +7,10 @@ import { WORTMARKE } from './wortmarke'
  *
  * LOGO (Standard seit 10. September 2026, Wunsch des Auftraggebers): das Linienmuster des wessamedia-Logos
  * (dünne schräge Linien oben und unten) und die Wortmarke "wessamedia" als Wasserzeichen in der Mitte.
- * Orangene Lichter laufen von links nach rechts AM RAND der Schrift entlang (jeder Buchstabe einmal im
- * Uhrzeigersinn um seinen Umriss, dann Sprung zum nächsten, `wortmarkeUmriss`) und über die Musterlinien
- * (mit abgerundeten Ecken, damit sie sauber um die Zacken kommen). Sie laufen immer in eine Richtung, blenden
- * am Ende aus und am Anfang wieder ein, kein Hin und Her; als Ketten kurzer, sich überlappender Striche, die
- * wie eine durchgehende Linie wirken (Rückmeldungen vom 10. September 2026). Die Wortmarke liegt als eigene Ebene ÜBER den Karten
+ * Orangene Lichter laufen von links nach rechts an der oberen und der unteren SILHOUETTE der Schrift entlang
+ * (`wortmarkeBahnen`) und über die Musterlinien, die 1:1 aus dem Logo-Bild abgenommen sind (`MUSTER`). Sie laufen
+ * immer in eine Richtung, nie zurück, blenden am Ende aus und am Anfang wieder ein; gezeichnet auf einer Leinwand
+ * als durchgehende Linien mit Komet-Verlauf (Rückmeldungen vom 10. September 2026). Die Wortmarke liegt als eigene Ebene ÜBER den Karten
  * (z-index 10, ohne Mausereignisse, unter Dialogen und Leisten), sonst wäre sie hinter dem Milchglas der
  * Karten unsichtbar; sie ist so blass, dass der Vordergrund lesbar bleibt.
  *
@@ -62,57 +61,62 @@ export const BAHNEN: Array<{ d: string; farbe: string; dauer: number; verzoegeru
 ]
 
 /**
- * Das Linienmuster des Logos, aus dem Logo-Bild abgenommen (10. September 2026, "bitte eins zu eins"): Scratchpad
- * muster-nachzeichnen.cjs erkennt die blassen Linien per Hough-Transformation, legt kollineare Stücke zusammen und
- * verbindet Segmente mit gemeinsamen Enden zu Linienzügen. Raster 1000 × 523 = das Bild 1440 × 753 GLEICHMÄSSIG
- * skaliert (Scratchpad muster-raster.cjs), damit alle Winkel wie im Logo bleiben; im Fenster wird das Muster wie
- * preserveAspectRatio "slice" gleichmäßig auf die Fensterhöhe oder -breite gezogen und mittig beschnitten, nie
- * verzerrt. Nur M und L, damit ein Licht jeden Zug abfahren kann; die Mitte bleibt frei für die Wortmarke.
+ * Das Linienmuster des Logos, exakt aus dem Logo-Bild abgenommen (10. September 2026, "bitte eins zu eins",
+ * zweite Fassung nach "mehrere Striche übereinander"): Scratchpad muster-skelett.cjs maskiert die hellen Linien
+ * (Helligkeit > 160, ohne das Band der Wortmarke), dünnt sie auf ein Pixel aus (Zhang-Suen), verfolgt das Skelett
+ * von Knoten zu Knoten (Enden und Verzweigungen über die Übergangszahl), vereinfacht jede Kette zur Geraden, legt
+ * kollineare Stücke über Kreuzungen und T-Knoten hinweg zu EINER Geraden zusammen, zieht nahe Enden auf einen
+ * Punkt bzw. auf die getroffene Linie und verbindet Ecken (genau zwei Enden) zu Linienzügen. 28 Züge, jeder beginnt
+ * am Ende, das weiter von der Wortmarke weg liegt (die Lichter laufen von außen zur Schrift). Raster 1000 × 523 =
+ * das Bild 1440 × 753 GLEICHMÄSSIG skaliert; im Fenster wird das Muster wie preserveAspectRatio "slice" auf die
+ * Fensterhöhe oder -breite gezogen und mittig beschnitten, nie verzerrt. Nur M und L; die Mitte bleibt frei.
  */
 export const MUSTER: string[] = [
-  'M840 535 L764 350',
-  'M691 176 L613 -13',
-  'M434 535 L357 350',
-  'M285 175 L207 -13',
-  'M638 -14 L582 175',
-  'M560 436 L530 350 L475 536 L635 350',
-  'M475 175 L414 -14',
-  'M246 176 L50 -10',
-  'M31 349 L147 420 L124 350',
-  'M65 175 L2 -13',
-  'M179 377 L207 350 L42 533',
-  'M887 -14 L944 171 L770 149',
-  'M433 147 L467 152 L349 147',
-  'M850 -12 L758 175',
-  'M429 -13 L339 175',
-  'M692 350 L628 535',
-  'M272 350 L207 535',
-  'M950 350 L894 536',
-  'M768 531 L655 446 L764 532',
-  'M324 494 L373 532 L243 430',
-  'M76 175 L153 83 L130 66',
-  'M749 -6 L637 41',
-  'M830 382 L875 350 L786 412',
-  'M441 350 L377 396',
-  'M623 153 L646 176 L597 126',
-  'M257 13 L302 -5 L224 26',
-  'M145 422 L133 378',
-  'M78 497 L53 517 L76 492',
-  'M144 80 L131 105 L110 134'
+  'M0.5 -26.4 L65.3 173.6',
+  'M34.9 542.9 L207.6 350.7',
+  'M124.3 352.1 L143.1 413.2 L35.4 351.4',
+  'M43.1 -19.1 L247.2 175.0',
+  'M146.8 79.5 L77.8 173.6',
+  'M204.2 -25.8 L284.0 172.9',
+  'M205.0 548.5 L271.5 351.4',
+  'M303.4 -7.3 L224.9 25.7',
+  'M380.2 539.4 L244.1 432.5',
+  'M417.4 11.8 L340.3 173.6',
+  'M352.3 148.4 L465.6 150.6',
+  'M436.1 548.0 L356.9 352.1',
+  'M374.9 396.4 L439.6 350.7',
+  'M422.2 -26.9 L417.4 11.8',
+  'M417.4 11.8 L473.6 173.6',
+  'M471.0 531.1 L632.6 351.4',
+  'M471.6 548.7 L531.3 357.3 L560.0 432.1',
+  'M642.6 -26.6 L583.3 173.6',
+  'M596.4 129.4 L645.8 174.3',
+  'M610.4 -25.7 L691.0 172.9',
+  'M623.0 548.5 L689.6 352.1',
+  'M753.3 -9.6 L637.2 40.4',
+  'M774.4 539.6 L663.9 450.7',
+  'M853.4 -25.2 L760.4 173.6',
+  'M843.8 547.9 L763.9 352.1',
+  'M882.4 -26.7 L940.3 170.1 L772.7 147.5',
+  'M788.1 411.4 L873.6 350.7',
+  'M891.5 548.9 L949.3 351.4'
 ]
 
 /**
- * Alle Musterlinien (auch die kurzen Querstriche) liegen in EINEM Pfad, und vier Lichter laufen ihn versetzt
- * ab: Am Ende jeder Linie blendet das Licht aus, am Anfang der nächsten wieder ein, der Sprung bleibt
- * unsichtbar. So leuchtet jede Linie ab und zu, mit 4 Lichtern statt einem je Linie.
+ * Lichter auf dem Muster: sechs Lichter, jedes fährt seine Linien nacheinander ab (Ablaufplan, siehe `Licht`), mit
+ * festem Tempo in Rastereinheiten je Sekunde; Kette aus 22 Gliedern. Mit den Pausen (0,8–2,4 s) sind im Schnitt
+ * drei bis vier Lichter gleichzeitig unterwegs, etwa so viele wie vorher mit vier Dauerlichtern.
  */
-const MUSTER_LICHTER = 4
-const MUSTER_DAUER = 40
-/** Lichter am Rand der Schrift: fünf gleich schnelle, gleichmäßig versetzt, lang gezogen; 64 s je Durchlauf (40 s waren "zu schnell"). */
-const WORTMARKE_LICHTER = 5
-const WORTMARKE_DAUER = 64
-/** Rundung der Ecken der Musterlinien (Rasterlängen): Linie und Licht nutzen dieselbe runde Fassung, damit das Licht exakt auf der Linie bleibt. */
-const ECKEN_RADIUS = 16
+const MUSTER_LICHTER = 6
+const MUSTER_TEMPO = 150
+const MUSTER_GLIEDER = 22
+/** Lichter an der Silhouette der Wortmarke: drei oben, zwei unten, Tempo in Wortmarken-Einheiten je Sekunde, 44 Glieder. */
+const WORTMARKE_LICHTER_OBEN = 3
+const WORTMARKE_LICHTER_UNTEN = 2
+const WORTMARKE_TEMPO = 90
+const WORTMARKE_GLIEDER = 44
+/** Abstand der Kettenglieder auf der Leinwand (Einheiten der jeweiligen Bahn). */
+const GLIED = 3.5
 
 const RASTER_BREITE = 1000
 const RASTER_HOEHE = 600
@@ -170,6 +174,8 @@ interface Abtastung {
   punkte: Float64Array
   /** Schlüssel = Abtastintervall i (zwischen Punkt i und i+1), in dem ein Teilstück endet */
   spruenge: Map<number, { bei: number; vor: [number, number]; nach: [number, number] }>
+  /** Alle Sprungstellen (Längen) aufsteigend */
+  sprungLagen: Float64Array
 }
 const ABTAST = 2
 const abtastungen = new WeakMap<SVGPathElement, Abtastung>()
@@ -206,7 +212,8 @@ function abtasten(pfad: SVGPathElement): Abtastung {
       spruenge.set(i - 1, { bei: hi, vor, nach: [nach.x, nach.y] })
     }
   }
-  const a = { laenge, punkte, spruenge }
+  const sprungLagen = Float64Array.from([...spruenge.values()].map((s) => s.bei).sort((p, q) => p - q))
+  const a = { laenge, punkte, spruenge, sprungLagen }
   abtastungen.set(pfad, a)
   return a
 }
@@ -231,30 +238,6 @@ function bei(a: Abtastung, lage: number): [number, number] {
     return [s.nach[0] * (1 - g) + a.punkte[(i + 1) * 2] * g, s.nach[1] * (1 - g) + a.punkte[(i + 1) * 2 + 1] * g]
   }
   return [a.punkte[i * 2] * (1 - f) + a.punkte[(i + 1) * 2] * f, a.punkte[i * 2 + 1] * (1 - f) + a.punkte[(i + 1) * 2 + 1] * f]
-}
-
-/**
- * Rundet die Ecken eines Linienzugs (nur M/L) ab: vor jeder Ecke wird r Einheiten früher abgebogen und mit
- * einer quadratischen Kurve um den Eckpunkt herumgeführt. Die sichtbaren Linien bleiben spitz, nur das Licht
- * fährt die runde Fassung.
- */
-function eckenAbrunden(d: string, r: number): string {
-  const punkte = [...d.matchAll(/([-\d.]+)\s+([-\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])] as const)
-  if (punkte.length < 3) return d
-  let aus = `M${punkte[0][0]} ${punkte[0][1]}`
-  for (let i = 1; i < punkte.length - 1; i++) {
-    const [ax, ay] = punkte[i - 1]
-    const [bx, by] = punkte[i]
-    const [cx, cy] = punkte[i + 1]
-    const l1 = Math.hypot(bx - ax, by - ay)
-    const l2 = Math.hypot(cx - bx, cy - by)
-    const rr = Math.min(r, l1 / 2, l2 / 2)
-    const ein = [bx - ((bx - ax) / l1) * rr, by - ((by - ay) / l1) * rr]
-    const raus = [bx + ((cx - bx) / l2) * rr, by + ((cy - by) / l2) * rr]
-    aus += ` L${ein[0].toFixed(1)} ${ein[1].toFixed(1)} Q${bx} ${by} ${raus[0].toFixed(1)} ${raus[1].toFixed(1)}`
-  }
-  const [ex, ey] = punkte[punkte.length - 1]
-  return `${aus} L${ex} ${ey}`
 }
 
 /** Legt unsichtbare SVG-Pfade an, über die sich Punkte entlang einer Bahn abfragen lassen. */
@@ -401,36 +384,125 @@ function Glieder({
 }
 
 /**
- * Der Lichtweg am Rand der Schrift, aus den Konturen der Wortmarke: nur die äußeren Umrisse (Innenflächen
- * liegen im Kasten eines anderen Umrisses), von links nach rechts sortiert; jeder beginnt an seinem linkesten
- * Punkt und läuft im Uhrzeigersinn, also oben nach rechts, rechts hinunter, unten zurück, links hinauf. Danach
- * springt das Licht zum nächsten Buchstaben.
+ * Die beiden Lichtbahnen der Wortmarke: die OBERE und die UNTERE SILHOUETTE des ganzen Schriftzugs, jeweils von
+ * links nach rechts (vierte Fassung, 10. September 2026: Ketten, die um jeden Buchstaben herumliefen, "blieben
+ * hängen, gingen ein Stück zurück und teilten sich auf", nämlich an Einschnitten wie der Öffnung des e und beim
+ * Rücklauf unter dem Buchstaben). Für jede Spalte x (Schritt 0,5) der oberste bzw. unterste Punkt aller Konturen;
+ * senkrechte Kanten (Oberlänge des d) ergeben steile Stücke; wo kein Buchstabe ist (Lücken), beginnt ein neues
+ * Teilstück (M), an dem das Licht kurz aus- und wieder einblendet. Douglas-Peucker mit 0,25 hält die Bahnen kompakt.
  */
-function wortmarkeUmriss(): string {
+function wortmarkeBahnen(): { oben: string; unten: string } {
   const konturen = WORTMARKE.pfade.map((d) => [...d.matchAll(/([-\d.]+) ([-\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])] as [number, number]))
-  const kasten = konturen.map((k) => ({
-    x0: Math.min(...k.map((p) => p[0])),
-    x1: Math.max(...k.map((p) => p[0])),
-    y0: Math.min(...k.map((p) => p[1])),
-    y1: Math.max(...k.map((p) => p[1]))
-  }))
-  const aussen = konturen
-    .map((k, i) => ({ k, box: kasten[i] }))
-    .filter(({ box }, i) => !kasten.some((b, j) => j !== i && b.x0 <= box.x0 && b.x1 >= box.x1 && b.y0 <= box.y0 && b.y1 >= box.y1))
-    .sort((a, b) => a.box.x0 - b.box.x0)
-  return aussen
-    .map(({ k }) => {
-      let s = 0
-      for (let i = 1; i < k.length; i++) if (k[i][0] < k[s][0] || (k[i][0] === k[s][0] && k[i][1] < k[s][1])) s = i
-      const r = k.slice(s).concat(k.slice(0, s))
-      // Einmal ganz herum und dann oben noch einmal bis zum rechtesten Punkt: so verlässt das Licht den
-      // Buchstaben rechts, und der Sprung zum nächsten ist nur die kleine Lücke dazwischen.
-      let e = 0
-      for (let i = 1; i < r.length; i++) if (r[i][0] > r[e][0]) e = i
-      const weg = r.concat(r.slice(0, e + 1))
-      return 'M' + weg.map(([x, y]) => `${x} ${y}`).join('L')
-    })
-    .join(' ')
+  const SCHRITT = 0.5
+  const spalten = Math.round(WORTMARKE.breite / SCHRITT)
+  const oben: Array<[number, number] | null> = []
+  const unten: Array<[number, number] | null> = []
+  for (let i = 0; i <= spalten; i++) {
+    const x = i * SCHRITT
+    let min = Infinity
+    let max = -Infinity
+    for (const k of konturen) {
+      for (let j = 0; j < k.length; j++) {
+        const p = k[j]
+        const q = k[(j + 1) % k.length]
+        if (p[0] === q[0]) continue
+        const [links, rechts] = p[0] < q[0] ? [p, q] : [q, p]
+        if (x < links[0] || x >= rechts[0]) continue
+        const y = links[1] + ((x - links[0]) * (rechts[1] - links[1])) / (rechts[0] - links[0])
+        if (y < min) min = y
+        if (y > max) max = y
+      }
+    }
+    oben.push(min === Infinity ? null : [x, min])
+    unten.push(max === -Infinity ? null : [x, max])
+  }
+  // Schmale KERBEN (die Schlitze unter dem m, die Öffnung unter dem a: 5 bis 13 Einheiten breit, über 50 tief)
+  // werden überbrückt: die Kette faltete sich darin zusammen, Kopf und Schwanz liefen nebeneinander, das sah
+  // "aufgeteilt" aus. Eine Kerbe ist ein Stück bis 16 Einheiten Breite, dessen beide Ränder auf gleicher Höhe
+  // liegen (±2) und das dazwischen mindestens 6 Einheiten und mindestens 2,5-mal so tief wie breit ins Innere
+  // geht; sie wird durch die Gerade zwischen ihren Rändern ersetzt. Die Zacken des w (39 breit, 67 tief) und alle
+  // Rundungen bleiben unverändert (ein morphologisches Schließen kappte die Zacken zur Hälfte und die Ränder).
+  const kerbenFuellen = (werte: Array<[number, number] | null>, istOben: boolean): void => {
+    const maxBreite = Math.round(16 / SCHRITT)
+    let i = 0
+    while (i < werte.length) {
+      const a = werte[i]
+      if (!a) {
+        i++
+        continue
+      }
+      let treffer = -1
+      for (let j = Math.min(werte.length - 1, i + maxBreite); j >= i + 2; j--) {
+        const b = werte[j]
+        if (!b || Math.abs(b[1] - a[1]) > 2) continue
+        let innen = 0
+        let luecke = false
+        for (let k = i + 1; k < j; k++) {
+          const w = werte[k]
+          if (!w) {
+            luecke = true
+            break
+          }
+          // oben: Kerbe geht nach unten (größeres y); unten: Kerbe geht nach oben (kleineres y)
+          const tiefe = istOben ? w[1] - Math.max(a[1], b[1]) : Math.min(a[1], b[1]) - w[1]
+          if (tiefe > innen) innen = tiefe
+        }
+        if (luecke) break
+        const breite = (j - i) * SCHRITT
+        if (innen >= 6 && innen >= 2.5 * breite) {
+          treffer = j
+          break
+        }
+      }
+      if (treffer > 0) {
+        const b = werte[treffer] as [number, number]
+        for (let k = i + 1; k < treffer; k++) {
+          const f = (k - i) / (treffer - i)
+          werte[k] = [werte[k]![0], a[1] * (1 - f) + b[1] * f]
+        }
+        i = treffer
+      } else i++
+    }
+  }
+  kerbenFuellen(oben, true)
+  kerbenFuellen(unten, false)
+  const bahn = (werte: Array<[number, number] | null>): string => {
+    const teile: string[] = []
+    let lauf: Array<[number, number]> = []
+    const abschliessen = (): void => {
+      if (lauf.length >= 2) teile.push('M' + vereinfachen(lauf, 0.25).map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(2)}`).join(' L'))
+      lauf = []
+    }
+    for (const w of werte) {
+      if (w) lauf.push(w)
+      else abschliessen()
+    }
+    abschliessen()
+    return teile.join(' ')
+  }
+  return { oben: bahn(oben), unten: bahn(unten) }
+}
+
+/** Douglas-Peucker: entfernt Punkte, die weniger als `toleranz` von der Verbindung ihrer Nachbarn abweichen. */
+function vereinfachen(punkte: Array<[number, number]>, toleranz: number): Array<[number, number]> {
+  if (punkte.length < 3) return punkte
+  const a = punkte[0]
+  const b = punkte[punkte.length - 1]
+  const dx = b[0] - a[0]
+  const dy = b[1] - a[1]
+  const l = Math.hypot(dx, dy) || 1
+  let max = 0
+  let idx = 0
+  for (let i = 1; i < punkte.length - 1; i++) {
+    const p = punkte[i]
+    const d = Math.abs((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / l
+    if (d > max) {
+      max = d
+      idx = i
+    }
+  }
+  if (max <= toleranz) return [a, b]
+  return vereinfachen(punkte.slice(0, idx + 1), toleranz).slice(0, -1).concat(vereinfachen(punkte.slice(idx), toleranz))
 }
 
 /** Die aufsteigenden Lichtpunkte; `hof` gibt jedem einen atmenden weichen Hof (Logo-Fassung). */
@@ -562,17 +634,99 @@ function HintergrundKlassisch(): ReactElement {
 
 /* ------------------------------------------------------------------------------------------------ */
 
-/** Ein Licht auf der Leinwand: welche Bahn, wie schnell, wie versetzt, wie lang die Kette. */
+/** Ein Teilstück einer Bahn (Pfadlängen von … bis), das ein Licht in einem Lauf komplett abfährt. */
+interface Teil {
+  anfang: number
+  ende: number
+}
+
+/** Ein Lauf im Ablaufplan eines Lichts: welches Teilstück, von welcher bis welcher Sekunde im Zyklus. */
+interface Lauf {
+  teil: number
+  start: number
+  ende: number
+}
+
+/**
+ * Ein Licht auf der Leinwand. Es fährt nach einem festen Ablaufplan (`plan`, Sekunden im Zyklus) seine
+ * Teilstücke ab, immer mit demselben Tempo (Einheiten je Sekunde, lange Linien dauern also länger), und wartet
+ * dazwischen unsichtbar. Vorher liefen alle Musterlinien als EIN langer Pfad in fester Zeit: kurze Querstriche
+ * blitzten dabei nur für Zehntelsekunden auf, lange Linien rasten (Rückmeldung vom 10. September 2026,
+ * "die Lichtstreifen müssen verbessert werden").
+ */
 interface Licht {
   tabelle: Abtastung
-  /** Längen, bei denen ein Teilstück der Bahn endet (aufsteigend); am Ende der Bahn immer die Gesamtlänge */
-  grenzen: number[]
-  dauer: number
+  teile: Teil[]
+  plan: Lauf[]
+  /** Länge des Ablaufplans in Sekunden; danach beginnt er von vorn */
+  zyklus: number
+  tempo: number
+  /** Verschiebung in Sekunden, damit gleiche Pläne nicht gleichzeitig laufen */
   versatz: number
   glieder: number
   abstand: number
+  /** Strecke in Einheiten, auf der das Licht am Anfang und Ende eines Teilstücks ein- bzw. ausblendet */
+  blende: number
   /** Bahnpunkt (Einheiten) → Bildschirm (Pixel), liest die aktuellen Maßstäbe */
   abbilden: (x: number, y: number) => [number, number]
+}
+
+/**
+ * Baut den Ablaufplan eines Lichts: die Teilstücke in der gegebenen Reihenfolge, je Lauf so lang, wie das Licht
+ * mit seinem Tempo braucht, bis auch der Schwanz der Kette das Ende erreicht hat, dazwischen die Pausen.
+ */
+function planBauen(teile: Teil[], reihenfolge: number[], tempo: number, kette: number, pause: (i: number) => number): { plan: Lauf[]; zyklus: number } {
+  const plan: Lauf[] = []
+  let t = 0
+  reihenfolge.forEach((teil, i) => {
+    const dauer = (teile[teil].ende - teile[teil].anfang + kette) / tempo
+    plan.push({ teil, start: t, ende: t + dauer })
+    t += dauer + pause(i)
+  })
+  return { plan, zyklus: t }
+}
+
+/** Teilstücke einer Bahn aus ihren Sprüngen (M im Pfad): jedes Teilstück reicht von einem Sprung zum nächsten. */
+function teileAusSpruengen(a: Abtastung): Teil[] {
+  const teile: Teil[] = []
+  let anfang = 0
+  for (const s of a.sprungLagen) {
+    if (s - anfang > 1) teile.push({ anfang, ende: s })
+    anfang = s
+  }
+  if (a.laenge - anfang > 1) teile.push({ anfang, ende: a.laenge })
+  return teile
+}
+
+/** Liegt zwischen den Längen l1 und l2 (beliebige Reihenfolge) ein Sprung der Bahn? */
+function sprungZwischen(a: Abtastung, l1: number, l2: number): boolean {
+  const von = Math.min(l1, l2)
+  const bis = Math.max(l1, l2)
+  for (const s of a.sprungLagen) {
+    if (s > bis) return false
+    if (s > von) return true
+  }
+  return false
+}
+
+/** Der letzte Sprung vor und der nächste Sprung nach der Länge `lage` (null, wenn es keinen gibt). */
+function sprungNachbarn(a: Abtastung, lage: number): [number | null, number | null] {
+  let vorher: number | null = null
+  for (const s of a.sprungLagen) {
+    if (s > lage) return [vorher, s]
+    vorher = s
+  }
+  return [vorher, null]
+}
+
+/** Mischt eine Liste mit festem Zufall (Fisher-Yates). */
+function mischen<T>(liste: T[], z: () => number): T[] {
+  const aus = liste.slice()
+  for (let i = aus.length - 1; i > 0; i--) {
+    const j = Math.floor(z() * (i + 1))
+    ;[aus[i], aus[j]] = [aus[j], aus[i]]
+  }
+  return aus
 }
 
 /**
@@ -580,8 +734,8 @@ interface Licht {
  * Dritte Fassung (10. September 2026): Die Web-Animations-Ketten (bis zu 328 Glieder mit je hunderten
  * Keyframes) lasteten den Compositor aus (TickAnimations rund 12 ms je Bild) und machten jeden Commit beim
  * Vergrößern teuer (PushProperties über 100 ms); dazu sahen die Glieder "gepunktet" aus. Die Leinwand
- * kostet je Bild unter einer Millisekunde Hauptthread (rund 400 kurze Striche), nichts bei Größenänderung
- * und zeichnet echte, durchgehende Linien exakt auf der Bahn. Ruht, wenn das Fenster verborgen ist.
+ * kostet je Bild unter einer Millisekunde Hauptthread, nichts bei Größenänderung und zeichnet echte,
+ * durchgehende Linien exakt auf der Bahn. Ruht, wenn das Fenster verborgen ist.
  */
 function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => void {
   const ctx = canvas.getContext('2d')
@@ -594,9 +748,11 @@ function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => voi
     [5, 0.38],
     [2.4, 1]
   ]
-  const teilstueck = (grenzen: number[], lage: number): number => {
-    for (let i = 0; i < grenzen.length; i++) if (lage <= grenzen[i]) return i
-    return grenzen.length
+  interface Punkt {
+    x: number
+    y: number
+    a: number
+    lage: number
   }
   // Nur die Flecken des letzten Bilds löschen statt der ganzen Leinwand: spart Füllrate auf schwachen Grafikchips.
   let flecken: Array<[number, number, number, number]> = []
@@ -608,36 +764,38 @@ function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => voi
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     for (const l of lichter) {
-      const laenge = l.tabelle.laenge
-      if (!laenge) continue
-      const strecke = laenge + l.glieder * l.abstand
-      const sekunden = zeit / 1000 + l.versatz
-      const fortschritt = (((sekunden % l.dauer) + l.dauer) % l.dauer) / l.dauer
-      const kopf = fortschritt * strecke
-      // Am Anfang und Ende jedes Teilstücks aus- bzw. einblenden; der Sprung dazwischen bleibt unsichtbar.
-      const kuerzestes = l.grenzen.reduce((min, ende, idx) => Math.min(min, ende - (idx ? l.grenzen[idx - 1] : 0)), laenge)
-      const blende = Math.min(kuerzestes * 0.2, 60)
+      if (!l.zyklus || !l.tabelle.laenge) continue
+      const tz = (((zeit / 1000 + l.versatz) % l.zyklus) + l.zyklus) % l.zyklus
+      const lauf = l.plan.find((r) => tz >= r.start && tz < r.ende)
+      if (!lauf) continue
+      const teil = l.teile[lauf.teil]
+      const kopf = teil.anfang + (tz - lauf.start) * l.tempo
+      // Sichtbarkeit: außerhalb des Teilstücks nichts, an seinen Enden ein- und ausblenden, an Sprüngen innerhalb
+      // (Lücken zwischen Buchstaben der Wortmarke) kurz aus- und wieder einblenden statt hart abzureißen.
       const sichtbar = (lage: number): number => {
-        if (lage < 0 || lage > laenge) return 0
-        let anfang = 0
-        for (const ende of l.grenzen) {
-          if (lage <= ende) return Math.max(0, Math.min(1, (lage - anfang) / blende, (ende - lage) / blende))
-          anfang = ende
-        }
-        return 0
+        if (lage < teil.anfang || lage > teil.ende) return 0
+        let a = Math.min(1, (lage - teil.anfang) / l.blende, (teil.ende - lage) / l.blende)
+        const [vorher, nachher] = sprungNachbarn(l.tabelle, lage)
+        const klein = l.blende / 2
+        if (vorher !== null) a = Math.min(a, (lage - vorher) / klein)
+        if (nachher !== null) a = Math.min(a, (nachher - lage) / klein)
+        return Math.max(0, a)
       }
-      const punkte: Array<{ x: number; y: number; a: number; teil: number; lage: number }> = []
+      const punkte: Punkt[] = []
       for (let g = 0; g <= l.glieder; g++) {
         const lage = kopf - g * l.abstand
-        const [ux, uy] = bei(l.tabelle, Math.min(laenge, Math.max(0, lage)))
+        const [ux, uy] = bei(l.tabelle, Math.min(teil.ende, Math.max(teil.anfang, lage)))
         const [x, y] = l.abbilden(ux, uy)
         // Komet: vorne hell, nach hinten verglühend.
         const a = sichtbar(lage) * (1 - (g / l.glieder) * 0.92)
-        punkte.push({ x, y, a, teil: teilstueck(l.grenzen, lage), lage })
+        punkte.push({ x, y, a, lage })
       }
       const sichtbare = punkte.filter((p) => p.a > 0.01)
       if (sichtbare.length === 0) continue
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      let minX = Infinity
+      let minY = Infinity
+      let maxX = -Infinity
+      let maxY = -Infinity
       for (const p of sichtbare) {
         if (p.x < minX) minX = p.x
         if (p.x > maxX) maxX = p.x
@@ -645,23 +803,23 @@ function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => voi
         if (p.y > maxY) maxY = p.y
       }
       flecken.push([minX - RAND, minY - RAND, maxX - minX + 2 * RAND, maxY - minY + 2 * RAND])
-      // Zusammenhängende Läufe (kein Sprung zwischen Teilstücken, innerhalb der Bahn) in EINEM Zug zeichnen:
+      // Zusammenhängende Läufe (innerhalb des Teilstücks, ohne Sprung dazwischen) in EINEM Zug zeichnen:
       // einzelne Stücke mit runden Enden überlagerten sich an den Nähten und wirkten "gepunktet".
       // Der Verlauf (vorne hell, hinten dunkel) kommt aus einem Farbverlauf entlang der Kette.
-      const laeufe: Array<typeof punkte> = []
-      let lauf: typeof punkte = []
+      const laeufe: Punkt[][] = []
+      let lauf2: Punkt[] = []
       for (let g = 0; g <= l.glieder; g++) {
         const p = punkte[g]
         const vorher = punkte[g - 1]
-        const bruch = g > 0 && (vorher.teil !== p.teil || p.lage < 0 || vorher.lage > laenge)
+        const bruch = g > 0 && (p.lage < teil.anfang || vorher.lage > teil.ende || sprungZwischen(l.tabelle, p.lage, vorher.lage))
         if (bruch || p.a <= 0.005) {
-          if (lauf.length > 1) laeufe.push(lauf)
-          lauf = p.a > 0.005 && !bruch ? [p] : p.a > 0.005 ? [p] : []
+          if (lauf2.length > 1) laeufe.push(lauf2)
+          lauf2 = p.a > 0.005 ? [p] : []
           continue
         }
-        lauf.push(p)
+        lauf2.push(p)
       }
-      if (lauf.length > 1) laeufe.push(lauf)
+      if (lauf2.length > 1) laeufe.push(lauf2)
       for (const r of laeufe) {
         const kopfP = r[0]
         const schwanz = r[r.length - 1]
@@ -717,52 +875,51 @@ function HintergrundLogo(): ReactElement {
   const hinten = useRef<HTMLDivElement>(null)
   const leinwand = useRef<HTMLCanvasElement>(null)
   const wortmarkeSvg = useRef<SVGSVGElement>(null)
-  const lichtweg = useRef<SVGPathElement>(null)
-  const musterLichtwege = useRef<Array<SVGPathElement | null>>([])
+  const bahnOben = useRef<SVGPathElement>(null)
+  const bahnUnten = useRef<SVGPathElement>(null)
   const musterWeg = useRef<SVGPathElement>(null)
 
   const alleD = useMemo(() => WORTMARKE.pfade.join(' '), [])
-  const umrissD = useMemo(() => wortmarkeUmriss(), [])
-  const musterRund = useMemo(() => MUSTER.map((d) => eckenAbrunden(d, ECKEN_RADIUS)), [])
+  const bahnen = useMemo(() => wortmarkeBahnen(), [])
 
   useEffect(() => {
     const h = hinten.current
     const canvas = leinwand.current
     const svg = wortmarkeSvg.current
-    const pfad = lichtweg.current
+    const oben = bahnOben.current
+    const unten = bahnUnten.current
     const weg = musterWeg.current
-    if (!h || !canvas || !svg || !pfad || !weg || bewegungReduziert()) return
-    // Wo im gemeinsamen Musterpfad die einzelnen Linien enden (für das Aus- und Einblenden am Linienende).
-    const grenzen: number[] = []
-    let summe = 0
-    for (const p of musterLichtwege.current) {
-      summe += p?.getTotalLength() ?? 0
-      grenzen.push(summe)
-    }
+    if (!h || !canvas || !svg || !oben || !unten || !weg || bewegungReduziert()) return
     const musterTabelle = abtasten(weg)
-    const wortTabelle = abtasten(pfad)
+    const musterTeile = teileAusSpruengen(musterTabelle)
+    const obenTabelle = abtasten(oben)
+    const untenTabelle = abtasten(unten)
     // Maßstäbe, die bei Größenänderung nur überschrieben werden; die Bahnen bleiben in Einheiten.
     const mass = { sx: 1, sy: 1, dx: 0, dy: 0, links: 0, oben: 0, m: 1 }
-    const lichter: Licht[] = [
-      ...Array.from({ length: MUSTER_LICHTER }, (_, i) => ({
-        tabelle: musterTabelle,
-        grenzen,
-        dauer: MUSTER_DAUER,
-        versatz: (MUSTER_DAUER * i) / MUSTER_LICHTER,
-        glieder: 22,
-        abstand: 3.5,
-        abbilden: (x: number, y: number): [number, number] => [mass.dx + x * mass.sx, mass.dy + y * mass.sy]
-      })),
-      ...Array.from({ length: WORTMARKE_LICHTER }, (_, i) => ({
-        tabelle: wortTabelle,
-        grenzen: [wortTabelle.laenge],
-        dauer: WORTMARKE_DAUER,
-        versatz: (WORTMARKE_DAUER * i) / WORTMARKE_LICHTER,
-        glieder: 44,
-        abstand: 3.5,
-        abbilden: (x: number, y: number): [number, number] => [mass.links + x * mass.m, mass.oben + y * mass.m]
-      }))
-    ]
+    const musterAbbilden = (x: number, y: number): [number, number] => [mass.dx + x * mass.sx, mass.dy + y * mass.sy]
+    const wortAbbilden = (x: number, y: number): [number, number] => [mass.links + x * mass.m, mass.oben + y * mass.m]
+    const lichter: Licht[] = []
+    // Muster: Die Linien werden fest gemischt und reihum auf die Lichter verteilt, jedes Licht fährt seine Linien
+    // nacheinander mit festen Zufallspausen ab. So leuchtet jede Linie regelmäßig, nie zwei Lichter auf derselben,
+    // und die Zyklen der Lichter sind verschieden lang, das Muster wirkt nicht getaktet.
+    const z = zufall(23)
+    const reihenfolge = mischen(musterTeile.map((_, i) => i), z)
+    for (let i = 0; i < MUSTER_LICHTER; i++) {
+      const eigene = reihenfolge.filter((_, k) => k % MUSTER_LICHTER === i)
+      const { plan, zyklus } = planBauen(musterTeile, eigene, MUSTER_TEMPO, MUSTER_GLIEDER * GLIED, () => 0.8 + z() * 1.6)
+      lichter.push({ tabelle: musterTabelle, teile: musterTeile, plan, zyklus, tempo: MUSTER_TEMPO, versatz: z() * zyklus, glieder: MUSTER_GLIEDER, abstand: GLIED, blende: 14, abbilden: musterAbbilden })
+    }
+    // Wortmarke: eine Bahn ist die obere, eine die untere Silhouette, beide von links nach rechts; die Lichter
+    // einer Bahn sind gleichmäßig über den Zyklus verteilt, die untere Bahn um eine halbe Lücke versetzt.
+    const wortLichter = (tabelle: Abtastung, anzahl: number, phase: number): void => {
+      const teile = [{ anfang: 0, ende: tabelle.laenge }]
+      const { plan, zyklus } = planBauen(teile, [0], WORTMARKE_TEMPO, WORTMARKE_GLIEDER * GLIED, () => 0)
+      for (let i = 0; i < anzahl; i++) {
+        lichter.push({ tabelle, teile, plan, zyklus, tempo: WORTMARKE_TEMPO, versatz: ((i + phase) * zyklus) / anzahl, glieder: WORTMARKE_GLIEDER, abstand: GLIED, blende: 12, abbilden: wortAbbilden })
+      }
+    }
+    wortLichter(obenTabelle, WORTMARKE_LICHTER_OBEN, 0)
+    wortLichter(untenTabelle, WORTMARKE_LICHTER_UNTEN, 0.5)
     const anpassen = (): void => {
       const dpr = window.devicePixelRatio || 1
       const breite = h.clientWidth
@@ -805,24 +962,12 @@ function HintergrundLogo(): ReactElement {
         <div className="hintergrund-raster absolute inset-0" style={{ backgroundImage: RASTER, opacity: 0.45 }} />
         <div ref={hinten} className="absolute inset-0">
           <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${MUSTER_BREITE} ${MUSTER_HOEHE}`} preserveAspectRatio="xMidYMid slice">
-            {/* Linie und Licht teilen sich denselben Pfad (leicht gerundete Ecken), damit das Licht exakt auf der Linie läuft. */}
-            {musterRund.map((d, i) => (
-              <path
-                key={i}
-                ref={(el) => {
-                  musterLichtwege.current[i] = el
-                }}
-                d={d}
-                fill="none"
-                stroke="white"
-                strokeOpacity="0.11"
-                strokeWidth="1"
-                strokeLinecap="round"
-                vectorEffect="non-scaling-stroke"
-              />
+            {/* Die Linien exakt wie im Logo (spitze Ecken); Linie und Licht nutzen dieselben Koordinaten. */}
+            {MUSTER.map((d, i) => (
+              <path key={i} d={d} fill="none" stroke="white" strokeOpacity="0.11" strokeWidth="1" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
             ))}
             {/* Alle Linien als ein Pfad: daran laufen die Lichter entlang (unsichtbar, nur zum Messen). */}
-            <path ref={musterWeg} d={musterRund.join(' ')} fill="none" stroke="none" />
+            <path ref={musterWeg} d={MUSTER.join(' ')} fill="none" stroke="none" />
           </svg>
           {/*
             Die Lichter (Muster und Rand der Wortmarke) liegen HINTEN, hinter Ring, Karten und Text, obwohl die
@@ -843,7 +988,9 @@ function HintergrundLogo(): ReactElement {
             style={{ width: 'min(78vw, 1150px)', height: 'auto', overflow: 'visible' }}
           >
             <path d={alleD} fill="white" fillOpacity="0.04" fillRule="evenodd" stroke="white" strokeOpacity="0.07" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-            <path ref={lichtweg} d={umrissD} fill="none" stroke="none" />
+            {/* Die beiden Lichtbahnen (obere und untere Silhouette), unsichtbar, nur zum Messen */}
+            <path ref={bahnOben} d={bahnen.oben} fill="none" stroke="none" />
+            <path ref={bahnUnten} d={bahnen.unten} fill="none" stroke="none" />
           </svg>
         </div>
       </div>
