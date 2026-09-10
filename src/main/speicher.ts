@@ -124,6 +124,13 @@ export class Speicher {
   }
 
   /** Nicht gelöschte Blöcke, die den Zeitraum berühren, nach Start sortiert. */
+  /** Ende des zuletzt endenden, nicht gelöschten Blocks (ISO), sonst null. Für das Füllen von Lücken nach App-Start. */
+  letztesEnde(): string | null {
+    let ende: string | null = null
+    for (const b of this.daten.bloecke) if (!b.geloeschtAm && (!ende || b.ende > ende)) ende = b.ende
+    return ende
+  }
+
   imZeitraum(von: Date, bis: Date): Block[] {
     const v = von.toISOString()
     const b = bis.toISOString()

@@ -21,6 +21,10 @@ const MAX_BLOCK_MS = 4 * 3_600_000 // Sicherung: nie länger als 4 Stunden
 //   nach MAX_INAKTIV_MS; danach wird bis zur nächsten Eingabe nichts mehr aufgezeichnet.
 const ABWESEND_MS = 90 * 60_000
 const MAX_INAKTIV_MS = 12 * 3_600_000
+// Lücken ohne Aufzeichnung (Zuklappen, Sperren, Ruhezustand, App aus) werden beim Weitermachen nachträglich
+// gefüllt: unter 90 Minuten rot "Nicht am Rechner", darüber blau "Abwesend" (Auftraggeber, 10. September 2026:
+// "sobald der Rechner zugeklappt wird, blau, bis er wieder läuft"). Höchstens so weit zurück.
+const LUECKE_MAX_MS = 7 * 24 * 3_600_000
 const EIGENES_KURZ_MS = 2 * 60_000 // so lange läuft beim Blick in die eigene App der vorherige Block weiter
 
 type Zustand = Exclude<ErfassungsZustand, 'nicht-angemeldet'>
@@ -44,6 +48,8 @@ export class Erfassung extends EventEmitter {
   /** Laufender Fokus: jeder neue Arbeitsblock bekommt diese Tätigkeit und ist produktiv. */
   private fokus: Fokus | null = null
   private letzterTakt = 0
+  /** Wann der Rechner in den Ruhezustand ging oder gesperrt wurde (ms), 0 = nicht unterbrochen. */
+  private unterbrochenUm = 0
   /** Vor diesen Zeitpunkt darf Untätigkeit nie rückwirkend gebucht werden (Start, Aufwachen, Fortsetzen). */
   private zeitgrenze = 0
   private timer: NodeJS.Timeout | null = null
@@ -69,8 +75,31 @@ export class Erfassung extends EventEmitter {
     this.zustand = 'laeuft'
     this.letzterTakt = 0
     this.zeitgrenze = Date.now()
+    // Die Zeit seit dem letzten bekannten Block (App war aus, Rechner aus) nachtragen.
+    const letztes = this.speicher.letztesEnde()
+    if (letztes) this.lueckeFuellen(Date.parse(letztes), Date.now())
     this.timer = setInterval(() => void this.takt(), TAKT_MS)
     void this.takt()
+  }
+
+  /**
+   * Füllt eine Lücke ohne Aufzeichnung: ab der Untätigkeits-Schwelle als "Nicht am Rechner" (unproduktiv),
+   * ab 90 Minuten als "Abwesend" (inaktiv, blau); an Mitternacht geteilt, höchstens LUECKE_MAX_MS zurück.
+   */
+  private lueckeFuellen(von: number, bis: number): void {
+    const dauer = bis - von
+    if (dauer < this.idleSchwelleSekunden * 1000) return
+    const blau = dauer >= ABWESEND_MS
+    let a = Math.max(von, bis - LUECKE_MAX_MS)
+    while (a < bis) {
+      const e = Math.min(bis, naechsterTagesanfang(new Date(a)).getTime())
+      const b = this.neuerBlock(new Date(a), 'inaktiv', null, null, null)
+      if (blau) b.bewertung = 'inaktiv'
+      b.ende = new Date(e).toISOString()
+      this.speicher.aktualisieren(b)
+      a = e
+    }
+    this.emit('bloecke')
   }
 
   stop(): void {
@@ -153,6 +182,7 @@ export class Erfassung extends EventEmitter {
     this.alleSchliessen(new Date())
     this.letzterTakt = 0
     this.zeitgrenze = Date.now()
+    this.unterbrochenUm = Date.now()
     this.melden()
   }
 
@@ -160,6 +190,11 @@ export class Erfassung extends EventEmitter {
   weiter(): void {
     this.letzterTakt = 0
     this.zeitgrenze = Date.now()
+    // Die Zeit im Ruhezustand oder am Sperrbildschirm nachtragen (rot unter 90 Minuten, sonst blau).
+    if (this.unterbrochenUm && this.zustand !== 'pausiert' && this.zustand !== 'gestoppt') {
+      this.lueckeFuellen(this.unterbrochenUm, Date.now())
+    }
+    this.unterbrochenUm = 0
   }
 
   status(): {
@@ -209,10 +244,13 @@ export class Erfassung extends EventEmitter {
   private async verarbeiten(jetzt: Date): Promise<void> {
     if (this.zustand === 'gestoppt') return
 
-    // Lücke ohne Ereignis (z. B. Zuklappen): alles zum letzten bekannten Zeitpunkt beenden.
+    // Lücke ohne Ereignis (z. B. Zuklappen ohne Ruhezustands-Meldung): alles zum letzten bekannten
+    // Zeitpunkt beenden und die Lücke nachtragen (rot unter 90 Minuten, sonst blau).
     if (this.letzterTakt && jetzt.getTime() - this.letzterTakt > LUECKE_MS) {
-      this.alleSchliessen(new Date(this.letzterTakt))
+      const ab = this.letzterTakt
+      this.alleSchliessen(new Date(ab))
       this.zeitgrenze = jetzt.getTime()
+      if (this.zustand !== 'pausiert') this.lueckeFuellen(ab, jetzt.getTime())
     }
     this.letzterTakt = jetzt.getTime()
 
