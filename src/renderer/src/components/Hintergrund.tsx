@@ -81,19 +81,30 @@ export const MUSTER: string[] = [
   'M800 610 L870 420 L960 610 L1020 470'
 ]
 
-/** Welche Musterlinien ein Licht bekommen, mit Tempo und Versatz (Sekunden). */
-const MUSTER_LICHTER: Array<{ muster: number; dauer: number; verzoegerung: number }> = [
-  { muster: 0, dauer: 8, verzoegerung: 0 },
-  { muster: 1, dauer: 6.5, verzoegerung: -3 },
-  { muster: 5, dauer: 9, verzoegerung: -6 },
-  { muster: 8, dauer: 7.5, verzoegerung: -2 },
-  { muster: 11, dauer: 8, verzoegerung: -5 }
+/**
+ * Jede Musterlinie bekommt ein Licht (auch die Querstriche), mit eigenem Tempo und Versatz (Sekunden).
+ * `pause` = Anteil der Zeit, den das Licht nach einem Lauf unsichtbar wartet; die Querstriche leuchten so
+ * nur ab und zu, und das Muster oben wird nicht zu voll.
+ */
+const MUSTER_LICHTER: Array<{ muster: number; dauer: number; verzoegerung: number; pause: number }> = [
+  { muster: 0, dauer: 12, verzoegerung: 0, pause: 0.3 },
+  { muster: 1, dauer: 10, verzoegerung: -3, pause: 0.35 },
+  { muster: 2, dauer: 14, verzoegerung: -7, pause: 0.65 },
+  { muster: 3, dauer: 11, verzoegerung: -1, pause: 0.35 },
+  { muster: 4, dauer: 13, verzoegerung: -4.5, pause: 0.65 },
+  { muster: 5, dauer: 13, verzoegerung: -6, pause: 0.3 },
+  { muster: 6, dauer: 11, verzoegerung: -2.5, pause: 0.35 },
+  { muster: 7, dauer: 14, verzoegerung: -8, pause: 0.65 },
+  { muster: 8, dauer: 12, verzoegerung: -2, pause: 0.3 },
+  { muster: 9, dauer: 10, verzoegerung: -5.5, pause: 0.35 },
+  { muster: 10, dauer: 15, verzoegerung: -3.5, pause: 0.65 },
+  { muster: 11, dauer: 12, verzoegerung: -5, pause: 0.3 }
 ]
 /** Lichter am Rand der Schrift: vier gleich schnelle, gleichmäßig versetzt. */
 const WORTMARKE_LICHTER = 4
 const WORTMARKE_DAUER = 40
-/** Rundung der Ecken auf den Musterlinien (Rasterlängen), damit das Licht sauber um die Zacken kommt. */
-const ECKEN_RADIUS = 40
+/** Rundung der Ecken der Musterlinien (Rasterlängen): Linie und Licht nutzen dieselbe runde Fassung, damit das Licht exakt auf der Linie bleibt. */
+const ECKEN_RADIUS = 16
 
 const RASTER_BREITE = 1000
 const RASTER_HOEHE = 600
@@ -109,6 +120,8 @@ interface Kette {
   richtung: 'alternate' | 'normal'
   /** Abstand der Glieder in Pfadeinheiten */
   abstand: number
+  /** Anteil der Laufzeit (0 bis 0,8), den das Licht nach dem Ausblenden unsichtbar wartet, bevor es wieder startet */
+  pause?: number
   /** Bildet einen Pfadpunkt auf Pixel im Behälter ab */
   abbilden: (x: number, y: number) => [number, number]
 }
@@ -165,6 +178,7 @@ function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | nu
     const schritte = Math.min(1200, Math.max(60, Math.round(laenge / 8)))
     // Am Anfang und Ende der Bahn blendet das Licht über dieses Stück ein bzw. aus (nur bei 'normal').
     const blende = Math.min(laenge * 0.06, 80)
+    const pause = k.richtung === 'normal' ? Math.min(0.8, Math.max(0, k.pause ?? 0)) : 0
     glieder[i]?.forEach((el, g) => {
       if (!el) return
       const grund = Number.parseFloat(el.style.opacity || '1')
@@ -185,9 +199,12 @@ function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | nu
         if (k.richtung === 'normal') {
           const sichtbar = Math.min(1, lage / blende, (laenge - lage) / blende)
           frame.opacity = (grund * Math.max(0, sichtbar)).toFixed(3)
+          // Mit Pause: der Lauf belegt nur den vorderen Teil der Zeit, danach wartet das Glied unsichtbar.
+          if (pause > 0) frame.offset = (s / schritte) * (1 - pause)
         }
         keyframes.push(frame)
       }
+      if (pause > 0) keyframes.push({ ...keyframes[keyframes.length - 1], opacity: '0', offset: 1 })
       animationen.push(
         el.animate(keyframes, {
           duration: k.dauer * 1000,
@@ -312,7 +329,12 @@ function wortmarkeUmriss(): string {
       let s = 0
       for (let i = 1; i < k.length; i++) if (k[i][0] < k[s][0] || (k[i][0] === k[s][0] && k[i][1] < k[s][1])) s = i
       const r = k.slice(s).concat(k.slice(0, s))
-      return 'M' + r.map(([x, y]) => `${x} ${y}`).join('L') + 'Z'
+      // Einmal ganz herum und dann oben noch einmal bis zum rechtesten Punkt: so verlässt das Licht den
+      // Buchstaben rechts, und der Sprung zum nächsten ist nur die kleine Lücke dazwischen.
+      let e = 0
+      for (let i = 1; i < r.length; i++) if (r[i][0] > r[e][0]) e = i
+      const weg = r.concat(r.slice(0, e + 1))
+      return 'M' + weg.map(([x, y]) => `${x} ${y}`).join('L')
     })
     .join(' ')
 }
@@ -479,6 +501,7 @@ function HintergrundLogo(): ReactElement {
           pfad: p,
           dauer: mk.dauer,
           verzoegerung: mk.verzoegerung,
+          pause: mk.pause,
           richtung: 'normal',
           abstand: 4,
           abbilden: (x, y) => [x * sx, y * sy]
@@ -521,19 +544,20 @@ function HintergrundLogo(): ReactElement {
         <div className="hintergrund-raster absolute inset-0" style={{ backgroundImage: RASTER, opacity: 0.45 }} />
         <div ref={hinten} className="absolute inset-0">
           <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${RASTER_BREITE} ${RASTER_HOEHE}`} preserveAspectRatio="none">
-            {MUSTER.map((d, i) => (
-              <path key={i} d={d} fill="none" stroke="white" strokeOpacity="0.11" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-            ))}
-            {/* Die runden Fassungen sind unsichtbar; nur das Licht fährt sie ab. */}
+            {/* Linie und Licht teilen sich denselben Pfad (leicht gerundete Ecken), damit das Licht exakt auf der Linie läuft. */}
             {musterRund.map((d, i) => (
               <path
-                key={`rund-${i}`}
+                key={i}
                 ref={(el) => {
                   musterLichtwege.current[i] = el
                 }}
                 d={d}
                 fill="none"
-                stroke="none"
+                stroke="white"
+                strokeOpacity="0.11"
+                strokeWidth="1"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
               />
             ))}
           </svg>
@@ -541,7 +565,7 @@ function HintergrundLogo(): ReactElement {
             <Perlen
               key={i}
               farbe={ORANGE}
-              anzahl={26}
+              anzahl={18}
               groesse={7}
               setzen={(g, el) => {
                 musterGlieder.current[i][g] = el
@@ -568,7 +592,7 @@ function HintergrundLogo(): ReactElement {
           <Perlen
             key={i}
             farbe={ORANGE}
-            anzahl={30}
+            anzahl={28}
             groesse={6}
             setzen={(g, el) => {
               wortGlieder.current[i][g] = el
