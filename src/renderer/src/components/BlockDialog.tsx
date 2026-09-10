@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactElement } from 'react'
 import { Portal } from './Portal'
 import { X } from 'lucide-react'
 import type { Bewertung, Block, RegelBewertung } from '@shared/typen'
-import { fensterInfo } from '@shared/fenster'
+import { anzeigeName, fensterInfo } from '@shared/fenster'
 import { musterVorschlag } from '@shared/regeln'
 import { berlinDatum, berlinTeile, berlinZuUtc } from '@shared/zeit'
 import { datumText, dauerText } from '../format'
@@ -193,13 +193,17 @@ export function BlockDialog({
     onGespeichert()
   }
 
+  // Im Browser steht die Seite vorne ("YouTube · Google Chrome"), sonst das Programm.
+  const name = anzeigeName(block.programm, block.fenstertitel)
   const titel = istGruppe
-    ? `${block.programm ?? 'Unbekanntes Programm'}${gruppeMuster ? ` · ${gruppeMuster}` : ''} · ${gruppeIds.length} Blöcke`
+    ? `${gruppeMuster ? `${gruppeMuster} · ` : ''}${block.programm ?? 'Unbekanntes Programm'} · ${gruppeIds.length} Blöcke`
     : istInaktiv
       ? 'Inaktive Zeit'
       : istManuell
         ? (block.taetigkeit ?? 'Von Hand eingetragen')
-        : (block.programm ?? 'Block')
+        : name.neben
+          ? `${name.haupt} · ${name.neben}`
+          : (block.programm ?? 'Block')
 
   return (
     <Portal>

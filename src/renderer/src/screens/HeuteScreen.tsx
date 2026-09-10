@@ -8,7 +8,7 @@ import {
   naechsterTagesanfang,
   wochenanfang
 } from '@shared/zeit'
-import { fensterInfo } from '@shared/fenster'
+import { anzeigeName, fensterInfo } from '@shared/fenster'
 import { AnimierteZahl } from '../components/AnimierteZahl'
 import { BlockDialog } from '../components/BlockDialog'
 import { BlockZeile } from '../components/BlockZeile'
@@ -137,6 +137,7 @@ export function HeuteScreen(): ReactElement {
   const anteile = useMemo(() => anteileBerechnen(bloecke, datum), [bloecke, datum])
   const produktiv = istHeute ? status.heuteProduktivSekunden : anteile.produktiv
   const laufend = istHeute ? status.laufenderBlock : null
+  const laufendName = anzeigeName(laufend?.programm, laufend?.fenstertitel)
   const liste = useMemo(() => [...bloecke].sort((a, b) => a.start.localeCompare(b.start)), [bloecke])
   const laufendId = laufend?.id ?? null
   const zeilen = useMemo(() => {
@@ -316,11 +317,14 @@ export function HeuteScreen(): ReactElement {
           {laufend ? (
             <div className="mt-2 flex items-center gap-4">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-lg">
-                  {laufend.programm ?? 'Unbekanntes Programm'}
-                  {laufend.taetigkeit && <span className="ml-2 text-sm text-mute">· {laufend.taetigkeit}</span>}
+                <p className="flex items-center gap-2 truncate text-lg">
+                  <span className="truncate">{laufendName.haupt}</span>
+                  {laufendName.neben && (
+                    <span className="shrink-0 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute">{laufendName.neben}</span>
+                  )}
+                  {laufend.taetigkeit && <span className="shrink-0 text-sm text-mute">· {laufend.taetigkeit}</span>}
                 </p>
-                {laufend.fenstertitel && <p className="truncate text-sm text-mute">{laufend.fenstertitel}</p>}
+                {laufendName.titel && <p className="truncate text-sm text-mute">{laufendName.titel}</p>}
               </div>
               <span
                 className={`inline-block h-2 w-2 rounded-full ${
@@ -338,7 +342,7 @@ export function HeuteScreen(): ReactElement {
           )}
           {laufend && status.eigenesFenster && (
             <p className="mt-2 text-xs text-dim">
-              Kurzer Blick in wessamedia Zeit: {laufend.programm ?? 'der vorherige Block'} läuft noch bis zu 2 Minuten weiter, danach endet der Block beim Wechsel in die App.
+              Kurzer Blick in wessamedia Zeit: {laufendName.haupt} läuft noch bis zu 2 Minuten weiter, danach endet der Block beim Wechsel in die App.
             </p>
           )}
         </Karte>

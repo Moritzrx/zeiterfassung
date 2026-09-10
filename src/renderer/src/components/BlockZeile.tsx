@@ -1,7 +1,7 @@
 import { memo, type ReactElement } from 'react'
 import { Check } from 'lucide-react'
 import type { Block } from '@shared/typen'
-import { fensterInfo } from '@shared/fenster'
+import { anzeigeName } from '@shared/fenster'
 import { dauerText, uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
 
@@ -43,14 +43,15 @@ function BlockZeileInnen({
   sekunden: sekundenVorgabe
 }: Props): ReactElement {
   const sekunden = sekundenVorgabe ?? (Date.parse(block.ende) - Date.parse(block.start)) / 1000
+  // Im Browser steht die Seite vorne ("YouTube"), der Browser als Chip daneben.
+  const fenster = anzeigeName(block.programm, block.fenstertitel)
   const hauptzeile =
     block.bewertung === 'inaktiv'
       ? 'Inaktiv'
       : block.quelle === 'manuell'
         ? (block.taetigkeit ?? 'Von Hand eingetragen')
-        : (block.programm ?? 'Unbekanntes Programm')
+        : fenster.haupt
   const klickbar = !!onClick && !laeuft
-  const fenster = fensterInfo(block.programm, block.fenstertitel)
 
   return (
     <div
@@ -75,8 +76,8 @@ function BlockZeileInnen({
         <div className="flex items-center gap-2">
           {block.taetigkeit && block.quelle === 'manuell' && <TaetigkeitSymbol name={block.taetigkeit} groesse={14} />}
           <span className="truncate text-sm">{hauptzeile}</span>
-          {fenster.seite && block.quelle === 'auto' && (
-            <span className="shrink-0 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute">{fenster.seite}</span>
+          {fenster.neben && block.quelle === 'auto' && (
+            <span className="shrink-0 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute">{fenster.neben}</span>
           )}
           {abschnitte > 1 && (
             <span className="shrink-0 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute" title="Mehrere Blöcke desselben Programms direkt hintereinander, zusammen angezeigt">

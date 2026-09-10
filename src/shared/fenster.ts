@@ -18,31 +18,108 @@ export interface Fensterinfo {
   titel: string
 }
 
-/** Bekannte Seiten, damit die Schreibweise überall gleich ist. */
+/** Bekannte Seiten, damit die Schreibweise überall gleich ist. Speziellere Muster stehen vor allgemeinen. */
 const SEITEN: Array<[RegExp, string]> = [
   [/youtube/i, 'YouTube'],
   [/google sheets|tabellen/i, 'Google Sheets'],
   [/google docs|google-docs/i, 'Google Docs'],
   [/google slides|präsentationen/i, 'Google Slides'],
   [/google drive/i, 'Google Drive'],
+  [/google forms|google formulare/i, 'Google Forms'],
+  [/google fotos|google photos/i, 'Google Fotos'],
+  [/google keep/i, 'Google Keep'],
+  [/google meet/i, 'Google Meet'],
+  [/google maps/i, 'Google Maps'],
+  [/google analytics/i, 'Google Analytics'],
+  [/search console/i, 'Search Console'],
+  [/tag manager/i, 'Google Tag Manager'],
+  [/looker studio/i, 'Looker Studio'],
+  [/google trends/i, 'Google Trends'],
+  [/unternehmensprofil|google business|business profile/i, 'Google Unternehmensprofil'],
   [/gmail/i, 'Gmail'],
   [/google kalender|google calendar/i, 'Google Kalender'],
   [/google ads/i, 'Google Ads'],
   [/google suche|google search|^google$/i, 'Google Suche'],
+  [/business suite|business-suite|meta business/i, 'Meta Business Suite'],
+  [/werbeanzeigenmanager|ads manager|meta ads/i, 'Meta Ads'],
   [/instagram/i, 'Instagram'],
   [/tiktok/i, 'TikTok'],
   [/facebook/i, 'Facebook'],
+  [/threads/i, 'Threads'],
   [/linkedin/i, 'LinkedIn'],
+  [/pinterest/i, 'Pinterest'],
+  [/snapchat/i, 'Snapchat'],
   [/whatsapp/i, 'WhatsApp'],
+  [/telegram/i, 'Telegram'],
   [/asana/i, 'Asana'],
   [/notion/i, 'Notion'],
+  [/trello/i, 'Trello'],
+  [/clickup/i, 'ClickUp'],
+  [/monday\.com/i, 'monday'],
+  [/jira/i, 'Jira'],
+  [/slack/i, 'Slack'],
+  [/microsoft teams|\bteams\b/i, 'Microsoft Teams'],
+  [/zoom/i, 'Zoom'],
+  [/calendly/i, 'Calendly'],
   [/canva/i, 'Canva'],
+  [/adobe express/i, 'Adobe Express'],
+  [/capcut/i, 'CapCut'],
+  [/figma/i, 'Figma'],
+  [/miro/i, 'Miro'],
+  [/frame\.io|frameio/i, 'Frame.io'],
+  [/vimeo/i, 'Vimeo'],
+  [/dropbox/i, 'Dropbox'],
+  [/wetransfer/i, 'WeTransfer'],
+  [/onedrive/i, 'OneDrive'],
+  [/sharepoint/i, 'SharePoint'],
+  [/outlook/i, 'Outlook'],
+  [/icloud/i, 'iCloud'],
   [/chatgpt|openai/i, 'ChatGPT'],
   [/claude/i, 'Claude'],
+  [/gemini/i, 'Gemini'],
+  [/perplexity/i, 'Perplexity'],
+  [/copilot/i, 'Copilot'],
+  [/higgsfield/i, 'Higgsfield'],
+  [/midjourney/i, 'Midjourney'],
+  [/runway/i, 'Runway'],
+  [/elevenlabs/i, 'ElevenLabs'],
+  [/\bsuno\b/i, 'Suno'],
+  [/deepl/i, 'DeepL'],
   [/supabase/i, 'Supabase'],
   [/github/i, 'GitHub'],
+  [/vercel/i, 'Vercel'],
+  [/stack overflow|stackoverflow/i, 'Stack Overflow'],
+  [/shopify/i, 'Shopify'],
+  [/wordpress/i, 'WordPress'],
+  [/elementor/i, 'Elementor'],
+  [/wix\b/i, 'Wix'],
+  [/squarespace/i, 'Squarespace'],
+  [/mailchimp/i, 'Mailchimp'],
+  [/brevo/i, 'Brevo'],
+  [/hubspot/i, 'HubSpot'],
+  [/lexoffice/i, 'lexoffice'],
+  [/sevdesk/i, 'sevDesk'],
+  [/datev/i, 'DATEV'],
+  [/paypal/i, 'PayPal'],
+  [/stripe/i, 'Stripe'],
+  [/fiverr/i, 'Fiverr'],
+  [/upwork/i, 'Upwork'],
+  [/freepik/i, 'Freepik'],
+  [/envato/i, 'Envato'],
+  [/shutterstock/i, 'Shutterstock'],
+  [/unsplash/i, 'Unsplash'],
+  [/pexels/i, 'Pexels'],
+  [/artlist/i, 'Artlist'],
+  [/epidemic sound/i, 'Epidemic Sound'],
+  [/kleinanzeigen/i, 'Kleinanzeigen'],
+  [/ebay/i, 'eBay'],
   [/^x$|twitter/i, 'X'],
+  [/reddit/i, 'Reddit'],
+  [/twitch/i, 'Twitch'],
+  [/discord/i, 'Discord'],
   [/netflix/i, 'Netflix'],
+  [/prime video/i, 'Prime Video'],
+  [/disney/i, 'Disney+'],
   [/amazon/i, 'Amazon'],
   [/spotify/i, 'Spotify']
 ]
@@ -79,6 +156,27 @@ export function fensterInfo(programm: string | null | undefined, fenstertitel: s
   const seite = seiteErkennen(letzter) ?? (letzter.length <= 30 ? letzter : null)
   const titel = seite ? teile.slice(0, -1).join(' · ') : teile.join(' · ')
   return { seite, titel }
+}
+
+export interface Anzeigename {
+  /** Was vorne steht: im Browser die Seite ("YouTube"), sonst das Programm */
+  haupt: string
+  /** Kleiner daneben: im Browser der Browser selbst ("Google Chrome"), sonst null */
+  neben: string | null
+  /** Der Tab- oder Fenstertitel darunter, ohne Browser- und Seitenanhang; leer, wenn nichts übrig bleibt */
+  titel: string
+}
+
+/**
+ * Wie ein Block in Listen und auf der Gerade-Karte heißt: Im Browser steht die Seite vorne
+ * ("YouTube · Google Chrome"), weil sie sagt, was gemacht wurde; der Browser ist nur das Werkzeug.
+ * Ohne erkannte Seite bleibt das Programm vorne (auf dem Mac immer, dort gibt es keine Fenstertitel).
+ */
+export function anzeigeName(programm: string | null | undefined, fenstertitel: string | null | undefined): Anzeigename {
+  const info = fensterInfo(programm, fenstertitel)
+  const p = programm ?? 'Unbekanntes Programm'
+  if (info.seite) return { haupt: info.seite, neben: p, titel: info.titel }
+  return { haupt: p, neben: null, titel: info.titel }
 }
 
 /** Kurzform für Listen: "YouTube" oder null. Für Gruppierung im Postfach. */

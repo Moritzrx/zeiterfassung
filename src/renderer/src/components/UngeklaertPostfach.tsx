@@ -87,8 +87,8 @@ export function UngeklaertPostfach({ anzahl, stand, onOeffnen, onGruppe, onDurch
                   {istOffen ? <ChevronUp size={16} className="shrink-0 text-mute" /> : <ChevronDown size={16} className="shrink-0 text-mute" />}
                   <span className="min-w-0">
                     <span className="flex items-center gap-2 text-sm">
-                      <span className="truncate">{g.programm}</span>
-                      {g.seite && <span className="shrink-0 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute">{g.seite}</span>}
+                      <span className="truncate">{g.seite ?? g.programm}</span>
+                      {g.seite && <span className="shrink-0 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute">{g.programm}</span>}
                     </span>
                     <span className="block truncate text-xs text-dim">
                       {g.bloecke.length} {g.bloecke.length === 1 ? 'Block' : 'Blöcke'} · {dauerText(g.sekunden)}
