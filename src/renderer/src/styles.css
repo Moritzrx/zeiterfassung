@@ -313,6 +313,21 @@ body::after {
   animation-iteration-count: infinite;
   will-change: transform, opacity;
 }
+/*
+ * Ein weicher Hof um jeden Punkt (Auftraggeber, 10. September 2026: "die orangenen Punkte ruhig etwas
+ * aufwendiger, minimal auffälliger"). Bewusst OHNE eigene Animation: jede Animation an einem Kind (oder
+ * Pseudo-Element) eines aufsteigenden Punkts lief in Chromium auf dem Hauptthread (gemessen 33–41 statt
+ * 4–6 Frames je Messfenster, egal ob Deckkraft oder Skalierung). Das Funkeln steckt deshalb in den
+ * Keyframes des Punkts selbst (punkt-aufsteigen). Farbe kommt als --farbe vom Punkt.
+ */
+.hintergrund-hof {
+  position: absolute;
+  inset: -120%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--farbe, rgba(254, 83, 3, 0.6)) 0%, transparent 62%);
+  opacity: 0.35;
+}
+/* Aufsteigen mit leichtem Funkeln: die Deckkraft schwankt unterwegs, alles in einer Compositor-Animation. */
 @keyframes punkt-aufsteigen {
   0% {
     transform: translate3d(0, 0, 0);
@@ -321,8 +336,38 @@ body::after {
   8% {
     opacity: 1;
   }
+  14% {
+    opacity: 0.5;
+  }
+  20% {
+    opacity: 1;
+  }
+  27% {
+    opacity: 0.55;
+  }
+  33% {
+    opacity: 1;
+  }
+  41% {
+    opacity: 0.5;
+  }
+  48% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.55;
+  }
+  62% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.5;
+  }
+  77% {
+    opacity: 0.95;
+  }
   85% {
-    opacity: 0.6;
+    opacity: 0.55;
   }
   100% {
     transform: translate3d(var(--drift, 0px), -105vh, 0);

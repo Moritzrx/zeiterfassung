@@ -100,9 +100,9 @@ const MUSTER_LICHTER: Array<{ muster: number; dauer: number; verzoegerung: numbe
   { muster: 10, dauer: 15, verzoegerung: -3.5, pause: 0.65 },
   { muster: 11, dauer: 12, verzoegerung: -5, pause: 0.3 }
 ]
-/** Lichter am Rand der Schrift: vier gleich schnelle, gleichmäßig versetzt. */
+/** Lichter am Rand der Schrift: vier gleich schnelle, gleichmäßig versetzt; 64 s je Durchlauf (40 s waren "zu schnell"). */
 const WORTMARKE_LICHTER = 4
-const WORTMARKE_DAUER = 40
+const WORTMARKE_DAUER = 64
 /** Rundung der Ecken der Musterlinien (Rasterlängen): Linie und Licht nutzen dieselbe runde Fassung, damit das Licht exakt auf der Linie bleibt. */
 const ECKEN_RADIUS = 16
 
@@ -174,9 +174,14 @@ function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | nu
   ketten.forEach((k, i) => {
     const laenge = k.pfad.getTotalLength()
     if (!laenge) return
+    const anzahl = glieder[i]?.length ?? 0
+    // Bei 'normal' läuft der Kopf um eine Kettenlänge über das Ende hinaus, damit auch das letzte Glied die
+    // Bahn verlässt; vorher blieb die Kette am Ende stehen und verblasste dort langsam ("bleibt stehen").
+    const kettenLaenge = k.richtung === 'normal' ? Math.max(0, anzahl - 1) * k.abstand : 0
+    const strecke = laenge + kettenLaenge
     // Ein Schritt je 8 Einheiten, damit auch enge Kurven sauber nachgefahren werden.
-    const schritte = Math.min(1200, Math.max(60, Math.round(laenge / 8)))
-    // Am Anfang und Ende der Bahn blendet das Licht über dieses Stück ein bzw. aus (nur bei 'normal').
+    const schritte = Math.min(1400, Math.max(60, Math.round(strecke / 8)))
+    // Am Anfang und Ende der Bahn blendet jedes Glied über dieses Stück ein bzw. aus (nur bei 'normal').
     const blende = Math.min(laenge * 0.06, 80)
     const pause = k.richtung === 'normal' ? Math.min(0.8, Math.max(0, k.pause ?? 0)) : 0
     glieder[i]?.forEach((el, g) => {
@@ -185,9 +190,9 @@ function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | nu
       const keyframes: Keyframe[] = []
       for (let s = 0; s <= schritte; s++) {
         // Das Glied g läuft dem Kopf um g Abstände hinterher: auf Hin-und-zurück-Bahnen staut es sich am
-        // Anfang, sonst kommt es von hinten herum, damit der Lauf nahtlos wiederholt.
-        const roh = (s / schritte) * laenge - g * k.abstand
-        const lage = k.richtung === 'alternate' ? Math.max(0, roh) : ((roh % laenge) + laenge) % laenge
+        // Anfang, sonst wartet es unsichtbar vor dem Anfang und verschwindet hinter dem Ende.
+        const roh = (s / schritte) * strecke - g * k.abstand
+        const lage = k.richtung === 'alternate' ? Math.max(0, roh) : Math.min(laenge, Math.max(0, roh))
         const p = k.pfad.getPointAtLength(lage)
         const q = k.pfad.getPointAtLength(Math.min(laenge, lage + 2))
         const r = k.pfad.getPointAtLength(Math.max(0, lage - 2))
@@ -197,7 +202,7 @@ function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | nu
         const winkel = Math.atan2(qy - ry, qx - rx)
         const frame: Keyframe = { transform: `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) rotate(${winkel.toFixed(4)}rad)` }
         if (k.richtung === 'normal') {
-          const sichtbar = Math.min(1, lage / blende, (laenge - lage) / blende)
+          const sichtbar = roh < 0 || roh > laenge ? 0 : Math.min(1, roh / blende, (laenge - roh) / blende)
           frame.opacity = (grund * Math.max(0, sichtbar)).toFixed(3)
           // Mit Pause: der Lauf belegt nur den vorderen Teil der Zeit, danach wartet das Glied unsichtbar.
           if (pause > 0) frame.offset = (s / schritte) * (1 - pause)
@@ -339,7 +344,8 @@ function wortmarkeUmriss(): string {
     .join(' ')
 }
 
-function Lichtpunkte({ partikel }: { partikel: Partikel[] }): ReactElement {
+/** Die aufsteigenden Lichtpunkte; `hof` gibt jedem einen atmenden weichen Hof (Logo-Fassung). */
+function Lichtpunkte({ partikel, hof = false }: { partikel: Partikel[]; hof?: boolean }): ReactElement {
   return (
     <>
       {partikel.map((p, i) => (
@@ -354,19 +360,22 @@ function Lichtpunkte({ partikel }: { partikel: Partikel[] }): ReactElement {
             boxShadow: `0 0 ${p.groesse * 3}px ${p.farbe}`,
             animationDuration: `${p.dauer}s`,
             animationDelay: `${p.verzoegerung}s`,
-            ['--drift' as string]: `${p.drift}px`
+            ['--drift' as string]: `${p.drift}px`,
+            ['--farbe' as string]: p.farbe
           }}
-        />
+        >
+          {hof && <span className="hintergrund-hof" style={{ animationDelay: `${p.verzoegerung}s` }} />}
+        </span>
       ))}
     </>
   )
 }
 
-function partikelErzeugen(anzahl: number, farben: string[], saat: number): Partikel[] {
+function partikelErzeugen(anzahl: number, farben: string[], saat: number, groesseFaktor = 1): Partikel[] {
   const z = zufall(saat)
   return Array.from({ length: anzahl }, (_, i) => ({
     links: z() * 100,
-    groesse: 2 + z() * 3,
+    groesse: (2 + z() * 3) * groesseFaktor,
     dauer: 22 + z() * 26,
     verzoegerung: -z() * 40,
     farbe: farben[i % farben.length],
@@ -470,7 +479,8 @@ function HintergrundKlassisch(): ReactElement {
 
 /** Die Logo-Fassung: Linienmuster hinten, Wortmarke als Wasserzeichen vorn, orangene Lichter auf beidem. */
 function HintergrundLogo(): ReactElement {
-  const partikel = useMemo(() => partikelErzeugen(30, FARBEN_LOGO, 11), [])
+  // Etwas mehr und etwas größere Punkte als klassisch ("minimal auffälliger, aber nicht viel"), sie funkeln per CSS.
+  const partikel = useMemo(() => partikelErzeugen(36, FARBEN_LOGO, 11, 1.25), [])
   const hinten = useRef<HTMLDivElement>(null)
   const wortmarkeSvg = useRef<SVGSVGElement>(null)
   const lichtweg = useRef<SVGPathElement>(null)
@@ -573,7 +583,7 @@ function HintergrundLogo(): ReactElement {
             />
           ))}
         </div>
-        <Lichtpunkte partikel={partikel} />
+        <Lichtpunkte partikel={partikel} hof />
       </div>
 
       {/* Ebene vorn: die Wortmarke als blasses Wasserzeichen über den Karten, mit Lichtern auf dem Weg durch die Schrift */}
