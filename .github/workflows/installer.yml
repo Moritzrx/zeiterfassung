@@ -97,6 +97,12 @@ jobs:
       - name: Signatur prüfen
         run: codesign --verify --deep --strict --verbose=2 "dist/mac-universal/wessamedia Zeit.app"
 
+      # Das App-Symbol muss in der App stecken (Dock, Launchpad, Programme-Ordner), sonst bricht der Bau ab.
+      - name: App-Symbol prüfen
+        run: |
+          ls -la "dist/mac-universal/wessamedia Zeit.app/Contents/Resources/" | grep -i icns
+          plutil -p "dist/mac-universal/wessamedia Zeit.app/Contents/Info.plist" | grep -i CFBundleIconFile
+
       - name: DMG packen
         run: npx electron-builder --mac dmg --universal --prepackaged "dist/mac-universal/wessamedia Zeit.app" --publish never
         env:
