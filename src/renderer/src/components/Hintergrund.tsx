@@ -62,35 +62,49 @@ export const BAHNEN: Array<{ d: string; farbe: string; dauer: number; verzoegeru
 ]
 
 /**
- * Das Linienmuster des Logos, frei nachempfunden (Raster 1000 × 600): oben und unten Gruppen dünner,
- * schräger Linien, die wie angeschnittene Buchstaben wirken. Jede Gruppe ist ein durchgehender Linienzug
- * (nur M und L), damit ein Licht ihn abfahren kann; die Mitte bleibt frei für die Wortmarke.
+ * Das Linienmuster des Logos, aus dem Logo-Bild abgenommen (10. September 2026, "bitte eins zu eins"): Scratchpad
+ * muster-nachzeichnen.cjs erkennt die blassen Linien per Hough-Transformation, legt kollineare Stücke zusammen und
+ * verbindet Segmente mit gemeinsamen Enden zu Linienzügen. Raster 1000 × 523 = das Bild 1440 × 753 GLEICHMÄSSIG
+ * skaliert (Scratchpad muster-raster.cjs), damit alle Winkel wie im Logo bleiben; im Fenster wird das Muster wie
+ * preserveAspectRatio "slice" gleichmäßig auf die Fensterhöhe oder -breite gezogen und mittig beschnitten, nie
+ * verzerrt. Nur M und L, damit ein Licht jeden Zug abfahren kann; die Mitte bleibt frei für die Wortmarke.
  */
 export const MUSTER: string[] = [
-  'M-20 30 L110 185 L170 -10 L235 190',
-  'M300 -10 L385 185 L455 -10',
-  'M345 120 L500 110',
-  'M560 190 L600 -10 L690 185',
-  'M620 130 L720 40',
-  'M790 -10 L860 185 L940 -10 L1020 150',
-  'M-20 560 L80 415 L170 610',
-  'M40 520 L150 505',
-  'M270 610 L350 425 L410 610 L470 430',
-  'M540 610 L600 410 L700 610',
-  'M560 520 L680 540',
-  'M800 610 L870 420 L960 610 L1020 470',
-  // Seit 10. September 2026 ("oben und unten ein paar Linien mehr, etwas mehr Bewegung"): je zwei dazu.
-  'M470 -10 L515 130 L560 20',
-  'M720 175 L765 15 L810 120',
-  'M190 610 L235 475 L285 610',
-  'M470 445 L515 610 L555 480'
+  'M840 535 L764 350',
+  'M691 176 L613 -13',
+  'M434 535 L357 350',
+  'M285 175 L207 -13',
+  'M638 -14 L582 175',
+  'M560 436 L530 350 L475 536 L635 350',
+  'M475 175 L414 -14',
+  'M246 176 L50 -10',
+  'M31 349 L147 420 L124 350',
+  'M65 175 L2 -13',
+  'M179 377 L207 350 L42 533',
+  'M887 -14 L944 171 L770 149',
+  'M433 147 L467 152 L349 147',
+  'M850 -12 L758 175',
+  'M429 -13 L339 175',
+  'M692 350 L628 535',
+  'M272 350 L207 535',
+  'M950 350 L894 536',
+  'M768 531 L655 446 L764 532',
+  'M324 494 L373 532 L243 430',
+  'M76 175 L153 83 L130 66',
+  'M749 -6 L637 41',
+  'M830 382 L875 350 L786 412',
+  'M441 350 L377 396',
+  'M623 153 L646 176 L597 126',
+  'M257 13 L302 -5 L224 26',
+  'M145 422 L133 378',
+  'M78 497 L53 517 L76 492',
+  'M144 80 L131 105 L110 134'
 ]
 
 /**
- * Alle zwölf Musterlinien (auch die Querstriche) liegen in EINEM Pfad, und drei Lichter laufen ihn versetzt
+ * Alle Musterlinien (auch die kurzen Querstriche) liegen in EINEM Pfad, und vier Lichter laufen ihn versetzt
  * ab: Am Ende jeder Linie blendet das Licht aus, am Anfang der nächsten wieder ein, der Sprung bleibt
- * unsichtbar. So leuchtet jede Linie ab und zu, mit 3 statt 12 Ketten (der Compositor tickt jede Animation
- * in jedem Bild, 328 Glieder ließen ihn beim Maximieren ins Stocken kommen).
+ * unsichtbar. So leuchtet jede Linie ab und zu, mit 4 Lichtern statt einem je Linie.
  */
 const MUSTER_LICHTER = 4
 const MUSTER_DAUER = 40
@@ -102,6 +116,9 @@ const ECKEN_RADIUS = 16
 
 const RASTER_BREITE = 1000
 const RASTER_HOEHE = 600
+/** Raster des Logo-Musters, seitenrichtig zum Logo-Bild (1440 × 753). */
+const MUSTER_BREITE = 1000
+const MUSTER_HOEHE = 523
 /** Abstand der Glieder entlang der Bahn in der klassischen Fassung (Rasterlängen). */
 const GLIED_ABSTAND = 13
 
@@ -136,10 +153,23 @@ function skalieren(el: HTMLElement, sx: number, sy: number, dx = 0, dy = 0): voi
   el.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${sx.toFixed(5)}, ${sy.toFixed(5)})`
 }
 
-/** Abgetastete Bahn: ein Punkt alle 2 Einheiten, dazwischen linear; spart hunderttausende getPointAtLength-Aufrufe. */
+/**
+ * Abgetastete Bahn: ein Punkt alle 2 Einheiten, dazwischen linear; spart hunderttausende getPointAtLength-Aufrufe.
+ * Wo im Pfad ein Teilstück endet und das nächste beginnt (M im Pfad), liegt ein SPRUNG mitten in einem
+ * Abtastintervall. Für jedes solche Intervall steht in `spruenge`, bei welcher Länge genau der Sprung liegt (per
+ * Bisektion auf 0,0001 Einheiten gesucht) und wo der Pfad unmittelbar davor und danach ist; `bei` interpoliert
+ * dann bis exakt an das Ende der einen Linie bzw. ab dem Anfang der nächsten. Vorher lag der Zwischenwert
+ * irgendwo auf der Geraden zwischen zwei Linien, quer über den Bildschirm, und das Licht zeichnete dorthin einen
+ * Strich: das "orangene Aufblitzen" (Rückmeldung vom 10. September 2026). Ein erster Versuch, einfach auf den
+ * näheren Abtastpunkt zu springen, reichte nicht: Lag der Sprung in der ersten Hälfte des Intervalls, landete ein
+ * Punkt, der noch zur alten Linie gehört, schon auf der neuen, und der Strich blieb (per Pixelprüfung im
+ * Scratchpad `licht-pruefen.js` nachgewiesen: 5 500 leuchtende Pixel abseits aller Linien in einem Bild).
+ */
 interface Abtastung {
   laenge: number
   punkte: Float64Array
+  /** Schlüssel = Abtastintervall i (zwischen Punkt i und i+1), in dem ein Teilstück endet */
+  spruenge: Map<number, { bei: number; vor: [number, number]; nach: [number, number] }>
 }
 const ABTAST = 2
 const abtastungen = new WeakMap<SVGPathElement, Abtastung>()
@@ -151,21 +181,55 @@ function abtasten(pfad: SVGPathElement): Abtastung {
   const laenge = pfad.getTotalLength()
   const n = Math.max(2, Math.ceil(laenge / ABTAST) + 1)
   const punkte = new Float64Array(n * 2)
+  const spruenge: Abtastung['spruenge'] = new Map()
   for (let i = 0; i < n; i++) {
     const p = pfad.getPointAtLength(Math.min(laenge, i * ABTAST))
     punkte[i * 2] = p.x
     punkte[i * 2 + 1] = p.y
+    // Zwei Abtastpunkte liegen 2 Einheiten auseinander; ein deutlich größerer Abstand ist ein Sprung.
+    if (i > 0 && Math.hypot(p.x - punkte[(i - 1) * 2], p.y - punkte[(i - 1) * 2 + 1]) > ABTAST * 2.5) {
+      // Die genaue Sprungstelle suchen: Solange ein Punkt höchstens so weit vom letzten sicheren Punkt entfernt
+      // liegt wie sein Längenabstand, gehört er noch zur alten Linie (auf einer Linie ist der Luftweg nie länger
+      // als der Weg entlang der Linie).
+      let lo = (i - 1) * ABTAST
+      let hi = Math.min(laenge, i * ABTAST)
+      let vor: [number, number] = [punkte[(i - 1) * 2], punkte[(i - 1) * 2 + 1]]
+      for (let k = 0; k < 16; k++) {
+        const mitte = (lo + hi) / 2
+        const q = pfad.getPointAtLength(mitte)
+        if (Math.hypot(q.x - vor[0], q.y - vor[1]) <= mitte - lo + 0.01) {
+          lo = mitte
+          vor = [q.x, q.y]
+        } else hi = mitte
+      }
+      const nach = pfad.getPointAtLength(hi)
+      spruenge.set(i - 1, { bei: hi, vor, nach: [nach.x, nach.y] })
+    }
   }
-  const a = { laenge, punkte }
+  const a = { laenge, punkte, spruenge }
   abtastungen.set(pfad, a)
   return a
 }
 
 function bei(a: Abtastung, lage: number): [number, number] {
   const n = a.punkte.length / 2
-  const t = Math.min(Math.max(lage, 0), a.laenge) / ABTAST
+  const l = Math.min(Math.max(lage, 0), a.laenge)
+  const t = l / ABTAST
   const i = Math.min(Math.floor(t), n - 2)
   const f = Math.min(1, t - i)
+  const s = a.spruenge.get(i)
+  if (s) {
+    const l0 = i * ABTAST
+    const l1 = Math.min(a.laenge, (i + 1) * ABTAST)
+    if (l < s.bei) {
+      // Noch auf der alten Linie: vom Abtastpunkt bis genau an ihr Ende.
+      const g = (l - l0) / Math.max(1e-6, s.bei - l0)
+      return [a.punkte[i * 2] * (1 - g) + s.vor[0] * g, a.punkte[i * 2 + 1] * (1 - g) + s.vor[1] * g]
+    }
+    // Schon auf der neuen Linie: von ihrem Anfang bis zum nächsten Abtastpunkt.
+    const g = (l - s.bei) / Math.max(1e-6, l1 - s.bei)
+    return [s.nach[0] * (1 - g) + a.punkte[(i + 1) * 2] * g, s.nach[1] * (1 - g) + a.punkte[(i + 1) * 2 + 1] * g]
+  }
   return [a.punkte[i * 2] * (1 - f) + a.punkte[(i + 1) * 2] * f, a.punkte[i * 2 + 1] * (1 - f) + a.punkte[(i + 1) * 2 + 1] * f]
 }
 
@@ -678,7 +742,7 @@ function HintergrundLogo(): ReactElement {
     const musterTabelle = abtasten(weg)
     const wortTabelle = abtasten(pfad)
     // Maßstäbe, die bei Größenänderung nur überschrieben werden; die Bahnen bleiben in Einheiten.
-    const mass = { sx: 1, sy: 1, links: 0, oben: 0, m: 1 }
+    const mass = { sx: 1, sy: 1, dx: 0, dy: 0, links: 0, oben: 0, m: 1 }
     const lichter: Licht[] = [
       ...Array.from({ length: MUSTER_LICHTER }, (_, i) => ({
         tabelle: musterTabelle,
@@ -687,7 +751,7 @@ function HintergrundLogo(): ReactElement {
         versatz: (MUSTER_DAUER * i) / MUSTER_LICHTER,
         glieder: 22,
         abstand: 3.5,
-        abbilden: (x: number, y: number): [number, number] => [x * mass.sx, y * mass.sy]
+        abbilden: (x: number, y: number): [number, number] => [mass.dx + x * mass.sx, mass.dy + y * mass.sy]
       })),
       ...Array.from({ length: WORTMARKE_LICHTER }, (_, i) => ({
         tabelle: wortTabelle,
@@ -709,8 +773,13 @@ function HintergrundLogo(): ReactElement {
       canvas.style.width = `${breite}px`
       canvas.style.height = `${hoehe}px`
       canvas.getContext('2d')?.setTransform(dpr, 0, 0, dpr, 0, 0)
-      mass.sx = breite / RASTER_BREITE
-      mass.sy = hoehe / RASTER_HOEHE
+      // Das Muster behält das Seitenverhältnis des Logos (wie preserveAspectRatio "slice" im SVG): gleichmäßig so
+      // skaliert, dass es das Fenster füllt, mittig, Überstand wird abgeschnitten. So bleiben die Winkel wie im Logo.
+      const s = Math.max(breite / MUSTER_BREITE, hoehe / MUSTER_HOEHE)
+      mass.sx = s
+      mass.sy = s
+      mass.dx = (breite - MUSTER_BREITE * s) / 2
+      mass.dy = (hoehe - MUSTER_HOEHE * s) / 2
       // Die Wortmarke behält ihr Seitenverhältnis: Lage und Maßstab aus dem vorn gezeichneten SVG.
       const kasten = svg.getBoundingClientRect()
       if (kasten.width) {
@@ -735,7 +804,7 @@ function HintergrundLogo(): ReactElement {
       <div aria-hidden="true" className="hintergrund pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: -1 }}>
         <div className="hintergrund-raster absolute inset-0" style={{ backgroundImage: RASTER, opacity: 0.45 }} />
         <div ref={hinten} className="absolute inset-0">
-          <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${RASTER_BREITE} ${RASTER_HOEHE}`} preserveAspectRatio="none">
+          <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${MUSTER_BREITE} ${MUSTER_HOEHE}`} preserveAspectRatio="xMidYMid slice">
             {/* Linie und Licht teilen sich denselben Pfad (leicht gerundete Ecken), damit das Licht exakt auf der Linie läuft. */}
             {musterRund.map((d, i) => (
               <path
