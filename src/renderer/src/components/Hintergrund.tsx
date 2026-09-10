@@ -122,8 +122,54 @@ interface Kette {
   abstand: number
   /** Anteil der Laufzeit (0 bis 0,8), den das Licht nach dem Ausblenden unsichtbar wartet, bevor es wieder startet */
   pause?: number
-  /** Bildet einen Pfadpunkt auf Pixel im Behälter ab */
-  abbilden: (x: number, y: number) => [number, number]
+}
+
+/*
+ * Die Keyframes werden in den EINHEITEN des Pfads gerechnet, nie in Pixeln: Der Behälter der Glieder wird per
+ * CSS-Transform auf die Fenstergröße skaliert (`skalieren`). Beim Vergrößern des Fensters ändert sich nur diese
+ * eine Transform, keine Animation wird neu gebaut. Vorher wurden bei jeder Größenänderung alle Keyframes neu
+ * berechnet (hunderttausende getPointAtLength-Aufrufe), das ließ die App beim Maximieren kurz hängen
+ * (Rückmeldung vom 10. September 2026). Die Glieder selbst gleichen die Skalierung über CSS-Variablen aus,
+ * damit sie auf jedem Bildschirm gleich groß und rund bleiben.
+ */
+function skalieren(el: HTMLElement, sx: number, sy: number, dx = 0, dy = 0): void {
+  el.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${sx.toFixed(5)}, ${sy.toFixed(5)})`
+  el.style.setProperty('--perlen-x', (1 / sx).toFixed(5))
+  el.style.setProperty('--perlen-y', (1 / sy).toFixed(5))
+  el.style.setProperty('--perlen-m', (2 / (sx + sy)).toFixed(5))
+}
+
+/** Abgetastete Bahn: ein Punkt alle 2 Einheiten, dazwischen linear; spart hunderttausende getPointAtLength-Aufrufe. */
+interface Abtastung {
+  laenge: number
+  punkte: Float64Array
+}
+const ABTAST = 2
+const abtastungen = new WeakMap<SVGPathElement, Abtastung>()
+const keyframeSpeicher = new WeakMap<SVGPathElement, Map<string, Keyframe[]>>()
+
+function abtasten(pfad: SVGPathElement): Abtastung {
+  const bekannt = abtastungen.get(pfad)
+  if (bekannt) return bekannt
+  const laenge = pfad.getTotalLength()
+  const n = Math.max(2, Math.ceil(laenge / ABTAST) + 1)
+  const punkte = new Float64Array(n * 2)
+  for (let i = 0; i < n; i++) {
+    const p = pfad.getPointAtLength(Math.min(laenge, i * ABTAST))
+    punkte[i * 2] = p.x
+    punkte[i * 2 + 1] = p.y
+  }
+  const a = { laenge, punkte }
+  abtastungen.set(pfad, a)
+  return a
+}
+
+function bei(a: Abtastung, lage: number): [number, number] {
+  const n = a.punkte.length / 2
+  const t = Math.min(Math.max(lage, 0), a.laenge) / ABTAST
+  const i = Math.min(Math.floor(t), n - 2)
+  const f = Math.min(1, t - i)
+  return [a.punkte[i * 2] * (1 - f) + a.punkte[(i + 1) * 2] * f, a.punkte[i * 2 + 1] * (1 - f) + a.punkte[(i + 1) * 2 + 1] * f]
 }
 
 /**
@@ -172,44 +218,51 @@ function pfadeAnlegen(ds: string[]): { pfade: SVGPathElement[]; entfernen: () =>
 function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | null>>): () => void {
   const animationen: Animation[] = []
   ketten.forEach((k, i) => {
-    const laenge = k.pfad.getTotalLength()
+    const a = abtasten(k.pfad)
+    const laenge = a.laenge
     if (!laenge) return
     const anzahl = glieder[i]?.length ?? 0
     // Bei 'normal' läuft der Kopf um eine Kettenlänge über das Ende hinaus, damit auch das letzte Glied die
     // Bahn verlässt; vorher blieb die Kette am Ende stehen und verblasste dort langsam ("bleibt stehen").
     const kettenLaenge = k.richtung === 'normal' ? Math.max(0, anzahl - 1) * k.abstand : 0
     const strecke = laenge + kettenLaenge
-    // Ein Schritt je 8 Einheiten, damit auch enge Kurven sauber nachgefahren werden.
-    const schritte = Math.min(1400, Math.max(60, Math.round(strecke / 8)))
+    // Ein Schritt je 10 Einheiten, damit auch enge Kurven sauber nachgefahren werden.
+    const schritte = Math.min(1000, Math.max(60, Math.round(strecke / 10)))
     // Am Anfang und Ende der Bahn blendet jedes Glied über dieses Stück ein bzw. aus (nur bei 'normal').
     const blende = Math.min(laenge * 0.06, 80)
     const pause = k.richtung === 'normal' ? Math.min(0.8, Math.max(0, k.pause ?? 0)) : 0
+    // Gleiche Bahn, gleiche Kette: die Keyframes werden je Glied nur einmal gebaut (die vier Lichter der
+    // Wortmarke unterscheiden sich nur im Versatz).
+    const speicher = keyframeSpeicher.get(k.pfad) ?? new Map<string, Keyframe[]>()
+    keyframeSpeicher.set(k.pfad, speicher)
     glieder[i]?.forEach((el, g) => {
       if (!el) return
       const grund = Number.parseFloat(el.style.opacity || '1')
-      const keyframes: Keyframe[] = []
-      for (let s = 0; s <= schritte; s++) {
-        // Das Glied g läuft dem Kopf um g Abstände hinterher: auf Hin-und-zurück-Bahnen staut es sich am
-        // Anfang, sonst wartet es unsichtbar vor dem Anfang und verschwindet hinter dem Ende.
-        const roh = (s / schritte) * strecke - g * k.abstand
-        const lage = k.richtung === 'alternate' ? Math.max(0, roh) : Math.min(laenge, Math.max(0, roh))
-        const p = k.pfad.getPointAtLength(lage)
-        const q = k.pfad.getPointAtLength(Math.min(laenge, lage + 2))
-        const r = k.pfad.getPointAtLength(Math.max(0, lage - 2))
-        const [px, py] = k.abbilden(p.x, p.y)
-        const [qx, qy] = k.abbilden(q.x, q.y)
-        const [rx, ry] = k.abbilden(r.x, r.y)
-        const winkel = Math.atan2(qy - ry, qx - rx)
-        const frame: Keyframe = { transform: `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) rotate(${winkel.toFixed(4)}rad)` }
-        if (k.richtung === 'normal') {
-          const sichtbar = roh < 0 || roh > laenge ? 0 : Math.min(1, roh / blende, (laenge - roh) / blende)
-          frame.opacity = (grund * Math.max(0, sichtbar)).toFixed(3)
-          // Mit Pause: der Lauf belegt nur den vorderen Teil der Zeit, danach wartet das Glied unsichtbar.
-          if (pause > 0) frame.offset = (s / schritte) * (1 - pause)
+      const schluessel = `${g}|${anzahl}|${k.abstand}|${k.richtung}|${pause}|${grund}`
+      let keyframes = speicher.get(schluessel)
+      if (!keyframes) {
+        keyframes = []
+        for (let s = 0; s <= schritte; s++) {
+          // Das Glied g läuft dem Kopf um g Abstände hinterher: auf Hin-und-zurück-Bahnen staut es sich am
+          // Anfang, sonst wartet es unsichtbar vor dem Anfang und verschwindet hinter dem Ende.
+          const roh = (s / schritte) * strecke - g * k.abstand
+          const lage = k.richtung === 'alternate' ? Math.max(0, roh) : Math.min(laenge, Math.max(0, roh))
+          const [px, py] = bei(a, lage)
+          const [qx, qy] = bei(a, lage + 2)
+          const [rx, ry] = bei(a, lage - 2)
+          const winkel = Math.atan2(qy - ry, qx - rx)
+          const frame: Keyframe = { transform: `translate3d(${px.toFixed(2)}px, ${py.toFixed(2)}px, 0) rotate(${winkel.toFixed(4)}rad)` }
+          if (k.richtung === 'normal') {
+            const sichtbar = roh < 0 || roh > laenge ? 0 : Math.min(1, roh / blende, (laenge - roh) / blende)
+            frame.opacity = (grund * Math.max(0, sichtbar)).toFixed(3)
+            // Mit Pause: der Lauf belegt nur den vorderen Teil der Zeit, danach wartet das Glied unsichtbar.
+            if (pause > 0) frame.offset = (s / schritte) * (1 - pause)
+          }
+          keyframes.push(frame)
         }
-        keyframes.push(frame)
+        if (pause > 0) keyframes.push({ ...keyframes[keyframes.length - 1], opacity: '0', offset: 1 })
+        speicher.set(schluessel, keyframes)
       }
-      if (pause > 0) keyframes.push({ ...keyframes[keyframes.length - 1], opacity: '0', offset: 1 })
       animationen.push(
         el.animate(keyframes, {
           duration: k.dauer * 1000,
@@ -253,14 +306,14 @@ function Glieder({
             ref={(el) => setzen(g, el)}
             className="hintergrund-funke absolute"
             style={{
-              left: -laenge / 2,
-              top: -dicke / 2,
-              width: laenge,
-              height: dicke,
+              left: `calc(${-laenge / 2}px * var(--perlen-x, 1))`,
+              top: `calc(${-dicke / 2}px * var(--perlen-y, 1))`,
+              width: `calc(${laenge}px * var(--perlen-x, 1))`,
+              height: `calc(${dicke}px * var(--perlen-y, 1))`,
               borderRadius: dicke,
               background: farbe,
               opacity: 0.3 + kraft * 0.7,
-              boxShadow: `0 0 ${(4 + kraft * 7).toFixed(0)}px ${farbe}, 0 0 ${(10 + kraft * 14).toFixed(0)}px ${farbe}99`
+              boxShadow: `0 0 calc(${(4 + kraft * 7).toFixed(0)}px * var(--perlen-m, 1)) ${farbe}, 0 0 calc(${(10 + kraft * 14).toFixed(0)}px * var(--perlen-m, 1)) ${farbe}99`
             }}
           />
         )
@@ -296,13 +349,15 @@ function Perlen({
             ref={(el) => setzen(g, el)}
             className="hintergrund-funke absolute rounded-full"
             style={{
-              left: -groesse / 2,
-              top: -groesse / 2,
-              width: groesse,
-              height: groesse,
+              // Der Behälter ist auf die Fenstergröße skaliert; die Variablen gleichen das aus, damit die
+              // Perle auf jedem Bildschirm gleich groß und rund bleibt.
+              left: `calc(${-groesse / 2}px * var(--perlen-x, 1))`,
+              top: `calc(${-groesse / 2}px * var(--perlen-y, 1))`,
+              width: `calc(${groesse}px * var(--perlen-x, 1))`,
+              height: `calc(${groesse}px * var(--perlen-y, 1))`,
               background: farbe,
               opacity: 0.15 + kraft * 0.85,
-              boxShadow: `0 0 ${(3 + kraft * 6).toFixed(0)}px ${farbe}, 0 0 ${(8 + kraft * 14).toFixed(0)}px ${farbe}99`
+              boxShadow: `0 0 calc(${(3 + kraft * 6).toFixed(0)}px * var(--perlen-m, 1)) ${farbe}, 0 0 calc(${(8 + kraft * 14).toFixed(0)}px * var(--perlen-m, 1)) ${farbe}99`
             }}
           />
         )
@@ -393,34 +448,28 @@ function bewegungReduziert(): boolean {
 function HintergrundKlassisch(): ReactElement {
   const partikel = useMemo(() => partikelErzeugen(44, FARBEN, 7), [])
   const behaelter = useRef<HTMLDivElement>(null)
+  const skalierer = useRef<HTMLDivElement>(null)
   const glieder = useRef<Array<Array<HTMLDivElement | null>>>(BAHNEN.map(() => []))
 
-  // Funken entlang der Bahnen bewegen; bei Größenänderung des Fensters neu berechnen.
+  // Funken entlang der Bahnen bewegen (einmal gerechnet); bei Größenänderung nur den Maßstab anpassen.
   useEffect(() => {
     const el = behaelter.current
-    if (!el || bewegungReduziert()) return
+    const sk = skalierer.current
+    if (!el || !sk || bewegungReduziert()) return
     const { pfade, entfernen } = pfadeAnlegen(BAHNEN.map((b) => b.d))
-    const starten = (): (() => void) => {
-      const breite = el.clientWidth
-      const hoehe = el.clientHeight
-      if (!breite || !hoehe) return () => {}
-      const sx = breite / RASTER_BREITE
-      const sy = hoehe / RASTER_HOEHE
-      const ketten: Kette[] = BAHNEN.map((b, i) => ({
-        pfad: pfade[i],
-        dauer: b.dauer,
-        verzoegerung: b.verzoegerung,
-        richtung: 'alternate',
-        abstand: GLIED_ABSTAND,
-        abbilden: (x, y) => [x * sx, y * sy]
-      }))
-      return kettenStarten(ketten, glieder.current)
+    const ketten: Kette[] = BAHNEN.map((b, i) => ({
+      pfad: pfade[i],
+      dauer: b.dauer,
+      verzoegerung: b.verzoegerung,
+      richtung: 'alternate',
+      abstand: GLIED_ABSTAND
+    }))
+    const aufraeumen = kettenStarten(ketten, glieder.current)
+    const anpassen = (): void => {
+      if (el.clientWidth && el.clientHeight) skalieren(sk, el.clientWidth / RASTER_BREITE, el.clientHeight / RASTER_HOEHE)
     }
-    let aufraeumen = starten()
-    const beobachter = new ResizeObserver(() => {
-      aufraeumen()
-      aufraeumen = starten()
-    })
+    anpassen()
+    const beobachter = new ResizeObserver(anpassen)
     beobachter.observe(el)
     return () => {
       beobachter.disconnect()
@@ -459,15 +508,17 @@ function HintergrundKlassisch(): ReactElement {
             <path key={i} d={b.d} fill="none" stroke={b.farbe} strokeOpacity="0.07" strokeWidth="1" vectorEffect="non-scaling-stroke" />
           ))}
         </svg>
-        {BAHNEN.map((b, i) => (
-          <Glieder
-            key={i}
-            farbe={b.farbe}
-            setzen={(g, el) => {
-              glieder.current[i][g] = el
-            }}
-          />
-        ))}
+        <div ref={skalierer} className="absolute top-0 left-0" style={{ width: RASTER_BREITE, height: RASTER_HOEHE, transformOrigin: '0 0' }}>
+          {BAHNEN.map((b, i) => (
+            <Glieder
+              key={i}
+              farbe={b.farbe}
+              setzen={(g, el) => {
+                glieder.current[i][g] = el
+              }}
+            />
+          ))}
+        </div>
       </div>
 
       <Lichtpunkte partikel={partikel} />
@@ -482,6 +533,8 @@ function HintergrundLogo(): ReactElement {
   // Etwas mehr und etwas größere Punkte als klassisch ("minimal auffälliger, aber nicht viel"), sie funkeln per CSS.
   const partikel = useMemo(() => partikelErzeugen(36, FARBEN_LOGO, 11, 1.25), [])
   const hinten = useRef<HTMLDivElement>(null)
+  const musterSkalierer = useRef<HTMLDivElement>(null)
+  const wortSkalierer = useRef<HTMLDivElement>(null)
   const wortmarkeSvg = useRef<SVGSVGElement>(null)
   const lichtweg = useRef<SVGPathElement>(null)
   const musterLichtwege = useRef<Array<SVGPathElement | null>>([])
@@ -492,58 +545,46 @@ function HintergrundLogo(): ReactElement {
   const umrissD = useMemo(() => wortmarkeUmriss(), [])
   const musterRund = useMemo(() => MUSTER.map((d) => eckenAbrunden(d, ECKEN_RADIUS)), [])
 
+  // Lichter einmal berechnen (in Pfad-Einheiten); bei Größenänderung nur die Maßstäbe der Behälter anpassen.
   useEffect(() => {
     const h = hinten.current
+    const skM = musterSkalierer.current
+    const skW = wortSkalierer.current
     const svg = wortmarkeSvg.current
     const pfad = lichtweg.current
-    if (!h || !svg || !pfad || bewegungReduziert()) return
-    const starten = (): (() => void) => {
-      const breite = h.clientWidth
-      const hoehe = h.clientHeight
-      if (!breite || !hoehe) return () => {}
-      const sx = breite / RASTER_BREITE
-      const sy = hoehe / RASTER_HOEHE
-      const musterKetten: Kette[] = []
-      MUSTER_LICHTER.forEach((mk) => {
-        const p = musterLichtwege.current[mk.muster]
-        if (!p) return
-        musterKetten.push({
-          pfad: p,
-          dauer: mk.dauer,
-          verzoegerung: mk.verzoegerung,
-          pause: mk.pause,
-          richtung: 'normal',
-          abstand: 4,
-          abbilden: (x, y) => [x * sx, y * sy]
-        })
-      })
-      // Die Wortmarke behält ihr Seitenverhältnis: Lage und Maßstab aus dem gezeichneten SVG.
+    if (!h || !skM || !skW || !svg || !pfad || bewegungReduziert()) return
+    const musterKetten: Kette[] = []
+    MUSTER_LICHTER.forEach((mk) => {
+      const p = musterLichtwege.current[mk.muster]
+      if (!p) return
+      musterKetten.push({ pfad: p, dauer: mk.dauer, verzoegerung: mk.verzoegerung, pause: mk.pause, richtung: 'normal', abstand: 4 })
+    })
+    const wortKetten: Kette[] = Array.from({ length: WORTMARKE_LICHTER }, (_, i) => ({
+      pfad,
+      dauer: WORTMARKE_DAUER,
+      verzoegerung: (-WORTMARKE_DAUER * i) / WORTMARKE_LICHTER,
+      richtung: 'normal',
+      abstand: 4
+    }))
+    const stopp1 = kettenStarten(musterKetten, musterGlieder.current)
+    const stopp2 = kettenStarten(wortKetten, wortGlieder.current)
+    const anpassen = (): void => {
+      if (h.clientWidth && h.clientHeight) skalieren(skM, h.clientWidth / RASTER_BREITE, h.clientHeight / RASTER_HOEHE)
+      // Die Wortmarke behält ihr Seitenverhältnis: Lage und Maßstab aus dem gezeichneten SVG (vorn), die
+      // Lichter dazu liegen hinten; beide Ebenen füllen das Fenster, darum passen die Koordinaten.
       const kasten = svg.getBoundingClientRect()
-      const massstab = kasten.width / WORTMARKE.breite
-      const wortKetten: Kette[] = Array.from({ length: WORTMARKE_LICHTER }, (_, i) => ({
-        pfad,
-        dauer: WORTMARKE_DAUER,
-        verzoegerung: (-WORTMARKE_DAUER * i) / WORTMARKE_LICHTER,
-        richtung: 'normal',
-        abstand: 3.5 / Math.max(0.2, massstab),
-        abbilden: (x, y) => [kasten.left + x * massstab, kasten.top + y * massstab]
-      }))
-      const stopp1 = kettenStarten(musterKetten, musterGlieder.current)
-      const stopp2 = kettenStarten(wortKetten, wortGlieder.current)
-      return () => {
-        stopp1()
-        stopp2()
+      if (kasten.width) {
+        const massstab = kasten.width / WORTMARKE.breite
+        skalieren(skW, massstab, massstab, kasten.left, kasten.top)
       }
     }
-    let aufraeumen = starten()
-    const beobachter = new ResizeObserver(() => {
-      aufraeumen()
-      aufraeumen = starten()
-    })
+    anpassen()
+    const beobachter = new ResizeObserver(anpassen)
     beobachter.observe(h)
     return () => {
       beobachter.disconnect()
-      aufraeumen()
+      stopp1()
+      stopp2()
     }
   }, [])
 
@@ -571,34 +612,38 @@ function HintergrundLogo(): ReactElement {
               />
             ))}
           </svg>
-          {MUSTER_LICHTER.map((_, i) => (
-            <Perlen
-              key={i}
-              farbe={ORANGE}
-              anzahl={18}
-              groesse={7}
-              setzen={(g, el) => {
-                musterGlieder.current[i][g] = el
-              }}
-            />
-          ))}
+          <div ref={musterSkalierer} className="absolute top-0 left-0" style={{ width: RASTER_BREITE, height: RASTER_HOEHE, transformOrigin: '0 0' }}>
+            {MUSTER_LICHTER.map((_, i) => (
+              <Perlen
+                key={i}
+                farbe={ORANGE}
+                anzahl={18}
+                groesse={7}
+                setzen={(g, el) => {
+                  musterGlieder.current[i][g] = el
+                }}
+              />
+            ))}
+          </div>
         </div>
         {/*
           Die Lichter am Rand der Schrift liegen HINTEN (hinter Ring, Karten und Text), obwohl die Wortmarke selbst
           vorn liegt: Rückmeldung vom 10. September 2026, die Lichter zogen über den grünen Ring und über Text.
-          Beide Ebenen füllen das Fenster, darum passen die Bildschirmkoordinaten aus der Wortmarke auch hier.
+          Der Behälter wird auf Lage und Maßstab der vorn gezeichneten Wortmarke gesetzt.
         */}
-        {Array.from({ length: WORTMARKE_LICHTER }, (_, i) => (
-          <Perlen
-            key={`wort-${i}`}
-            farbe={ORANGE}
-            anzahl={28}
-            groesse={6}
-            setzen={(g, el) => {
-              wortGlieder.current[i][g] = el
-            }}
-          />
-        ))}
+        <div ref={wortSkalierer} className="absolute top-0 left-0" style={{ width: WORTMARKE.breite, height: WORTMARKE.hoehe, transformOrigin: '0 0' }}>
+          {Array.from({ length: WORTMARKE_LICHTER }, (_, i) => (
+            <Perlen
+              key={`wort-${i}`}
+              farbe={ORANGE}
+              anzahl={28}
+              groesse={6}
+              setzen={(g, el) => {
+                wortGlieder.current[i][g] = el
+              }}
+            />
+          ))}
+        </div>
         <Lichtpunkte partikel={partikel} hof />
       </div>
 
