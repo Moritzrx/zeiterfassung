@@ -1,22 +1,25 @@
 import { useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { useHintergrundArt } from '../hintergrundart'
-import { WORTMARKE } from './wortmarke'
+import { WORTMARKE, WORTMARKE_LICHTWEG } from './wortmarke'
 
 /*
  * Der lebendige Hintergrund hinter allen Screens, in zwei Fassungen (Einstellungen → Darstellung):
  *
  * LOGO (Standard seit 10. September 2026, Wunsch des Auftraggebers): das Linienmuster des wessamedia-Logos
  * (dünne schräge Linien oben und unten) und die Wortmarke "wessamedia" als Wasserzeichen in der Mitte.
- * Orangene Lichtketten fahren die Umrisse der Buchstaben und einige Linien entlang. Die Wortmarke liegt als
- * eigene Ebene ÜBER den Karten (z-index 10, ohne Mausereignisse, unter Dialogen und Leisten), sonst wäre sie
- * hinter dem Milchglas der Karten unsichtbar; sie ist so blass, dass der Vordergrund lesbar bleibt.
+ * Orangene Lichter laufen von links nach rechts DURCH die Schrift (auf einer Mittellinie je Buchstabe, in
+ * Schreibrichtung, `WORTMARKE_LICHTWEG`) und über die Musterlinien (mit abgerundeten Ecken, damit sie sauber
+ * um die Zacken kommen). Sie laufen immer in eine Richtung, blenden am Ende aus und am Anfang wieder ein,
+ * kein Hin und Her (Rückmeldung vom 10. September 2026). Die Wortmarke liegt als eigene Ebene ÜBER den Karten
+ * (z-index 10, ohne Mausereignisse, unter Dialogen und Leisten), sonst wäre sie hinter dem Milchglas der
+ * Karten unsichtbar; sie ist so blass, dass der Vordergrund lesbar bleibt.
  *
  * KLASSISCH: ein feines Instrumenten-Raster, zwei langsam drehende Zifferblatt-Ringe, geschwungene
  * Lichtbahnen in Grün, Orange und Lila und aufsteigende Lichtpunkte.
  *
  * Alles läuft ausschließlich auf dem Compositor (nur transform und opacity), damit der Hauptthread frei bleibt
- * und die Screen-Wechsel flüssig laufen. Die Lichtketten sind deshalb keine SVG-Strichanimation (die zwingt
- * jedes Bild zum Neuzeichnen), sondern je Bahn eine Kette aus kurzen leuchtenden Gliedern, die per
+ * und die Screen-Wechsel flüssig laufen. Die Lichter sind deshalb keine SVG-Strichanimation (die zwingt jedes
+ * Bild zum Neuzeichnen), sondern je Bahn eine Kette aus kurzen leuchtenden Gliedern, die per
  * Web-Animations-API entlang der abgetasteten Bahn bewegt werden; jedes Glied läuft dem vorigen um ein Stück
  * Bahnlänge hinterher, dadurch biegt sich die Kette mit der Kurve. Die weichen Lichtflecken und das Korn
  * liegen in styles.css (body::before/after).
@@ -59,8 +62,8 @@ export const BAHNEN: Array<{ d: string; farbe: string; dauer: number; verzoegeru
 
 /**
  * Das Linienmuster des Logos, frei nachempfunden (Raster 1000 × 600): oben und unten Gruppen dünner,
- * schräger Linien, die wie angeschnittene Buchstaben wirken. Jede Gruppe ist ein durchgehender Linienzug,
- * damit eine Lichtkette ihn abfahren kann; die Mitte bleibt frei für die Wortmarke.
+ * schräger Linien, die wie angeschnittene Buchstaben wirken. Jede Gruppe ist ein durchgehender Linienzug
+ * (nur M und L), damit ein Licht ihn abfahren kann; die Mitte bleibt frei für die Wortmarke.
  */
 export const MUSTER: string[] = [
   'M-20 30 L110 185 L170 -10 L235 190',
@@ -77,36 +80,60 @@ export const MUSTER: string[] = [
   'M800 610 L870 420 L960 610 L1020 470'
 ]
 
-/** Welche Musterlinien eine Lichtkette bekommen, mit Tempo und Versatz. */
-const MUSTER_KETTEN: Array<{ muster: number; dauer: number; verzoegerung: number }> = [
-  { muster: 0, dauer: 9, verzoegerung: 0 },
-  { muster: 1, dauer: 7, verzoegerung: -3 },
-  { muster: 5, dauer: 10, verzoegerung: -6 },
-  { muster: 8, dauer: 8, verzoegerung: -2 },
-  { muster: 11, dauer: 9, verzoegerung: -5 }
+/** Welche Musterlinien ein Licht bekommen, mit Tempo und Versatz (Sekunden). */
+const MUSTER_LICHTER: Array<{ muster: number; dauer: number; verzoegerung: number }> = [
+  { muster: 0, dauer: 11, verzoegerung: 0 },
+  { muster: 1, dauer: 9, verzoegerung: -3 },
+  { muster: 5, dauer: 12, verzoegerung: -6 },
+  { muster: 8, dauer: 10, verzoegerung: -2 },
+  { muster: 11, dauer: 11, verzoegerung: -5 }
 ]
-/** Lichtketten auf dem Umriss der Wortmarke: drei gleich schnelle, gleichmäßig versetzt. */
-const WORTMARKE_KETTEN = 3
-const WORTMARKE_DAUER = 42
+/** Lichter auf dem Weg durch die Schrift: drei gleich schnelle, gleichmäßig versetzt. */
+const WORTMARKE_LICHTER = 3
+const WORTMARKE_DAUER = 26
+/** Rundung der Ecken auf den Musterlinien (Rasterlängen), damit das Licht sauber um die Zacken kommt. */
+const ECKEN_RADIUS = 22
 
 const RASTER_BREITE = 1000
 const RASTER_HOEHE = 600
-/** Glieder je Kette und ihr Abstand entlang der Bahn (Rasterlängen). */
-const GLIEDER = 10
+/** Abstand der Glieder entlang der Bahn in der klassischen Fassung (Rasterlängen). */
 const GLIED_ABSTAND = 13
 
 /** Eine Lichtkette: ein Pfad, seine Farbe, das Tempo und die Abbildung von Pfad- auf Bildschirmkoordinaten. */
 interface Kette {
   pfad: SVGPathElement
-  farbe: string
   dauer: number
   verzoegerung: number
-  /** alternate = hin und zurück (offene Bahn), normal = immer weiter (geschlossener Umriss) */
+  /** alternate = hin und zurück (klassische Bahnen), normal = immer in eine Richtung, mit Ein- und Ausblenden */
   richtung: 'alternate' | 'normal'
   /** Abstand der Glieder in Pfadeinheiten */
   abstand: number
   /** Bildet einen Pfadpunkt auf Pixel im Behälter ab */
   abbilden: (x: number, y: number) => [number, number]
+}
+
+/**
+ * Rundet die Ecken eines Linienzugs (nur M/L) ab: vor jeder Ecke wird r Einheiten früher abgebogen und mit
+ * einer quadratischen Kurve um den Eckpunkt herumgeführt. Die sichtbaren Linien bleiben spitz, nur das Licht
+ * fährt die runde Fassung.
+ */
+function eckenAbrunden(d: string, r: number): string {
+  const punkte = [...d.matchAll(/([-\d.]+)\s+([-\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])] as const)
+  if (punkte.length < 3) return d
+  let aus = `M${punkte[0][0]} ${punkte[0][1]}`
+  for (let i = 1; i < punkte.length - 1; i++) {
+    const [ax, ay] = punkte[i - 1]
+    const [bx, by] = punkte[i]
+    const [cx, cy] = punkte[i + 1]
+    const l1 = Math.hypot(bx - ax, by - ay)
+    const l2 = Math.hypot(cx - bx, cy - by)
+    const rr = Math.min(r, l1 / 2, l2 / 2)
+    const ein = [bx - ((bx - ax) / l1) * rr, by - ((by - ay) / l1) * rr]
+    const raus = [bx + ((cx - bx) / l2) * rr, by + ((cy - by) / l2) * rr]
+    aus += ` L${ein[0].toFixed(1)} ${ein[1].toFixed(1)} Q${bx} ${by} ${raus[0].toFixed(1)} ${raus[1].toFixed(1)}`
+  }
+  const [ex, ey] = punkte[punkte.length - 1]
+  return `${aus} L${ex} ${ey}`
 }
 
 /** Legt unsichtbare SVG-Pfade an, über die sich Punkte entlang einer Bahn abfragen lassen. */
@@ -133,14 +160,17 @@ function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | nu
   ketten.forEach((k, i) => {
     const laenge = k.pfad.getTotalLength()
     if (!laenge) return
-    // Offene Bahnen: 80 Schritte reichen; geschlossene Umrisse (Buchstaben) brauchen einen Schritt je 8 Einheiten.
-    const schritte = k.richtung === 'alternate' ? 80 : Math.min(1200, Math.max(60, Math.round(laenge / 8)))
+    // Ein Schritt je 8 Einheiten, damit auch enge Kurven sauber nachgefahren werden.
+    const schritte = Math.min(1200, Math.max(60, Math.round(laenge / 8)))
+    // Am Anfang und Ende der Bahn blendet das Licht über dieses Stück ein bzw. aus (nur bei 'normal').
+    const blende = Math.min(laenge * 0.06, 80)
     glieder[i]?.forEach((el, g) => {
       if (!el) return
+      const grund = Number.parseFloat(el.style.opacity || '1')
       const keyframes: Keyframe[] = []
       for (let s = 0; s <= schritte; s++) {
-        // Das Glied g läuft dem Kopf um g Abstände hinterher: auf offenen Bahnen staut es sich am Anfang,
-        // auf geschlossenen Umrissen kommt es von hinten herum, damit der Lauf nahtlos wiederholt.
+        // Das Glied g läuft dem Kopf um g Abstände hinterher: auf Hin-und-zurück-Bahnen staut es sich am
+        // Anfang, sonst kommt es von hinten herum, damit der Lauf nahtlos wiederholt.
         const roh = (s / schritte) * laenge - g * k.abstand
         const lage = k.richtung === 'alternate' ? Math.max(0, roh) : ((roh % laenge) + laenge) % laenge
         const p = k.pfad.getPointAtLength(lage)
@@ -150,7 +180,12 @@ function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | nu
         const [qx, qy] = k.abbilden(q.x, q.y)
         const [rx, ry] = k.abbilden(r.x, r.y)
         const winkel = Math.atan2(qy - ry, qx - rx)
-        keyframes.push({ transform: `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) rotate(${winkel.toFixed(4)}rad)` })
+        const frame: Keyframe = { transform: `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) rotate(${winkel.toFixed(4)}rad)` }
+        if (k.richtung === 'normal') {
+          const sichtbar = Math.min(1, lage / blende, (laenge - lage) / blende)
+          frame.opacity = (grund * Math.max(0, sichtbar)).toFixed(3)
+        }
+        keyframes.push(frame)
       }
       animationen.push(
         el.animate(keyframes, {
@@ -171,21 +206,23 @@ function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | nu
 function Glieder({
   farbe,
   setzen,
+  anzahl = 10,
   staerke = 1,
   laenge = 30,
   dicke = 5
 }: {
   farbe: string
   setzen: (g: number, el: HTMLDivElement | null) => void
+  anzahl?: number
   staerke?: number
-  /** Maße eines Glieds in Pixeln (auf den engen Buchstaben-Umrissen kleiner) */
+  /** Maße eines Glieds in Pixeln */
   laenge?: number
   dicke?: number
 }): ReactElement {
   return (
     <>
-      {Array.from({ length: GLIEDER }, (_, g) => {
-        const mitte = (GLIEDER - 1) / 2
+      {Array.from({ length: anzahl }, (_, g) => {
+        const mitte = (anzahl - 1) / 2
         const kraft = (1 - (Math.abs(g - mitte) / mitte) * 0.85) * staerke
         return (
           <div
@@ -269,7 +306,6 @@ function HintergrundKlassisch(): ReactElement {
       const sy = hoehe / RASTER_HOEHE
       const ketten: Kette[] = BAHNEN.map((b, i) => ({
         pfad: pfade[i],
-        farbe: b.farbe,
         dauer: b.dauer,
         verzoegerung: b.verzoegerung,
         richtung: 'alternate',
@@ -339,27 +375,24 @@ function HintergrundKlassisch(): ReactElement {
 
 /* ------------------------------------------------------------------------------------------------ */
 
-/** Die Logo-Fassung: Linienmuster hinten, Wortmarke als Wasserzeichen vorn, orangene Lichtketten auf beidem. */
+/** Die Logo-Fassung: Linienmuster hinten, Wortmarke als Wasserzeichen vorn, orangene Lichter auf beidem. */
 function HintergrundLogo(): ReactElement {
   const partikel = useMemo(() => partikelErzeugen(30, FARBEN_LOGO, 11), [])
   const hinten = useRef<HTMLDivElement>(null)
-  const vorn = useRef<HTMLDivElement>(null)
   const wortmarkeSvg = useRef<SVGSVGElement>(null)
-  const umriss = useRef<SVGPathElement>(null)
-  const musterPfade = useRef<Array<SVGPathElement | null>>([])
-  const musterGlieder = useRef<Array<Array<HTMLDivElement | null>>>(MUSTER_KETTEN.map(() => []))
-  const wortGlieder = useRef<Array<Array<HTMLDivElement | null>>>(Array.from({ length: WORTMARKE_KETTEN }, () => []))
+  const lichtweg = useRef<SVGPathElement>(null)
+  const musterLichtwege = useRef<Array<SVGPathElement | null>>([])
+  const musterGlieder = useRef<Array<Array<HTMLDivElement | null>>>(MUSTER_LICHTER.map(() => []))
+  const wortGlieder = useRef<Array<Array<HTMLDivElement | null>>>(Array.from({ length: WORTMARKE_LICHTER }, () => []))
 
-  // Der Umriss für die Lichtketten: nur die äußeren Konturen (die kleinen Innenflächen lassen wir aus).
-  const umrissD = useMemo(() => WORTMARKE.pfade.filter((d) => d.length > 60).join(' '), [])
   const alleD = useMemo(() => WORTMARKE.pfade.join(' '), [])
+  const musterRund = useMemo(() => MUSTER.map((d) => eckenAbrunden(d, ECKEN_RADIUS)), [])
 
   useEffect(() => {
     const h = hinten.current
-    const v = vorn.current
     const svg = wortmarkeSvg.current
-    const pfad = umriss.current
-    if (!h || !v || !svg || !pfad || bewegungReduziert()) return
+    const pfad = lichtweg.current
+    if (!h || !svg || !pfad || bewegungReduziert()) return
     const starten = (): (() => void) => {
       const breite = h.clientWidth
       const hoehe = h.clientHeight
@@ -367,29 +400,27 @@ function HintergrundLogo(): ReactElement {
       const sx = breite / RASTER_BREITE
       const sy = hoehe / RASTER_HOEHE
       const musterKetten: Kette[] = []
-      MUSTER_KETTEN.forEach((mk) => {
-        const p = musterPfade.current[mk.muster]
+      MUSTER_LICHTER.forEach((mk) => {
+        const p = musterLichtwege.current[mk.muster]
         if (!p) return
         musterKetten.push({
           pfad: p,
-          farbe: ORANGE,
           dauer: mk.dauer,
           verzoegerung: mk.verzoegerung,
-          richtung: 'alternate',
-          abstand: GLIED_ABSTAND,
+          richtung: 'normal',
+          abstand: 11,
           abbilden: (x, y) => [x * sx, y * sy]
         })
       })
       // Die Wortmarke behält ihr Seitenverhältnis: Lage und Maßstab aus dem gezeichneten SVG.
       const kasten = svg.getBoundingClientRect()
       const massstab = kasten.width / WORTMARKE.breite
-      const wortKetten: Kette[] = Array.from({ length: WORTMARKE_KETTEN }, (_, i) => ({
+      const wortKetten: Kette[] = Array.from({ length: WORTMARKE_LICHTER }, (_, i) => ({
         pfad,
-        farbe: ORANGE,
         dauer: WORTMARKE_DAUER,
-        verzoegerung: (-WORTMARKE_DAUER * i) / WORTMARKE_KETTEN,
+        verzoegerung: (-WORTMARKE_DAUER * i) / WORTMARKE_LICHTER,
         richtung: 'normal',
-        abstand: 6 / Math.max(0.2, massstab),
+        abstand: 8 / Math.max(0.2, massstab),
         abbilden: (x, y) => [kasten.left + x * massstab, kasten.top + y * massstab]
       }))
       const stopp1 = kettenStarten(musterKetten, musterGlieder.current)
@@ -413,30 +444,34 @@ function HintergrundLogo(): ReactElement {
 
   return (
     <>
-      {/* Ebene hinten: Raster, Linienmuster, Lichtketten auf den Linien, Lichtpunkte */}
+      {/* Ebene hinten: Raster, Linienmuster, Lichter auf den Linien, Lichtpunkte */}
       <div aria-hidden="true" className="hintergrund pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: -1 }}>
         <div className="hintergrund-raster absolute inset-0" style={{ backgroundImage: RASTER, opacity: 0.45 }} />
         <div ref={hinten} className="absolute inset-0">
           <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${RASTER_BREITE} ${RASTER_HOEHE}`} preserveAspectRatio="none">
             {MUSTER.map((d, i) => (
+              <path key={i} d={d} fill="none" stroke="white" strokeOpacity="0.11" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            ))}
+            {/* Die runden Fassungen sind unsichtbar; nur das Licht fährt sie ab. */}
+            {musterRund.map((d, i) => (
               <path
-                key={i}
+                key={`rund-${i}`}
                 ref={(el) => {
-                  musterPfade.current[i] = el
+                  musterLichtwege.current[i] = el
                 }}
                 d={d}
                 fill="none"
-                stroke="white"
-                strokeOpacity="0.11"
-                strokeWidth="1"
-                vectorEffect="non-scaling-stroke"
+                stroke="none"
               />
             ))}
           </svg>
-          {MUSTER_KETTEN.map((_, i) => (
+          {MUSTER_LICHTER.map((_, i) => (
             <Glieder
               key={i}
               farbe={ORANGE}
+              anzahl={14}
+              laenge={22}
+              dicke={4}
               setzen={(g, el) => {
                 musterGlieder.current[i][g] = el
               }}
@@ -446,8 +481,8 @@ function HintergrundLogo(): ReactElement {
         <Lichtpunkte partikel={partikel} />
       </div>
 
-      {/* Ebene vorn: die Wortmarke als blasses Wasserzeichen über den Karten, mit Lichtketten auf dem Umriss */}
-      <div ref={vorn} aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 10 }}>
+      {/* Ebene vorn: die Wortmarke als blasses Wasserzeichen über den Karten, mit Lichtern auf dem Weg durch die Schrift */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 10 }}>
         <div className="absolute inset-0 flex items-center justify-center">
           <svg
             ref={wortmarkeSvg}
@@ -455,16 +490,16 @@ function HintergrundLogo(): ReactElement {
             style={{ width: 'min(78vw, 1150px)', height: 'auto', overflow: 'visible' }}
           >
             <path d={alleD} fill="white" fillOpacity="0.04" fillRule="evenodd" stroke="white" strokeOpacity="0.07" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-            <path ref={umriss} d={umrissD} fill="none" stroke="none" />
+            <path ref={lichtweg} d={WORTMARKE_LICHTWEG} fill="none" stroke="none" />
           </svg>
         </div>
-        {Array.from({ length: WORTMARKE_KETTEN }, (_, i) => (
+        {Array.from({ length: WORTMARKE_LICHTER }, (_, i) => (
           <Glieder
             key={i}
             farbe={ORANGE}
-            staerke={0.6}
+            anzahl={18}
             laenge={16}
-            dicke={3}
+            dicke={3.5}
             setzen={(g, el) => {
               wortGlieder.current[i][g] = el
             }}
