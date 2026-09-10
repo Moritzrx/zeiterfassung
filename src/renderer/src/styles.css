@@ -386,7 +386,12 @@ body::after {
     opacity: 0.55;
   }
   100% {
-    transform: translate3d(var(--drift, 0px), -105vh, 0);
+    /*
+     * Feste Strecke statt -105vh: Keyframes mit Fensterhöhe werden bei jeder Größenänderung für alle Punkte
+     * neu aufgelöst und an den Compositor geschickt, das kostete beim Maximieren rund 80 ms (10. September 2026).
+     * Auf üblichen Bildschirmen verlassen die Punkte den oberen Rand, bevor sie ausblenden.
+     */
+    transform: translate3d(var(--drift, 0px), -1300px, 0);
     opacity: 0;
   }
 }

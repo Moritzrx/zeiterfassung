@@ -10,8 +10,8 @@ import { WORTMARKE } from './wortmarke'
  * Orangene Lichter laufen von links nach rechts AM RAND der Schrift entlang (jeder Buchstabe einmal im
  * Uhrzeigersinn um seinen Umriss, dann Sprung zum nächsten, `wortmarkeUmriss`) und über die Musterlinien
  * (mit abgerundeten Ecken, damit sie sauber um die Zacken kommen). Sie laufen immer in eine Richtung, blenden
- * am Ende aus und am Anfang wieder ein, kein Hin und Her; als Perlenketten statt starrer Striche, damit sie
- * sich an spitzen Ecken nicht aufteilen (Rückmeldungen vom 10. September 2026). Die Wortmarke liegt als eigene Ebene ÜBER den Karten
+ * am Ende aus und am Anfang wieder ein, kein Hin und Her; als Ketten kurzer, sich überlappender Striche, die
+ * wie eine durchgehende Linie wirken (Rückmeldungen vom 10. September 2026). Die Wortmarke liegt als eigene Ebene ÜBER den Karten
  * (z-index 10, ohne Mausereignisse, unter Dialogen und Leisten), sonst wäre sie hinter dem Milchglas der
  * Karten unsichtbar; sie ist so blass, dass der Vordergrund lesbar bleibt.
  *
@@ -82,26 +82,15 @@ export const MUSTER: string[] = [
 ]
 
 /**
- * Jede Musterlinie bekommt ein Licht (auch die Querstriche), mit eigenem Tempo und Versatz (Sekunden).
- * `pause` = Anteil der Zeit, den das Licht nach einem Lauf unsichtbar wartet; die Querstriche leuchten so
- * nur ab und zu, und das Muster oben wird nicht zu voll.
+ * Alle zwölf Musterlinien (auch die Querstriche) liegen in EINEM Pfad, und drei Lichter laufen ihn versetzt
+ * ab: Am Ende jeder Linie blendet das Licht aus, am Anfang der nächsten wieder ein, der Sprung bleibt
+ * unsichtbar. So leuchtet jede Linie ab und zu, mit 3 statt 12 Ketten (der Compositor tickt jede Animation
+ * in jedem Bild, 328 Glieder ließen ihn beim Maximieren ins Stocken kommen).
  */
-const MUSTER_LICHTER: Array<{ muster: number; dauer: number; verzoegerung: number; pause: number }> = [
-  { muster: 0, dauer: 12, verzoegerung: 0, pause: 0.3 },
-  { muster: 1, dauer: 10, verzoegerung: -3, pause: 0.35 },
-  { muster: 2, dauer: 14, verzoegerung: -7, pause: 0.65 },
-  { muster: 3, dauer: 11, verzoegerung: -1, pause: 0.35 },
-  { muster: 4, dauer: 13, verzoegerung: -4.5, pause: 0.65 },
-  { muster: 5, dauer: 13, verzoegerung: -6, pause: 0.3 },
-  { muster: 6, dauer: 11, verzoegerung: -2.5, pause: 0.35 },
-  { muster: 7, dauer: 14, verzoegerung: -8, pause: 0.65 },
-  { muster: 8, dauer: 12, verzoegerung: -2, pause: 0.3 },
-  { muster: 9, dauer: 10, verzoegerung: -5.5, pause: 0.35 },
-  { muster: 10, dauer: 15, verzoegerung: -3.5, pause: 0.65 },
-  { muster: 11, dauer: 12, verzoegerung: -5, pause: 0.3 }
-]
-/** Lichter am Rand der Schrift: vier gleich schnelle, gleichmäßig versetzt; 64 s je Durchlauf (40 s waren "zu schnell"). */
-const WORTMARKE_LICHTER = 4
+const MUSTER_LICHTER = 3
+const MUSTER_DAUER = 36
+/** Lichter am Rand der Schrift: drei gleich schnelle, gleichmäßig versetzt; 64 s je Durchlauf (40 s waren "zu schnell"). */
+const WORTMARKE_LICHTER = 3
 const WORTMARKE_DAUER = 64
 /** Rundung der Ecken der Musterlinien (Rasterlängen): Linie und Licht nutzen dieselbe runde Fassung, damit das Licht exakt auf der Linie bleibt. */
 const ECKEN_RADIUS = 16
@@ -122,6 +111,12 @@ interface Kette {
   abstand: number
   /** Anteil der Laufzeit (0 bis 0,8), den das Licht nach dem Ausblenden unsichtbar wartet, bevor es wieder startet */
   pause?: number
+  /**
+   * Bei einem Pfad aus mehreren Teilstücken (Musterlinien in einem Pfad): die Längen, bei denen ein Teilstück
+   * endet, aufsteigend. Das Licht blendet an jedem Teilstück-Ende aus und am nächsten Anfang ein, der Sprung
+   * dazwischen bleibt unsichtbar. So bedient eine Kette alle Linien statt zwölf Ketten.
+   */
+  grenzen?: number[]
 }
 
 /*
@@ -129,14 +124,11 @@ interface Kette {
  * CSS-Transform auf die Fenstergröße skaliert (`skalieren`). Beim Vergrößern des Fensters ändert sich nur diese
  * eine Transform, keine Animation wird neu gebaut. Vorher wurden bei jeder Größenänderung alle Keyframes neu
  * berechnet (hunderttausende getPointAtLength-Aufrufe), das ließ die App beim Maximieren kurz hängen
- * (Rückmeldung vom 10. September 2026). Die Glieder selbst gleichen die Skalierung über CSS-Variablen aus,
- * damit sie auf jedem Bildschirm gleich groß und rund bleiben.
+ * (Rückmeldung vom 10. September 2026). Die Glieder skalieren mit (ein Versuch, sie per CSS-Variablen
+ * gleich groß zu halten, kostete beim Maximieren 190 ms Style-Neuberechnung für alle Glieder).
  */
 function skalieren(el: HTMLElement, sx: number, sy: number, dx = 0, dy = 0): void {
   el.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${sx.toFixed(5)}, ${sy.toFixed(5)})`
-  el.style.setProperty('--perlen-x', (1 / sx).toFixed(5))
-  el.style.setProperty('--perlen-y', (1 / sy).toFixed(5))
-  el.style.setProperty('--perlen-m', (2 / (sx + sy)).toFixed(5))
 }
 
 /** Abgetastete Bahn: ein Punkt alle 2 Einheiten, dazwischen linear; spart hunderttausende getPointAtLength-Aufrufe. */
@@ -226,19 +218,31 @@ function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | nu
     // Bahn verlässt; vorher blieb die Kette am Ende stehen und verblasste dort langsam ("bleibt stehen").
     const kettenLaenge = k.richtung === 'normal' ? Math.max(0, anzahl - 1) * k.abstand : 0
     const strecke = laenge + kettenLaenge
-    // Ein Schritt je 10 Einheiten, damit auch enge Kurven sauber nachgefahren werden.
-    const schritte = Math.min(1000, Math.max(60, Math.round(strecke / 10)))
-    // Am Anfang und Ende der Bahn blendet jedes Glied über dieses Stück ein bzw. aus (nur bei 'normal').
-    const blende = Math.min(laenge * 0.06, 80)
+    // Ein Schritt je 12 Einheiten, damit auch enge Kurven sauber nachgefahren werden; wenige Keyframes halten
+    // den Compositor leicht (jeder Commit schiebt alle Keyframes hinüber).
+    const schritte = Math.min(800, Math.max(60, Math.round(strecke / 12)))
+    // Am Anfang und Ende jedes Teilstücks blendet jedes Glied über dieses Stück ein bzw. aus (nur bei 'normal').
+    const grenzen = k.grenzen && k.grenzen.length ? k.grenzen : [laenge]
+    const kuerzestes = grenzen.reduce((min, ende, idx) => Math.min(min, ende - (idx ? grenzen[idx - 1] : 0)), laenge)
+    const blende = Math.min(kuerzestes * 0.2, 60)
+    const sichtbarkeit = (lage: number): number => {
+      if (lage < 0 || lage > laenge) return 0
+      let anfang = 0
+      for (const ende of grenzen) {
+        if (lage <= ende) return Math.max(0, Math.min(1, (lage - anfang) / blende, (ende - lage) / blende))
+        anfang = ende
+      }
+      return 0
+    }
     const pause = k.richtung === 'normal' ? Math.min(0.8, Math.max(0, k.pause ?? 0)) : 0
-    // Gleiche Bahn, gleiche Kette: die Keyframes werden je Glied nur einmal gebaut (die vier Lichter der
+    // Gleiche Bahn, gleiche Kette: die Keyframes werden je Glied nur einmal gebaut (die Lichter der
     // Wortmarke unterscheiden sich nur im Versatz).
     const speicher = keyframeSpeicher.get(k.pfad) ?? new Map<string, Keyframe[]>()
     keyframeSpeicher.set(k.pfad, speicher)
     glieder[i]?.forEach((el, g) => {
       if (!el) return
       const grund = Number.parseFloat(el.style.opacity || '1')
-      const schluessel = `${g}|${anzahl}|${k.abstand}|${k.richtung}|${pause}|${grund}`
+      const schluessel = `${g}|${anzahl}|${k.abstand}|${k.richtung}|${pause}|${grund}|${grenzen.length}`
       let keyframes = speicher.get(schluessel)
       if (!keyframes) {
         keyframes = []
@@ -253,8 +257,7 @@ function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | nu
           const winkel = Math.atan2(qy - ry, qx - rx)
           const frame: Keyframe = { transform: `translate3d(${px.toFixed(2)}px, ${py.toFixed(2)}px, 0) rotate(${winkel.toFixed(4)}rad)` }
           if (k.richtung === 'normal') {
-            const sichtbar = roh < 0 || roh > laenge ? 0 : Math.min(1, roh / blende, (laenge - roh) / blende)
-            frame.opacity = (grund * Math.max(0, sichtbar)).toFixed(3)
+            frame.opacity = (grund * sichtbarkeit(roh)).toFixed(3)
             // Mit Pause: der Lauf belegt nur den vorderen Teil der Zeit, danach wartet das Glied unsichtbar.
             if (pause > 0) frame.offset = (s / schritte) * (1 - pause)
           }
@@ -278,86 +281,48 @@ function kettenStarten(ketten: Kette[], glieder: Array<Array<HTMLDivElement | nu
   return () => animationen.forEach((a) => a.cancel())
 }
 
-/** Die Glieder einer Kette: leuchtende Pillen, in der Mitte am hellsten, durchgehend in der Bahnfarbe (ohne weißen Kern). */
+/**
+ * Die Glieder einer Kette: kurze leuchtende Striche, die sich entlang der Bahn drehen und überlappen, sodass
+ * sie wie eine durchgehende Linie wirken (Rückmeldung vom 10. September 2026: "keine Punkte, eine Linie").
+ * Maße in Einheiten des skalierten Behälters. `komet`: vorne hell, nach hinten verglühend (Lichter, die in
+ * eine Richtung laufen); sonst in der Mitte am hellsten (klassische Bahnen, die hin- und zurücklaufen).
+ */
 function Glieder({
   farbe,
   setzen,
   anzahl = 10,
   staerke = 1,
   laenge = 30,
-  dicke = 5
+  dicke = 5,
+  komet = false
 }: {
   farbe: string
   setzen: (g: number, el: HTMLDivElement | null) => void
   anzahl?: number
   staerke?: number
-  /** Maße eines Glieds in Pixeln */
   laenge?: number
   dicke?: number
+  komet?: boolean
 }): ReactElement {
   return (
     <>
       {Array.from({ length: anzahl }, (_, g) => {
         const mitte = (anzahl - 1) / 2
-        const kraft = (1 - (Math.abs(g - mitte) / mitte) * 0.85) * staerke
+        const kraft = (komet ? 1 - (g / Math.max(1, anzahl - 1)) * 0.9 : 1 - (Math.abs(g - mitte) / mitte) * 0.85) * staerke
         return (
           <div
             key={g}
             ref={(el) => setzen(g, el)}
             className="hintergrund-funke absolute"
             style={{
-              left: `calc(${-laenge / 2}px * var(--perlen-x, 1))`,
-              top: `calc(${-dicke / 2}px * var(--perlen-y, 1))`,
-              width: `calc(${laenge}px * var(--perlen-x, 1))`,
-              height: `calc(${dicke}px * var(--perlen-y, 1))`,
+              left: -laenge / 2,
+              top: -dicke / 2,
+              width: laenge,
+              height: dicke,
               borderRadius: dicke,
               background: farbe,
-              opacity: 0.3 + kraft * 0.7,
-              boxShadow: `0 0 calc(${(4 + kraft * 7).toFixed(0)}px * var(--perlen-m, 1)) ${farbe}, 0 0 calc(${(10 + kraft * 14).toFixed(0)}px * var(--perlen-m, 1)) ${farbe}99`
-            }}
-          />
-        )
-      })}
-    </>
-  )
-}
-
-/**
- * Ein Licht als Kette runder Perlen: vorne am hellsten, nach hinten verglühend wie ein Komet. Runde Perlen
- * brauchen keine Drehung und schmiegen sich an jede Kurve, auch an die spitzen Zacken des Musters, wo sich
- * starre Striche sichtbar aufteilten (Rückmeldung vom 10. September 2026).
- */
-function Perlen({
-  farbe,
-  setzen,
-  anzahl = 20,
-  groesse = 6
-}: {
-  farbe: string
-  setzen: (g: number, el: HTMLDivElement | null) => void
-  anzahl?: number
-  /** Durchmesser einer Perle in Pixeln */
-  groesse?: number
-}): ReactElement {
-  return (
-    <>
-      {Array.from({ length: anzahl }, (_, g) => {
-        const kraft = 1 - (g / Math.max(1, anzahl - 1)) * 0.9
-        return (
-          <div
-            key={g}
-            ref={(el) => setzen(g, el)}
-            className="hintergrund-funke absolute rounded-full"
-            style={{
-              // Der Behälter ist auf die Fenstergröße skaliert; die Variablen gleichen das aus, damit die
-              // Perle auf jedem Bildschirm gleich groß und rund bleibt.
-              left: `calc(${-groesse / 2}px * var(--perlen-x, 1))`,
-              top: `calc(${-groesse / 2}px * var(--perlen-y, 1))`,
-              width: `calc(${groesse}px * var(--perlen-x, 1))`,
-              height: `calc(${groesse}px * var(--perlen-y, 1))`,
-              background: farbe,
-              opacity: 0.15 + kraft * 0.85,
-              boxShadow: `0 0 calc(${(3 + kraft * 6).toFixed(0)}px * var(--perlen-m, 1)) ${farbe}, 0 0 calc(${(8 + kraft * 14).toFixed(0)}px * var(--perlen-m, 1)) ${farbe}99`
+              opacity: (komet ? 0.15 : 0.3) + kraft * (komet ? 0.85 : 0.7),
+              boxShadow: `0 0 ${(3 + kraft * 6).toFixed(0)}px ${farbe}, 0 0 ${(8 + kraft * 14).toFixed(0)}px ${farbe}99`
             }}
           />
         )
@@ -528,69 +493,212 @@ function HintergrundKlassisch(): ReactElement {
 
 /* ------------------------------------------------------------------------------------------------ */
 
-/** Die Logo-Fassung: Linienmuster hinten, Wortmarke als Wasserzeichen vorn, orangene Lichter auf beidem. */
+/** Ein Licht auf der Leinwand: welche Bahn, wie schnell, wie versetzt, wie lang die Kette. */
+interface Licht {
+  tabelle: Abtastung
+  /** Längen, bei denen ein Teilstück der Bahn endet (aufsteigend); am Ende der Bahn immer die Gesamtlänge */
+  grenzen: number[]
+  dauer: number
+  versatz: number
+  glieder: number
+  abstand: number
+  /** Bahnpunkt (Einheiten) → Bildschirm (Pixel), liest die aktuellen Maßstäbe */
+  abbilden: (x: number, y: number) => [number, number]
+}
+
+/**
+ * Zeichnet die Lichter der Logo-Fassung auf eine Leinwand (Canvas), Bild für Bild per requestAnimationFrame.
+ * Dritte Fassung (10. September 2026): Die Web-Animations-Ketten (bis zu 328 Glieder mit je hunderten
+ * Keyframes) lasteten den Compositor aus (TickAnimations rund 12 ms je Bild) und machten jeden Commit beim
+ * Vergrößern teuer (PushProperties über 100 ms); dazu sahen die Glieder "gepunktet" aus. Die Leinwand
+ * kostet je Bild unter einer Millisekunde Hauptthread (rund 400 kurze Striche), nichts bei Größenänderung
+ * und zeichnet echte, durchgehende Linien exakt auf der Bahn. Ruht, wenn das Fenster verborgen ist.
+ */
+function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => void {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return () => {}
+  let anfrage = 0
+  let laeuft = true
+  // Drei Durchgänge je Kette: breiter Schein, mittlerer Schein, Kern. Breiten in Pixeln.
+  const durchgaenge: Array<[number, number]> = [
+    [10, 0.14],
+    [5, 0.38],
+    [2.4, 1]
+  ]
+  const teilstueck = (grenzen: number[], lage: number): number => {
+    for (let i = 0; i < grenzen.length; i++) if (lage <= grenzen[i]) return i
+    return grenzen.length
+  }
+  // Nur die Flecken des letzten Bilds löschen statt der ganzen Leinwand: spart Füllrate auf schwachen Grafikchips.
+  let flecken: Array<[number, number, number, number]> = []
+  const RAND = 14
+  const zeichnen = (zeit: number): void => {
+    if (!laeuft) return
+    for (const [x, y, b, h] of flecken) ctx.clearRect(x, y, b, h)
+    flecken = []
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    for (const l of lichter) {
+      const laenge = l.tabelle.laenge
+      if (!laenge) continue
+      const strecke = laenge + l.glieder * l.abstand
+      const sekunden = zeit / 1000 + l.versatz
+      const fortschritt = (((sekunden % l.dauer) + l.dauer) % l.dauer) / l.dauer
+      const kopf = fortschritt * strecke
+      // Am Anfang und Ende jedes Teilstücks aus- bzw. einblenden; der Sprung dazwischen bleibt unsichtbar.
+      const kuerzestes = l.grenzen.reduce((min, ende, idx) => Math.min(min, ende - (idx ? l.grenzen[idx - 1] : 0)), laenge)
+      const blende = Math.min(kuerzestes * 0.2, 60)
+      const sichtbar = (lage: number): number => {
+        if (lage < 0 || lage > laenge) return 0
+        let anfang = 0
+        for (const ende of l.grenzen) {
+          if (lage <= ende) return Math.max(0, Math.min(1, (lage - anfang) / blende, (ende - lage) / blende))
+          anfang = ende
+        }
+        return 0
+      }
+      const punkte: Array<{ x: number; y: number; a: number; teil: number; lage: number }> = []
+      for (let g = 0; g <= l.glieder; g++) {
+        const lage = kopf - g * l.abstand
+        const [ux, uy] = bei(l.tabelle, Math.min(laenge, Math.max(0, lage)))
+        const [x, y] = l.abbilden(ux, uy)
+        // Komet: vorne hell, nach hinten verglühend.
+        const a = sichtbar(lage) * (1 - (g / l.glieder) * 0.92)
+        punkte.push({ x, y, a, teil: teilstueck(l.grenzen, lage), lage })
+      }
+      const sichtbare = punkte.filter((p) => p.a > 0.01)
+      if (sichtbare.length === 0) continue
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (const p of sichtbare) {
+        if (p.x < minX) minX = p.x
+        if (p.x > maxX) maxX = p.x
+        if (p.y < minY) minY = p.y
+        if (p.y > maxY) maxY = p.y
+      }
+      flecken.push([minX - RAND, minY - RAND, maxX - minX + 2 * RAND, maxY - minY + 2 * RAND])
+      for (const [dicke, staerke] of durchgaenge) {
+        ctx.lineWidth = dicke
+        for (let g = 0; g < l.glieder; g++) {
+          const p = punkte[g]
+          const q = punkte[g + 1]
+          // Kein Strich über einen Sprung zwischen zwei Teilstücken (z. B. von einer Musterlinie zur nächsten).
+          if (p.teil !== q.teil || p.lage < 0 || q.lage > laenge) continue
+          const a = Math.min(p.a, q.a) * staerke
+          if (a < 0.01) continue
+          ctx.strokeStyle = `rgba(254, 83, 3, ${a.toFixed(3)})`
+          ctx.beginPath()
+          ctx.moveTo(p.x, p.y)
+          ctx.lineTo(q.x, q.y)
+          ctx.stroke()
+        }
+      }
+    }
+    anfrage = requestAnimationFrame(zeichnen)
+  }
+  const sichtbarkeit = (): void => {
+    if (document.hidden) {
+      cancelAnimationFrame(anfrage)
+      laeuft = false
+    } else if (!laeuft) {
+      laeuft = true
+      anfrage = requestAnimationFrame(zeichnen)
+    }
+  }
+  document.addEventListener('visibilitychange', sichtbarkeit)
+  anfrage = requestAnimationFrame(zeichnen)
+  return () => {
+    laeuft = false
+    cancelAnimationFrame(anfrage)
+    document.removeEventListener('visibilitychange', sichtbarkeit)
+  }
+}
+
+/** Die Logo-Fassung: Linienmuster hinten, Wortmarke als Wasserzeichen vorn, orangene Lichter auf beidem (Leinwand). */
 function HintergrundLogo(): ReactElement {
   // Etwas mehr und etwas größere Punkte als klassisch ("minimal auffälliger, aber nicht viel"), sie funkeln per CSS.
   const partikel = useMemo(() => partikelErzeugen(36, FARBEN_LOGO, 11, 1.25), [])
   const hinten = useRef<HTMLDivElement>(null)
-  const musterSkalierer = useRef<HTMLDivElement>(null)
-  const wortSkalierer = useRef<HTMLDivElement>(null)
+  const leinwand = useRef<HTMLCanvasElement>(null)
   const wortmarkeSvg = useRef<SVGSVGElement>(null)
   const lichtweg = useRef<SVGPathElement>(null)
   const musterLichtwege = useRef<Array<SVGPathElement | null>>([])
-  const musterGlieder = useRef<Array<Array<HTMLDivElement | null>>>(MUSTER_LICHTER.map(() => []))
-  const wortGlieder = useRef<Array<Array<HTMLDivElement | null>>>(Array.from({ length: WORTMARKE_LICHTER }, () => []))
+  const musterWeg = useRef<SVGPathElement>(null)
 
   const alleD = useMemo(() => WORTMARKE.pfade.join(' '), [])
   const umrissD = useMemo(() => wortmarkeUmriss(), [])
   const musterRund = useMemo(() => MUSTER.map((d) => eckenAbrunden(d, ECKEN_RADIUS)), [])
 
-  // Lichter einmal berechnen (in Pfad-Einheiten); bei Größenänderung nur die Maßstäbe der Behälter anpassen.
   useEffect(() => {
     const h = hinten.current
-    const skM = musterSkalierer.current
-    const skW = wortSkalierer.current
+    const canvas = leinwand.current
     const svg = wortmarkeSvg.current
     const pfad = lichtweg.current
-    if (!h || !skM || !skW || !svg || !pfad || bewegungReduziert()) return
-    const musterKetten: Kette[] = []
-    MUSTER_LICHTER.forEach((mk) => {
-      const p = musterLichtwege.current[mk.muster]
-      if (!p) return
-      musterKetten.push({ pfad: p, dauer: mk.dauer, verzoegerung: mk.verzoegerung, pause: mk.pause, richtung: 'normal', abstand: 4 })
-    })
-    const wortKetten: Kette[] = Array.from({ length: WORTMARKE_LICHTER }, (_, i) => ({
-      pfad,
-      dauer: WORTMARKE_DAUER,
-      verzoegerung: (-WORTMARKE_DAUER * i) / WORTMARKE_LICHTER,
-      richtung: 'normal',
-      abstand: 4
-    }))
-    const stopp1 = kettenStarten(musterKetten, musterGlieder.current)
-    const stopp2 = kettenStarten(wortKetten, wortGlieder.current)
+    const weg = musterWeg.current
+    if (!h || !canvas || !svg || !pfad || !weg || bewegungReduziert()) return
+    // Wo im gemeinsamen Musterpfad die einzelnen Linien enden (für das Aus- und Einblenden am Linienende).
+    const grenzen: number[] = []
+    let summe = 0
+    for (const p of musterLichtwege.current) {
+      summe += p?.getTotalLength() ?? 0
+      grenzen.push(summe)
+    }
+    const musterTabelle = abtasten(weg)
+    const wortTabelle = abtasten(pfad)
+    // Maßstäbe, die bei Größenänderung nur überschrieben werden; die Bahnen bleiben in Einheiten.
+    const mass = { sx: 1, sy: 1, links: 0, oben: 0, m: 1 }
+    const lichter: Licht[] = [
+      ...Array.from({ length: MUSTER_LICHTER }, (_, i) => ({
+        tabelle: musterTabelle,
+        grenzen,
+        dauer: MUSTER_DAUER,
+        versatz: (MUSTER_DAUER * i) / MUSTER_LICHTER,
+        glieder: 16,
+        abstand: 3.5,
+        abbilden: (x: number, y: number): [number, number] => [x * mass.sx, y * mass.sy]
+      })),
+      ...Array.from({ length: WORTMARKE_LICHTER }, (_, i) => ({
+        tabelle: wortTabelle,
+        grenzen: [wortTabelle.laenge],
+        dauer: WORTMARKE_DAUER,
+        versatz: (WORTMARKE_DAUER * i) / WORTMARKE_LICHTER,
+        glieder: 22,
+        abstand: 3.5,
+        abbilden: (x: number, y: number): [number, number] => [mass.links + x * mass.m, mass.oben + y * mass.m]
+      }))
+    ]
     const anpassen = (): void => {
-      if (h.clientWidth && h.clientHeight) skalieren(skM, h.clientWidth / RASTER_BREITE, h.clientHeight / RASTER_HOEHE)
-      // Die Wortmarke behält ihr Seitenverhältnis: Lage und Maßstab aus dem gezeichneten SVG (vorn), die
-      // Lichter dazu liegen hinten; beide Ebenen füllen das Fenster, darum passen die Koordinaten.
+      const dpr = window.devicePixelRatio || 1
+      const breite = h.clientWidth
+      const hoehe = h.clientHeight
+      if (!breite || !hoehe) return
+      canvas.width = Math.round(breite * dpr)
+      canvas.height = Math.round(hoehe * dpr)
+      canvas.style.width = `${breite}px`
+      canvas.style.height = `${hoehe}px`
+      canvas.getContext('2d')?.setTransform(dpr, 0, 0, dpr, 0, 0)
+      mass.sx = breite / RASTER_BREITE
+      mass.sy = hoehe / RASTER_HOEHE
+      // Die Wortmarke behält ihr Seitenverhältnis: Lage und Maßstab aus dem vorn gezeichneten SVG.
       const kasten = svg.getBoundingClientRect()
       if (kasten.width) {
-        const massstab = kasten.width / WORTMARKE.breite
-        skalieren(skW, massstab, massstab, kasten.left, kasten.top)
+        mass.m = kasten.width / WORTMARKE.breite
+        mass.links = kasten.left
+        mass.oben = kasten.top
       }
     }
     anpassen()
+    const stopp = lichterZeichnen(canvas, lichter)
     const beobachter = new ResizeObserver(anpassen)
     beobachter.observe(h)
     return () => {
       beobachter.disconnect()
-      stopp1()
-      stopp2()
+      stopp()
     }
   }, [])
 
   return (
     <>
-      {/* Ebene hinten: Raster, Linienmuster, Lichter auf den Linien, Lichtpunkte */}
+      {/* Ebene hinten: Raster, Linienmuster, Lichter auf Linien und Wortmarke (Leinwand), Lichtpunkte */}
       <div aria-hidden="true" className="hintergrund pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: -1 }}>
         <div className="hintergrund-raster absolute inset-0" style={{ backgroundImage: RASTER, opacity: 0.45 }} />
         <div ref={hinten} className="absolute inset-0">
@@ -611,38 +719,15 @@ function HintergrundLogo(): ReactElement {
                 vectorEffect="non-scaling-stroke"
               />
             ))}
+            {/* Alle Linien als ein Pfad: daran laufen die Lichter entlang (unsichtbar, nur zum Messen). */}
+            <path ref={musterWeg} d={musterRund.join(' ')} fill="none" stroke="none" />
           </svg>
-          <div ref={musterSkalierer} className="absolute top-0 left-0" style={{ width: RASTER_BREITE, height: RASTER_HOEHE, transformOrigin: '0 0' }}>
-            {MUSTER_LICHTER.map((_, i) => (
-              <Perlen
-                key={i}
-                farbe={ORANGE}
-                anzahl={18}
-                groesse={7}
-                setzen={(g, el) => {
-                  musterGlieder.current[i][g] = el
-                }}
-              />
-            ))}
-          </div>
-        </div>
-        {/*
-          Die Lichter am Rand der Schrift liegen HINTEN (hinter Ring, Karten und Text), obwohl die Wortmarke selbst
-          vorn liegt: Rückmeldung vom 10. September 2026, die Lichter zogen über den grünen Ring und über Text.
-          Der Behälter wird auf Lage und Maßstab der vorn gezeichneten Wortmarke gesetzt.
-        */}
-        <div ref={wortSkalierer} className="absolute top-0 left-0" style={{ width: WORTMARKE.breite, height: WORTMARKE.hoehe, transformOrigin: '0 0' }}>
-          {Array.from({ length: WORTMARKE_LICHTER }, (_, i) => (
-            <Perlen
-              key={`wort-${i}`}
-              farbe={ORANGE}
-              anzahl={28}
-              groesse={6}
-              setzen={(g, el) => {
-                wortGlieder.current[i][g] = el
-              }}
-            />
-          ))}
+          {/*
+            Die Lichter (Muster und Rand der Wortmarke) liegen HINTEN, hinter Ring, Karten und Text, obwohl die
+            Wortmarke selbst vorn liegt: Rückmeldung vom 10. September 2026, die Lichter zogen über den grünen
+            Ring und über Text.
+          */}
+          <canvas ref={leinwand} className="absolute top-0 left-0" />
         </div>
         <Lichtpunkte partikel={partikel} hof />
       </div>
