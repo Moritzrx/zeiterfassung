@@ -5,6 +5,7 @@ import { taetigkeitSchluessel } from '@shared/regeln'
 import type { Profil, Regel, RegelBewertung, SymbolInfo, SystemInfo, UpdateStatus, Urlaub, Ziel } from '@shared/typen'
 import { hinweisZeigen } from '../components/Hinweis'
 import { Karte } from '../components/Karte'
+import { KundenVerwaltung } from '../components/KundenVerwaltung'
 import { SymbolWahl } from '../components/SymbolWahl'
 import { useErfassung } from '../erfassung'
 import { kurzDatum, uhrzeit } from '../format'
@@ -674,6 +675,8 @@ export function EinstellungenScreen(): ReactElement {
           </Zeile>
         </div>
       </Karte>
+
+      <KundenVerwaltung />
 
       <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">System</p>

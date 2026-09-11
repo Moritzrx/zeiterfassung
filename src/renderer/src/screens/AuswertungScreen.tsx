@@ -9,6 +9,8 @@ import { Karte } from '../components/Karte'
 import { MonatsVerlauf, type Monatswert } from '../components/MonatsVerlauf'
 import { TrendBalken, type Trendwert } from '../components/TrendBalken'
 import { VerteilungsRing } from '../components/VerteilungsRing'
+import { KundenTabelle } from '../components/KundenTabelle'
+import { useKunden } from '../kunden'
 import { datumText, kurzDatum, stundenText } from '../format'
 
 const ZEITRAEUME = [
@@ -38,6 +40,7 @@ export function AuswertungScreen(): ReactElement {
   const [summen, setSummen] = useState<Tagessumme[]>([])
   const [summenFehler, setSummenFehler] = useState<string | null>(null)
   const [bloecke, setBloecke] = useState<Block[]>([])
+  const kunden = useKunden()
   const [ziele, setZiele] = useState<Ziel[]>([])
   const [profil, setProfil] = useState<Profil | null>(null)
   const [jetzt, setJetzt] = useState(() => Date.now())
@@ -178,10 +181,11 @@ export function AuswertungScreen(): ReactElement {
         <VerteilungsRing werte={anteile} />
       </Karte>
 
-      {kundenAnteile.length > 0 && (
+      {(kundenAnteile.length > 0 || kunden.length > 0) && (
         <Karte>
-          <p className="text-xs tracking-wide text-mute uppercase">Verteilung nach Kunden, letzte {zeitraumLabel}</p>
-          <VerteilungsRing werte={kundenAnteile} />
+          <p className="text-xs tracking-wide text-mute uppercase">Kunden, letzte {zeitraumLabel}</p>
+          <KundenTabelle bloecke={bloecke} kunden={kunden} von={datumZuTagesanfang(verlaufVon)} bis={naechsterTagesanfang(datumZuTagesanfang(heute))} />
+          {kundenAnteile.length > 0 && <VerteilungsRing werte={kundenAnteile} />}
           {tage > LOKALE_WOCHEN * 7 && <p className="mt-2 text-xs text-dim">Nach Kunden nur für die letzten {LOKALE_WOCHEN} Wochen, weiter zurück liegen die Blöcke nicht mehr auf diesem Rechner.</p>}
         </Karte>
       )}

@@ -569,6 +569,21 @@ function ipcRegistrieren(): void {
 
   ipcMain.handle('taetigkeiten:liste', (): string[] => sitzung?.taetigkeiten.liste() ?? [])
   ipcMain.handle('kunden:liste', (): string[] => sitzung?.kunden.liste() ?? [])
+  // Kunden verwalten (Einstellungen → Kunden): wirkt über die Datenbankfunktionen aus Skript 15 auf das ganze Team.
+  ipcMain.handle('kunden:umbenennen', async (_ereignis, alt: string, neu: string): Promise<number> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    const n = await sitzung.kunden.umbenennen(sitzung.speicher, alt, neu)
+    bloeckeGeaendert()
+    statusVerteilen()
+    return n
+  })
+  ipcMain.handle('kunden:loeschen', async (_ereignis, name: string): Promise<number> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    const n = await sitzung.kunden.loeschen(sitzung.speicher, name)
+    bloeckeGeaendert()
+    statusVerteilen()
+    return n
+  })
 
   ipcMain.handle('taetigkeiten:symbole', (): Record<string, SymbolInfo> => sitzung?.taetigkeiten.symbole() ?? {})
   ipcMain.handle('taetigkeiten:symbolSetzen', async (_ereignis, name: string, symbol: SymbolInfo): Promise<void> => {

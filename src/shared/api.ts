@@ -61,6 +61,10 @@ export interface Api {
   kunden: {
     /** Alle bekannten Kunden (Projekte) des Teams, alphabetisch. */
     liste: () => Promise<string[]>
+    /** Kunden im ganzen Team umbenennen; heißt ein Kunde schon so, werden beide zusammengelegt. Liefert die Zahl geänderter Blöcke. */
+    umbenennen: (alt: string, neu: string) => Promise<number>
+    /** Kunden aus der Liste und aus allen Blöcken des Teams nehmen (die Blöcke bleiben, ohne Kunden). */
+    loeschen: (name: string) => Promise<number>
   }
   weg: {
     /** "Ich bin weg": ab dem Beginn (ISO, bis drei Stunden zurück) läuft ein produktiver Block mit dieser Tätigkeit (und optional Kunde) bis zur Rückkehr. */

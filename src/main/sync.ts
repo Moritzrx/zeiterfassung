@@ -115,7 +115,17 @@ export class Sync {
       const jetzt = Date.now()
       // Laufende Blöcke erst ab 60 s senden, fertige erst 10 s nach dem Ende:
       // so lange kann die Kurzblock-Regel sie noch mit dem Nachbarn verschmelzen.
-      const kandidaten = this.speicher.ausstehende().filter((b) => {
+      const ausstehende = this.speicher.ausstehende()
+      // Blöcke ohne Dauer (Ende = Anfang) werden nie gesendet; sie blieben sonst für immer als "wartend" stehen
+      // (Diagnose "wartend 2" am 11. September 2026). Ändern sie sich noch, kommen sie über aktualisieren() zurück.
+      const leere = ausstehende.filter((b) => Date.parse(b.ende) <= Date.parse(b.start))
+      if (leere.length > 0) {
+        this.speicher.alsGesendet(
+          leere.map((b) => b.id),
+          new Map(leere.map((b) => [b.id, b.geaendertAm]))
+        )
+      }
+      const kandidaten = ausstehende.filter((b) => {
         const s = Date.parse(b.start)
         const e = Date.parse(b.ende)
         return e > s && (e - s >= 60_000 || jetzt - e > 10_000)

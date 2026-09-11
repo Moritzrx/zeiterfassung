@@ -26,7 +26,9 @@ const api: Api = {
     beenden: () => ipcRenderer.invoke('fokus:beenden')
   },
   kunden: {
-    liste: () => ipcRenderer.invoke('kunden:liste')
+    liste: () => ipcRenderer.invoke('kunden:liste'),
+    umbenennen: (alt, neu) => ipcRenderer.invoke('kunden:umbenennen', alt, neu),
+    loeschen: (name) => ipcRenderer.invoke('kunden:loeschen', name)
   },
   weg: {
     starten: (taetigkeit, beginn, kunde) => ipcRenderer.invoke('weg:starten', taetigkeit, beginn, kunde ?? null),

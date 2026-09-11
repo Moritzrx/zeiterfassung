@@ -188,7 +188,9 @@ Jede Tätigkeit hat ein Symbol, das für das ganze Team gilt. Ändern: **Einstel
 
 ### Kunde oder Projekt
 
-Neben der Tätigkeit ("was") kann jeder Block einen **Kunden** ("für wen") bekommen, zum Beispiel eine Firma oder ein Projekt. Kunden wählst du im Block-Dialog, beim Fokus, bei "Ich bin weg" und beim Eintragen: alle bekannten Kunden als Chips, "Kein Kunde" oder "+ Neuer Kunde". Die Liste gilt für das ganze Team, Schreibweisen werden zusammengeführt. Die Auswertung zeigt zusätzlich eine Verteilung nach Kunden. Regeln bleiben bei Tätigkeiten. Dafür muss einmal das Skript 14 (`supabase/14_kunde.sql`) in Supabase laufen; vorher bleiben Kunden nur auf dem eigenen Rechner.
+Neben der Tätigkeit ("was") kann jeder Block einen **Kunden** ("für wen") bekommen, zum Beispiel eine Firma oder ein Projekt. Kunden wählst du im Block-Dialog, beim Fokus, bei "Ich bin weg" und beim Eintragen: alle bekannten Kunden als Chips, "Kein Kunde" oder "+ Neuer Kunde". Die Liste gilt für das ganze Team, Schreibweisen werden zusammengeführt. Regeln bleiben bei Tätigkeiten. Dafür muss einmal das Skript 14 (`supabase/14_kunde.sql`) in Supabase laufen; vorher bleiben Kunden nur auf dem eigenen Rechner.
+
+**Wo sehe ich die Kunden?** Auf der **Auswertung** gibt es die Karte "Kunden": jeder Kunde mit produktiven Stunden im gewählten Zeitraum, Balken, Anteil in Prozent und letztem Einsatz, sortiert nach Stunden, darunter "Ohne Kunde" und der Verteilungsring. Die Karte rechnet aus den Blöcken der letzten 13 Wochen auf diesem Rechner. Unter **Einstellungen → Kunden** stehen alle Kunden des Teams: "Umbenennen" ändert den Namen in allen Blöcken aller Personen; gibst du einen Namen ein, den es schon gibt, werden beide Kunden zusammengelegt. Der Papierkorb nimmt den Kunden aus der Liste und aus allen Blöcken (die Blöcke bleiben, nur ohne Kunden). Dafür muss einmal das Skript 15 (`supabase/15_kunde_verwalten.sql`) in Supabase laufen.
 
 ### Ich bin weg und die Rückfrage nach einer Abwesenheit
 
