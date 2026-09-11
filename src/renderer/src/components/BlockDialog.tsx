@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactElement } from 'react'
 import { Portal } from './Portal'
-import { X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import type { Bewertung, Block, RegelBewertung } from '@shared/typen'
 import { anzeigeName, fensterInfo } from '@shared/fenster'
 import { ABWESEND_NAME, RUHE_NAME, istRuhe } from '@shared/ruhe'
@@ -13,6 +13,40 @@ import { TaetigkeitSymbol } from '../symbole'
 
 /** Vergleich von Tätigkeitsnamen wie beim Speichern: ohne Groß/Klein, Leerzeichen und Bindestriche. */
 const schluessel = (name: string): string => name.toLowerCase().replace(/[\s-]/g, '')
+
+/** Editierabstand zweier Schlüssel (Levenshtein), für den Hinweis "Meintest du …?" bei Tippfehlern. */
+function abstand(a: string, b: string): number {
+  const zeile = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    let diagonal = zeile[0]
+    zeile[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const oben = zeile[j]
+      zeile[j] = Math.min(zeile[j] + 1, zeile[j - 1] + 1, diagonal + (a[i - 1] === b[j - 1] ? 0 : 1))
+      diagonal = oben
+    }
+  }
+  return zeile[b.length]
+}
+
+/**
+ * Was aus einem eingetippten Namen wird: die vorhandene Schreibweise (gleicher Schlüssel), ein Vorschlag bei einem
+ * nahen Namen (Tippfehler, höchstens 2 Zeichen Abstand, oder der eine beginnt mit dem anderen) oder wirklich neu.
+ */
+function namenPruefen(eingabe: string, bekannt: string[]): { art: 'leer' | 'vorhanden' | 'aehnlich' | 'neu'; name?: string } {
+  const s = schluessel(eingabe.trim())
+  if (!s) return { art: 'leer' }
+  const gleich = bekannt.find((t) => schluessel(t) === s)
+  if (gleich) return { art: 'vorhanden', name: gleich }
+  if (s.length >= 4) {
+    const nah = bekannt.find((t) => {
+      const k = schluessel(t)
+      return (k.length >= 4 && (k.startsWith(s) || s.startsWith(k))) || abstand(s, k) <= 2
+    })
+    if (nah) return { art: 'aehnlich', name: nah }
+  }
+  return { art: 'neu' }
+}
 
 interface Props {
   block: Block
@@ -93,6 +127,10 @@ export function BlockDialog({
   const [von, setVon] = useState(zeitFeld(block.start))
   const [bis, setBis] = useState(zeitFeld(block.ende))
   const [notiz, setNotiz] = useState(block.notiz ?? '')
+  // Feld für eine neue Tätigkeit: offen nach Klick auf "+ Neue Tätigkeit" oder wenn der Name zu keinem Chip passt.
+  const [neuOffen, setNeuOffen] = useState(false)
+  const pruefung = namenPruefen(taetigkeit, taetigkeiten)
+  const neuFeldSichtbar = neuOffen || taetigkeiten.length === 0 || (taetigkeit.trim() !== '' && pruefung.art !== 'vorhanden')
   // In der Gruppe: je Block eine eigene Bewertung oder Tätigkeit, sonst gilt die Vorgabe oben.
   const [einzeln, setEinzeln] = useState<Record<string, { bewertung?: Bewertung; taetigkeit?: string }>>({})
   const [immer, setImmer] = useState(false)
@@ -267,36 +305,68 @@ export function BlockDialog({
           */}
           <div className="flex flex-col gap-1 text-xs text-mute sm:col-span-2">
             Tätigkeit
-            {taetigkeiten.length > 0 && (
-              <div className="mt-1 flex flex-wrap gap-2">
-                {taetigkeiten.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTaetigkeit(t)}
-                    className={`flex items-center gap-1.5 rounded-chip px-3 py-1.5 text-sm transition-colors ${
-                      schluessel(taetigkeit) === schluessel(t) ? 'bg-ink text-ground' : 'bg-panel-2 text-ink hover:bg-inaktiv'
-                    }`}
-                  >
-                    <TaetigkeitSymbol name={t} groesse={14} />
-                    {t}
-                  </button>
-                ))}
-              </div>
-            )}
-            <input
-              className={`${FELD} mt-1`}
-              list="taetigkeiten-liste"
-              value={taetigkeit}
-              onChange={(e) => setTaetigkeit(e.target.value)}
-              placeholder={taetigkeiten.length ? 'oder eine neue Tätigkeit eintippen' : 'z. B. KI Learning'}
-              autoFocus={taetigkeiten.length === 0}
-            />
-            <datalist id="taetigkeiten-liste">
+            <div className="mt-1 flex flex-wrap gap-2">
               {taetigkeiten.map((t) => (
-                <option key={t} value={t} />
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    setTaetigkeit(t)
+                    setNeuOffen(false)
+                  }}
+                  className={`flex items-center gap-1.5 rounded-chip px-3 py-1.5 text-sm transition-colors ${
+                    schluessel(taetigkeit) === schluessel(t) ? 'bg-ink text-ground' : 'bg-panel-2 text-ink hover:bg-inaktiv'
+                  }`}
+                >
+                  <TaetigkeitSymbol name={t} groesse={14} />
+                  {t}
+                </button>
               ))}
-            </datalist>
+              {/* Eigene Tätigkeit anlegen: leeres Feld statt des vorbelegten Namens, damit klar ist, dass hier Neues entsteht. */}
+              <button
+                type="button"
+                onClick={() => {
+                  setTaetigkeit('')
+                  setNeuOffen(true)
+                }}
+                className={`flex items-center gap-1.5 rounded-chip border border-dashed px-3 py-1.5 text-sm transition-colors ${
+                  neuFeldSichtbar ? 'border-ink text-ink' : 'border-mute text-mute hover:border-ink hover:text-ink'
+                }`}
+              >
+                <Plus size={14} strokeWidth={1.5} />
+                Neue Tätigkeit
+              </button>
+            </div>
+            {neuFeldSichtbar && (
+              <>
+                <input
+                  className={`${FELD} mt-1`}
+                  value={taetigkeit}
+                  onChange={(e) => setTaetigkeit(e.target.value)}
+                  placeholder="Neue Tätigkeit, z. B. Managing"
+                  autoFocus
+                />
+                {pruefung.art === 'vorhanden' && (
+                  <p className="text-xs text-mute">
+                    Gibt es schon, wird als <span className="text-ink">{pruefung.name}</span> gespeichert.
+                  </p>
+                )}
+                {pruefung.art === 'aehnlich' && (
+                  <p className="text-xs text-mute">
+                    Meintest du{' '}
+                    <button type="button" onClick={() => setTaetigkeit(pruefung.name ?? '')} className="rounded-chip bg-panel-2 px-2 py-0.5 text-ink hover:bg-inaktiv">
+                      {pruefung.name}
+                    </button>
+                    ? Sonst wird <span className="text-ink">{taetigkeit.trim()}</span> als neue Tätigkeit angelegt.
+                  </p>
+                )}
+                {pruefung.art === 'neu' && (
+                  <p className="text-xs text-mute">
+                    Neue Tätigkeit: steht ab dem Speichern für alle als Chip zur Auswahl. Symbol unter Einstellungen → Tätigkeiten und Symbole.
+                  </p>
+                )}
+              </>
+            )}
           </div>
 
           <div className="flex flex-col gap-1 text-xs text-mute">
