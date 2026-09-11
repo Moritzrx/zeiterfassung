@@ -145,7 +145,7 @@ function Oberflaeche(): ReactElement {
 
   return (
     <div className="flex h-full flex-col">
-      <Hintergrund />
+      <Hintergrund gedimmt={aktiv !== 'heute'} />
       <Kopfzeile />
       <main className="relative flex-1 overflow-hidden">
         {SCREEN_REIHENFOLGE.filter((id) => besucht.includes(id)).map((id) => {

@@ -761,7 +761,7 @@ function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => voi
 }
 
 /** Die Logo-Fassung: Linienmuster hinten, Wortmarke als Wasserzeichen vorn, orangene Lichter auf beidem (Leinwand). */
-function HintergrundLogo(): ReactElement {
+function HintergrundLogo({ gedimmt }: { gedimmt: boolean }): ReactElement {
   // Etwas mehr und etwas größere Punkte als klassisch ("minimal auffälliger, aber nicht viel"), sie funkeln per CSS.
   const partikel = useMemo(() => partikelErzeugen(36, FARBEN_LOGO, 11, 1.5), [])
   const hinten = useRef<HTMLDivElement>(null)
@@ -871,8 +871,16 @@ function HintergrundLogo(): ReactElement {
         <Lichtpunkte partikel={partikel} hof />
       </div>
 
-      {/* Ebene vorn: nur die Wortmarke als blasses Wasserzeichen über den Karten (die Lichter dazu liegen hinten) */}
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 10 }}>
+      {/*
+        Ebene vorn: nur die Wortmarke als blasses Wasserzeichen über den Karten (die Lichter dazu liegen hinten).
+        Auf allen Screens außer "Heute" (dort liegen die Karten unter der Schrift) wird sie auf 40 % gedimmt, weil
+        Diagramme und Tabellen dort mitten durch die Schrift laufen (11. September 2026).
+      */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 overflow-hidden"
+        style={{ zIndex: 10, opacity: gedimmt ? 0.4 : 1, transition: 'opacity 500ms ease' }}
+      >
         <div className="absolute inset-0 flex items-center justify-center">
           <svg
             ref={wortmarkeSvg}
@@ -891,7 +899,7 @@ function HintergrundLogo(): ReactElement {
 }
 
 /** Wählt die Fassung nach der Einstellung; der Schlüssel baut die Ebenen beim Umschalten sauber neu auf. */
-export function Hintergrund(): ReactElement {
+export function Hintergrund({ gedimmt = false }: { gedimmt?: boolean }): ReactElement {
   const art = useHintergrundArt()
-  return art === 'klassisch' ? <HintergrundKlassisch key="klassisch" /> : <HintergrundLogo key="logo" />
+  return art === 'klassisch' ? <HintergrundKlassisch key="klassisch" /> : <HintergrundLogo key="logo" gedimmt={gedimmt} />
 }

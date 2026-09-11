@@ -3,9 +3,9 @@ import { randomUUID } from 'crypto'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { hostname } from 'os'
 import { join } from 'path'
-import { app, powerMonitor } from 'electron'
+import { app, powerMonitor, systemPreferences } from 'electron'
 import { activeWindow } from 'get-windows'
-import type { Abwesenheit, Bewertung, Block, ErfassungsZustand, Fokus, LaufenderBlock, Weg } from '@shared/typen'
+import type { Abwesenheit, Bewertung, Bildschirmrecht, Block, ErfassungsZustand, Fokus, LaufenderBlock, Weg } from '@shared/typen'
 import type { Zuordnung } from '@shared/regeln'
 import { naechsterTagesanfang } from '@shared/zeit'
 import { istEigenesProgramm, istSchreibtisch, istSystemUeberlagerung, programmNormalisieren } from './programme'
@@ -41,6 +41,34 @@ const WEG_MAX_MS = 12 * 3_600_000
 const RUECKFRAGE_MAX_MS = 3 * 3_600_000
 const RUECKFRAGE_FENSTER_MS = 24 * 3_600_000
 const SPAETER_MERKEN_MS = 2 * 24 * 3_600_000
+
+/** Stand der macOS-Berechtigung "Bildschirmaufnahme" (für Fenstertitel); unter Windows nicht nötig. */
+export function bildschirmrecht(): Bildschirmrecht {
+  if (process.platform !== 'darwin') return 'nicht-noetig'
+  const stand = systemPreferences.getMediaAccessStatus('screen')
+  if (stand === 'granted') return 'erteilt'
+  if (stand === 'not-determined') return 'offen'
+  return 'fehlt'
+}
+
+function bildschirmrechtErteilt(): boolean {
+  return process.platform === 'darwin' && systemPreferences.getMediaAccessStatus('screen') === 'granted'
+}
+
+/**
+ * Löst auf dem Mac die Systemabfrage für "Bildschirmaufnahme" aus (get-windows fragt sie an, wenn die Prüfung
+ * eingeschaltet ist und die Berechtigung noch nicht entschieden wurde). Ein Fehler ist hier erwartbar und egal.
+ */
+export async function bildschirmrechtAnfragen(): Promise<Bildschirmrecht> {
+  if (process.platform === 'darwin') {
+    try {
+      await activeWindow({ screenRecordingPermission: true, accessibilityPermission: false })
+    } catch {
+      // Ohne Berechtigung wirft get-windows; die Abfrage von macOS ist trotzdem erschienen bzw. der Stand steht fest.
+    }
+  }
+  return bildschirmrecht()
+}
 
 /** Was zwischen zwei App-Starts überlebt: die laufende Abwesenheit und die "später" weggeklickten Rückfragen. */
 interface Ablage {
@@ -640,8 +668,11 @@ export class Erfassung extends EventEmitter {
 
   private async aktivesFenster(): Promise<Awaited<ReturnType<typeof activeWindow>> | undefined> {
     try {
-      // Auf dem Mac bewusst ohne Berechtigungsabfragen: nur der Programmname, kein Fenstertitel.
-      return await activeWindow({ screenRecordingPermission: false, accessibilityPermission: false })
+      // Auf dem Mac gibt es Fenstertitel nur mit der Berechtigung "Bildschirmaufnahme" (seit 11. September 2026 gewollt:
+      // YouTube, Sheets und Co. sollen auch dort erkannt werden). Ohne erteilte Berechtigung wird bewusst OHNE Prüfung
+      // abgefragt (nur Programmname), sonst wirft get-windows und die Erfassung stünde still; die Anfrage der Berechtigung
+      // löst `bildschirmrechtAnfragen` in index.ts einmalig aus. Bedienungshilfen werden weiterhin nicht angefordert.
+      return await activeWindow({ screenRecordingPermission: bildschirmrechtErteilt(), accessibilityPermission: false })
     } catch {
       return undefined
     }

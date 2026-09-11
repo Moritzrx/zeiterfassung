@@ -41,7 +41,7 @@ Falls macOS behauptet, die App sei **"beschädigt"**: Terminal öffnen (Programm
 xattr -cr "/Applications/wessamedia Zeit.app"
 ```
 
-Die App fragt auf dem Mac **keine** Berechtigungen ab (weder Bedienungshilfen noch Bildschirmaufnahme). Deshalb sieht sie auf dem Mac nur Programmnamen, keine Fenstertitel. Regeln nach Fenstertitel wirken nur unter Windows.
+Auf dem Mac fragt die App **eine** Berechtigung an: **Bildschirmaufnahme**. Sie nimmt nichts auf, macOS verlangt diese Berechtigung nur, damit ein Programm die **Fenstertitel** anderer Programme lesen darf. Erst damit sieht die App, ob im Browser YouTube, Google Sheets oder Instagram offen ist (wie unter Windows). So geht es: Beim ersten Start erscheint die Frage von macOS, dort **"Systemeinstellungen öffnen"** wählen, in der Liste **Bildschirmaufnahme** den Schalter bei **"wessamedia Zeit"** einschalten und die App **neu starten**. Falls die Frage nicht erschien: in der App unter **Einstellungen → System → Fenstertitel** auf **"Berechtigung anfragen"** klicken. Nach einem Update der App kann macOS die Berechtigung erneut verlangen, weil die App nicht von Apple signiert ist; dann den Schalter einmal aus- und wieder einschalten. Bedienungshilfen werden nicht angefordert.
 
 Deinstallieren: App aus dem Ordner Programme in den Papierkorb ziehen. Vorher über das Menüleisten-Symbol **"Beenden"** wählen.
 
@@ -261,7 +261,7 @@ Versionsnummer in `package.json` erhöhen, neu bauen, die Dateien weitergeben. U
 ## 8. Bekannte Grenzen
 
 - Unsignierte Installer, deshalb die Warnungen beim ersten Start (Abschnitt 1).
-- Auf dem Mac nur Programmnamen, keine Fenstertitel (keine Berechtigung nötig, dafür greifen Titel-Regeln nur unter Windows).
+- Auf dem Mac gibt es Fenstertitel nur mit der Berechtigung "Bildschirmaufnahme" (Einstellungen → System); ohne sie nur Programmnamen.
 - Lokal werden 13 Wochen vorgehalten; ältere Auswertungen kommen als Summen aus der Datenbank und brauchen Internet.
 - Linux wird nicht unterstützt.
 

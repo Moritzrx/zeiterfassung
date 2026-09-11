@@ -39,7 +39,9 @@ import { authIpcRegistrieren, authStatus } from './auth'
 import { Auszeichnungen } from './auszeichnungen'
 import { blockAendern, eintragAnlegen } from './bearbeiten'
 import { alleNeuBewerten } from './bewertung'
-import { Erfassung } from './erfassung'
+import { Erfassung, bildschirmrecht, bildschirmrechtAnfragen } from './erfassung'
+import { protokollEinrichten, protokollZeilen } from './protokoll'
+import { release } from 'os'
 import { Feier } from './feier'
 import { Profil } from './profil'
 import { fokusRueckwirkend } from './fokus'
@@ -56,6 +58,9 @@ import { Ziele } from './ziele'
 const APP_ID = 'com.wessamedia.zeit'
 const HINTERGRUND = '#0B0B0C'
 const REGELN_TAKT_MS = 5 * 60_000
+
+// Fehler und Warnungen des Hauptprozesses für die Diagnose mitschreiben (so früh wie möglich).
+protokollEinrichten()
 
 interface Sitzung {
   userId: string
@@ -592,8 +597,46 @@ function ipcRegistrieren(): void {
     version: app.getVersion(),
     plattform: process.platform === 'darwin' ? 'mac' : process.platform === 'win32' ? 'windows' : 'linux',
     gepackt: app.isPackaged,
-    autostart: app.isPackaged ? app.getLoginItemSettings().openAtLogin : false
+    autostart: app.isPackaged ? app.getLoginItemSettings().openAtLogin : false,
+    bildschirmrecht: bildschirmrecht()
   }))
+  // Diagnose als Text für den Chat (Einstellungen → System → "Diagnose kopieren"): Stand von App, System, Erfassung,
+  // Abgleich und die letzten Fehlerzeilen des Hauptprozesses. Keine Blockinhalte, keine Fenstertitel.
+  ipcMain.handle('system:diagnose', (): string => {
+    const jetzt = new Date()
+    const z: string[] = []
+    z.push(`wessamedia Zeit ${app.getVersion()} (${app.isPackaged ? 'installiert' : 'Entwicklung'})`)
+    z.push(`System: ${process.platform} ${release()} · Electron ${process.versions.electron} · Node ${process.versions.node}`)
+    z.push(`Zeit: ${jetzt.toISOString()} (${berlinDatum(jetzt)} ${berlinTeile(jetzt).stunde}:${String(berlinTeile(jetzt).minute).padStart(2, '0')} Berlin)`)
+    z.push(`Autostart: ${app.isPackaged ? app.getLoginItemSettings().openAtLogin : 'nur installiert'} · Bildschirmaufnahme: ${bildschirmrecht()}`)
+    z.push(`Datenbank konfiguriert: ${supabaseKonfiguriert()}`)
+    if (sitzung) {
+      const s = sitzung
+      const e = s.erfassung.status()
+      const alle = s.speicher.alle()
+      const heute = s.speicher.imZeitraum(tagesanfang(jetzt), naechsterTagesanfang(jetzt))
+      z.push(`Konto: ${s.userId.slice(0, 8)}…`)
+      z.push(`Erfassung: ${e.zustand}${e.laufenderBlock ? ` · läuft seit ${e.laufenderBlock.start} (${e.laufenderBlock.programm ?? '-'})` : ''}${e.fokus ? ` · Fokus ${e.fokus.taetigkeit}` : ''}${e.weg ? ` · Weg ${e.weg.taetigkeit}` : ''}`)
+      z.push(`Untätigkeit ab ${s.erfassung.idleSchwelleSekunden} s · Fenstertitel speichern: ${s.erfassung.fenstertitelSpeichern}`)
+      z.push(`Blöcke lokal: ${alle.length} (heute ${heute.length}, ungeklärt ${s.speicher.anzahlUngeklaert()}, offene Rückfragen ${e.offeneAbwesenheiten.length})`)
+      z.push(`Abgleich: ${s.sync.letzterSync ? s.sync.letzterSync.toISOString() : 'noch keiner'} · wartend ${s.speicher.anzahlAusstehend()}${s.sync.fehler ? ` · Fehler: ${s.sync.fehler}` : ''}`)
+      z.push(`Regeln: ${s.regelwerk.liste().length} · Tätigkeiten: ${s.taetigkeiten.liste().length}`)
+    } else {
+      z.push('Nicht angemeldet.')
+    }
+    const p = protokollZeilen()
+    z.push(`Protokoll (${p.length} Zeilen):`)
+    z.push(...(p.length ? p : ['(keine Fehler gemerkt)']))
+    return z.join('\n')
+  })
+  // Mac: Berechtigung "Bildschirmaufnahme" anfragen (Systemabfrage) und die passende Seite der Systemeinstellungen öffnen.
+  ipcMain.handle('system:bildschirmrechtAnfragen', async () => {
+    const stand = await bildschirmrechtAnfragen()
+    if (process.platform === 'darwin' && stand !== 'erteilt') {
+      void shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture')
+    }
+    return stand
+  })
   ipcMain.handle('system:autostartSetzen', (_ereignis, an: boolean): boolean => {
     if (!app.isPackaged) return false
     app.setLoginItemSettings({ openAtLogin: an, args: an ? ['--hidden'] : [] })

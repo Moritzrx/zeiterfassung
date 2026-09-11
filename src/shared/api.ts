@@ -126,6 +126,10 @@ export interface Api {
     info: () => Promise<SystemInfo>
     /** Autostart ein- oder ausschalten; wirkt nur in der installierten App. */
     autostartSetzen: (an: boolean) => Promise<boolean>
+    /** Mac: die Berechtigung "Bildschirmaufnahme" anfragen und die Systemeinstellungen öffnen; liefert den Stand danach. */
+    bildschirmrechtAnfragen: () => Promise<SystemInfo['bildschirmrecht']>
+    /** Diagnosetext (App, System, Erfassung, Abgleich, letzte Fehler) zum Einfügen in den Chat. */
+    diagnose: () => Promise<string>
   }
   update: {
     status: () => Promise<UpdateStatus>

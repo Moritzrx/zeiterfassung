@@ -70,7 +70,9 @@ const api: Api = {
   },
   system: {
     info: () => ipcRenderer.invoke('system:info'),
-    autostartSetzen: (an) => ipcRenderer.invoke('system:autostartSetzen', an)
+    autostartSetzen: (an) => ipcRenderer.invoke('system:autostartSetzen', an),
+    bildschirmrechtAnfragen: () => ipcRenderer.invoke('system:bildschirmrechtAnfragen'),
+    diagnose: () => ipcRenderer.invoke('system:diagnose')
   },
   update: {
     status: () => ipcRenderer.invoke('update:status'),

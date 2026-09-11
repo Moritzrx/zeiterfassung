@@ -678,8 +678,44 @@ export function EinstellungenScreen(): ReactElement {
       <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">System</p>
         <div className="mt-1 divide-y divide-panel-2">
-          <Zeile titel="Systemrechte" hinweis={system?.plattform === 'mac' ? 'Bildschirmaufnahme wird bewusst nicht genutzt. Es werden nur Programmnamen erfasst, keine Fenstertitel.' : 'Unter Windows sind keine Sonderrechte nötig.'}>
-            <span className="text-sm text-produktiv">in Ordnung</span>
+          {/*
+            Mac: Fenstertitel (YouTube, Sheets, Instagram) gibt es nur mit der Berechtigung "Bildschirmaufnahme".
+            Seit 11. September 2026 gewollt (vorher bewusst weggelassen). macOS fragt einmal; danach muss die App neu
+            gestartet werden. Nach einem Update kann macOS die Berechtigung erneut verlangen (die App ist nicht von Apple signiert).
+          */}
+          <Zeile
+            titel={system?.plattform === 'mac' ? 'Fenstertitel (Bildschirmaufnahme)' : 'Systemrechte'}
+            hinweis={
+              system?.plattform !== 'mac'
+                ? 'Unter Windows sind keine Sonderrechte nötig.'
+                : system.bildschirmrecht === 'erteilt'
+                  ? 'Berechtigung erteilt: Die App sieht, welche Seite im Browser offen ist (YouTube, Sheets, Instagram). Sie nimmt nichts auf.'
+                  : 'Ohne die Berechtigung „Bildschirmaufnahme“ sieht die App nur Programmnamen, keine Seiten. Anfragen, in den Systemeinstellungen einschalten, dann die App neu starten. Nach einem Update kann macOS erneut fragen.'
+            }
+          >
+            {system?.plattform !== 'mac' || system.bildschirmrecht === 'erteilt' ? (
+              <span className="text-sm text-produktiv">in Ordnung</span>
+            ) : (
+              <>
+                <span className="text-sm text-unproduktiv">{system.bildschirmrecht === 'offen' ? 'noch nicht erteilt' : 'fehlt'}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void window.api.system.bildschirmrechtAnfragen().then((stand) => {
+                      setSystem((s) => (s ? { ...s, bildschirmrecht: stand } : s))
+                      hinweisZeigen(
+                        stand === 'erteilt'
+                          ? 'Berechtigung erteilt. Ab dem nächsten Start sieht die App die Fenstertitel.'
+                          : 'In den Systemeinstellungen „wessamedia Zeit“ bei Bildschirmaufnahme einschalten, dann die App neu starten.'
+                      )
+                    })
+                  }}
+                  className="knopf-primaer rounded-chip px-3 py-1.5 text-sm"
+                >
+                  Berechtigung anfragen
+                </button>
+              </>
+            )}
           </Zeile>
           <Zeile titel="Datenbank" hinweis={abgleich}>
             <span className="text-sm text-mute">
@@ -688,6 +724,21 @@ export function EinstellungenScreen(): ReactElement {
           </Zeile>
           <Zeile titel="Version" hinweis={system ? `${system.plattform === 'mac' ? 'Mac' : system.plattform === 'windows' ? 'Windows' : 'Linux'} · ${system.gepackt ? 'installierte App' : 'Entwicklungsversion'}` : undefined}>
             <span className="text-sm text-mute">{system?.version ?? ''}</span>
+          </Zeile>
+          <Zeile titel="Diagnose" hinweis="Wenn etwas hakt: kopiert Stand und letzte Fehler als Text. Den Text einfach in den Chat einfügen. Keine Blockinhalte, keine Fenstertitel.">
+            <button
+              type="button"
+              onClick={() => {
+                void window.api.system
+                  .diagnose()
+                  .then((text) => navigator.clipboard.writeText(text))
+                  .then(() => hinweisZeigen('Diagnose in die Zwischenablage kopiert. Einfach in den Chat einfügen.'))
+                  .catch(() => hinweisZeigen('Kopieren hat nicht geklappt.'))
+              }}
+              className="rounded-chip bg-panel-2 px-3 py-1.5 text-sm text-ink hover:bg-inaktiv"
+            >
+              Diagnose kopieren
+            </button>
           </Zeile>
           <Zeile titel="Updates" hinweis={updateText(update)}>
             {update && update.zustand !== 'entwicklung' && (

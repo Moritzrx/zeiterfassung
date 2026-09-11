@@ -104,12 +104,19 @@ export interface RegelAenderung {
 }
 
 /** Angaben zu App und System für die Einstellungen. */
+/**
+ * Stand der macOS-Berechtigung "Bildschirmaufnahme", die für Fenstertitel nötig ist (11. September 2026, Entscheidung des
+ * Auftraggebers: Seiten wie YouTube oder Sheets sollen auch auf dem Mac erkannt werden). Unter Windows nicht nötig.
+ */
+export type Bildschirmrecht = 'nicht-noetig' | 'erteilt' | 'offen' | 'fehlt'
+
 export interface SystemInfo {
   version: string
   plattform: 'windows' | 'mac' | 'linux'
   /** true in der installierten App, false in der Entwicklungsversion */
   gepackt: boolean
   autostart: boolean
+  bildschirmrecht: Bildschirmrecht
 }
 
 /** Stand der automatischen Aktualisierung (src/main/aktualisierung.ts). */
