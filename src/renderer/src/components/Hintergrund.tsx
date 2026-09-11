@@ -111,11 +111,15 @@ export const MUSTER: string[] = [
 const MUSTER_LICHTER = 6
 const MUSTER_TEMPO = 150
 const MUSTER_GLIEDER = 22
-/** Lichter auf den Rand-Bahnen der Wortmarke: drei oben, zwei unten; Tempo in Wortmarken-Einheiten je Sekunde, 44 Glieder. */
-const WORTMARKE_LICHTER_OBEN = 3
-const WORTMARKE_LICHTER_UNTEN = 2
+/**
+ * Lichter auf den Rand-Bahnen der Wortmarke: fünf oben, vier unten, 48 Glieder (11. September 2026, "ein paar mehr
+ * Lichtstreifen, damit die Schrift durchgehender beleuchtet ist": vorher 3 + 2 mit 44 Gliedern, rund 15 % der Ränder
+ * gleichzeitig beleuchtet, jetzt rund 30 %). Tempo in Wortmarken-Einheiten je Sekunde.
+ */
+const WORTMARKE_LICHTER_OBEN = 5
+const WORTMARKE_LICHTER_UNTEN = 4
 const WORTMARKE_TEMPO = 90
-const WORTMARKE_GLIEDER = 44
+const WORTMARKE_GLIEDER = 48
 /** Abstand der Kettenglieder auf der Leinwand (Einheiten der jeweiligen Bahn). */
 const GLIED = 3.5
 
