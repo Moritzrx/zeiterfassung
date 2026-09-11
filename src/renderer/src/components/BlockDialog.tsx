@@ -9,6 +9,10 @@ import { berlinDatum, berlinTeile, berlinZuUtc } from '@shared/zeit'
 import { datumText, dauerText } from '../format'
 import { hinweisZeigen } from './Hinweis'
 import { tonSpielen } from '../toene'
+import { TaetigkeitSymbol } from '../symbole'
+
+/** Vergleich von Tätigkeitsnamen wie beim Speichern: ohne Groß/Klein, Leerzeichen und Bindestriche. */
+const schluessel = (name: string): string => name.toLowerCase().replace(/[\s-]/g, '')
 
 interface Props {
   block: Block
@@ -256,22 +260,44 @@ export function BlockDialog({
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-xs text-mute">
+          {/*
+            Tätigkeit als Chips zum Antippen (11. September 2026, "ich kann die Tätigkeit gar nicht ändern"): das reine
+            Eingabefeld mit Vorschlagsliste zeigte die anderen Tätigkeiten erst beim Tippen, das fiel nicht auf.
+            Gleiche Darstellung wie im Fokus-Dialog; das Feld darunter bleibt für neue Namen.
+          */}
+          <div className="flex flex-col gap-1 text-xs text-mute sm:col-span-2">
             Tätigkeit
+            {taetigkeiten.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-2">
+                {taetigkeiten.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTaetigkeit(t)}
+                    className={`flex items-center gap-1.5 rounded-chip px-3 py-1.5 text-sm transition-colors ${
+                      schluessel(taetigkeit) === schluessel(t) ? 'bg-ink text-ground' : 'bg-panel-2 text-ink hover:bg-inaktiv'
+                    }`}
+                  >
+                    <TaetigkeitSymbol name={t} groesse={14} />
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
             <input
-              className={FELD}
+              className={`${FELD} mt-1`}
               list="taetigkeiten-liste"
               value={taetigkeit}
               onChange={(e) => setTaetigkeit(e.target.value)}
-              placeholder="z. B. KI Learning"
-              autoFocus
+              placeholder={taetigkeiten.length ? 'oder eine neue Tätigkeit eintippen' : 'z. B. KI Learning'}
+              autoFocus={taetigkeiten.length === 0}
             />
             <datalist id="taetigkeiten-liste">
               {taetigkeiten.map((t) => (
                 <option key={t} value={t} />
               ))}
             </datalist>
-          </label>
+          </div>
 
           <div className="flex flex-col gap-1 text-xs text-mute">
             Bewertung
