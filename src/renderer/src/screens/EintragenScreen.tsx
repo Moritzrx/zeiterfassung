@@ -10,6 +10,8 @@ import { Karte } from '../components/Karte'
 import { useErfassung } from '../erfassung'
 import { dauerText } from '../format'
 import { useTaetigkeiten } from '../taetigkeiten'
+import { useKunden } from '../kunden'
+import { KundenWahl } from '../components/KundenWahl'
 
 const FELD =
   'w-full rounded-chip bg-panel-2 px-3 py-2.5 text-sm text-ink outline-none placeholder:text-dim focus:ring-1 focus:ring-dim'
@@ -42,6 +44,8 @@ export function EintragenScreen(): ReactElement {
   const [von, setVon] = useState('09:00')
   const [bis, setBis] = useState('10:00')
   const [taetigkeit, setTaetigkeit] = useState('')
+  const [kunde, setKunde] = useState('')
+  const kunden = useKunden()
   const [notiz, setNotiz] = useState('')
   const [ueberschneidungen, setUeberschneidungen] = useState<Block[]>([])
   const [loeschen, setLoeschen] = useState(false)
@@ -94,7 +98,8 @@ export function EintragenScreen(): ReactElement {
         start: start.toISOString(),
         ende: ende.toISOString(),
         taetigkeit,
-        notiz: notiz || null
+        notiz: notiz || null,
+        kunde: kunde.trim() || null
       })
       let zusatz = ''
       if (loeschen && ueberschneidungen.length > 0) {
@@ -188,8 +193,12 @@ export function EintragenScreen(): ReactElement {
             </label>
             <label className="flex flex-col gap-1 text-xs text-mute">
               Notiz
-              <input className={FELD} value={notiz} onChange={(e) => setNotiz(e.target.value)} placeholder="optional, z. B. Kunde oder Ort" />
+              <input className={FELD} value={notiz} onChange={(e) => setNotiz(e.target.value)} placeholder="optional, z. B. Ort" />
             </label>
+          </div>
+          <div className="mt-4 flex flex-col gap-1 text-xs text-mute">
+            Kunde (optional)
+            <KundenWahl wert={kunde} onChange={setKunde} kunden={kunden} />
           </div>
 
           {ueberschneidungen.length > 0 && (

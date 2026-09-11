@@ -21,7 +21,7 @@ function VerteilungsRingInnen({ werte }: { werte: Verteilungswert[] }): ReactEle
   }
 
   const farben = werte.map((w, i) =>
-    w.name === 'Sonstige' || w.name === 'Ohne Tätigkeit' ? SONSTIGE : taetigkeitFarbe(zuordnung, w.name, i)
+    w.name === 'Sonstige' || w.name === 'Ohne Tätigkeit' || w.name === 'Ohne Kunde' ? SONSTIGE : taetigkeitFarbe(zuordnung, w.name, i)
   )
   const groesse = 200
 
@@ -66,7 +66,7 @@ function VerteilungsRingInnen({ werte }: { werte: Verteilungswert[] }): ReactEle
             }`}
           >
             <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: farben[i] }} />
-            <TaetigkeitSymbol name={w.name === 'Sonstige' || w.name === 'Ohne Tätigkeit' ? null : w.name} groesse={16} />
+            <TaetigkeitSymbol name={w.name === 'Sonstige' || w.name === 'Ohne Tätigkeit' || w.name === 'Ohne Kunde' ? null : w.name} groesse={16} />
             <span className="truncate">{w.name}</span>
             <span className="ml-auto shrink-0 text-mute">{stundenText(w.sekunden)} h</span>
             <span className="w-10 shrink-0 text-right text-mute">{Math.round((w.sekunden / gesamt) * 100)} %</span>

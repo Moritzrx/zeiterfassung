@@ -218,7 +218,7 @@ export class Erfassung extends EventEmitter {
    * Tätigkeit, bis die erste Eingabe die Rückkehr meldet. Laufende Blöcke enden am Beginn, automatische Blöcke im
    * Zeitraum weichen (Zeit ohne Eingabe, die schon rot gebucht war, gehört zum Termin). Ein Fokus endet.
    */
-  wegStarten(taetigkeit: string, beginn: Date, jetzt: Date): void {
+  wegStarten(taetigkeit: string, beginn: Date, jetzt: Date, kunde: string | null = null): void {
     if (this.zustand === 'gestoppt') return
     if (this.weg) this.wegBeenden(beginn)
     if (this.zustand === 'pausiert') {
@@ -250,6 +250,7 @@ export class Erfassung extends EventEmitter {
       programmRoh: null,
       fenstertitel: null,
       taetigkeit,
+      kunde,
       bewertung: 'produktiv',
       notiz: null,
       manuellGeprueft: true,
@@ -258,7 +259,7 @@ export class Erfassung extends EventEmitter {
       geloeschtAm: null
     }
     this.speicher.hinzufuegen(this.wegBlock)
-    this.weg = { taetigkeit, seit: beginn.toISOString() }
+    this.weg = { taetigkeit, seit: beginn.toISOString(), kunde }
     this.wegLaengsteRuhe = 0
     this.zustand = 'weg'
     this.inaktivSeit = null
@@ -366,8 +367,8 @@ export class Erfassung extends EventEmitter {
    * Tätigkeit. Der laufende Block wird am Beginn geteilt bzw. ganz übernommen; die schon gespeicherten
    * Blöcke behandelt `fokusRueckwirkend` (src/main/fokus.ts).
    */
-  fokusStarten(taetigkeit: string, beginn: Date, jetzt: Date): void {
-    this.fokus = { taetigkeit, seit: beginn.toISOString() }
+  fokusStarten(taetigkeit: string, beginn: Date, jetzt: Date, kunde: string | null = null): void {
+    this.fokus = { taetigkeit, seit: beginn.toISOString(), kunde }
     const b = this.aktuell
     if (b) {
       if (Date.parse(b.start) < beginn.getTime() - KURZ_MS) {
@@ -401,6 +402,7 @@ export class Erfassung extends EventEmitter {
     // Zeit ohne Eingabe ("Nicht am Rechner", programm null) bleibt auch im Fokus unproduktiv.
     if (!this.fokus || block.programm === null) return
     block.taetigkeit = this.fokus.taetigkeit
+    block.kunde = this.fokus.kunde ?? null
     block.bewertung = 'produktiv'
     block.manuellGeprueft = true
   }
@@ -710,6 +712,7 @@ export class Erfassung extends EventEmitter {
       programmRoh,
       fenstertitel,
       taetigkeit: zuordnung?.taetigkeit ?? null,
+      kunde: null,
       bewertung: ruhe ? 'unproduktiv' : (zuordnung?.bewertung ?? 'ungeklaert'),
       notiz: null,
       manuellGeprueft: false,

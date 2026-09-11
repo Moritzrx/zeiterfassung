@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import { hostname } from 'os'
 import type { Block, BlockAenderung, NeuerEintrag } from '@shared/typen'
+import type { Kunden } from './kunden'
 import type { Speicher } from './speicher'
 import type { Taetigkeiten } from './taetigkeiten'
 
@@ -13,6 +14,7 @@ const MAX_EINTRAG_MS = 24 * 3600_000
 export function eintragAnlegen(
   speicher: Speicher,
   taetigkeiten: Taetigkeiten,
+  kunden: Kunden,
   userId: string,
   eintrag: NeuerEintrag
 ): Block {
@@ -37,6 +39,7 @@ export function eintragAnlegen(
     programmRoh: null,
     fenstertitel: null,
     taetigkeit,
+    kunde: eintrag.kunde ? kunden.merken(eintrag.kunde) || null : null,
     bewertung: 'produktiv',
     notiz: eintrag.notiz?.trim() || null,
     manuellGeprueft: true,
@@ -56,6 +59,7 @@ export function eintragAnlegen(
 export function blockAendern(
   speicher: Speicher,
   taetigkeiten: Taetigkeiten,
+  kunden: Kunden,
   id: string,
   aenderung: BlockAenderung
 ): Block | null {
@@ -81,6 +85,9 @@ export function blockAendern(
   }
   if (aenderung.taetigkeit !== undefined) {
     block.taetigkeit = aenderung.taetigkeit ? taetigkeiten.merken(aenderung.taetigkeit) || null : null
+  }
+  if (aenderung.kunde !== undefined) {
+    block.kunde = aenderung.kunde ? kunden.merken(aenderung.kunde) || null : null
   }
   if (aenderung.bewertung !== undefined) block.bewertung = aenderung.bewertung
   if (aenderung.notiz !== undefined) block.notiz = aenderung.notiz?.trim() || null

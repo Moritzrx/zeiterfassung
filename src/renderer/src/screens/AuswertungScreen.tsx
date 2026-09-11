@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
-import { gleitenderSchnitt, hochrechnungBerechnen } from '@shared/auswertung'
+import { gleitenderSchnitt, hochrechnungBerechnen, verteilungNachKunde } from '@shared/auswertung'
 import { STANDARD_GESAMTZIEL, zielRang } from '@shared/rang'
 import { produktivJeTagAusSummen, verteilungAusSummen, wochenRangAusSummen } from '@shared/summen'
 import type { Block, Profil, Tagessumme, Ziel } from '@shared/typen'
-import { berlinDatum, datumVerschieben, wochenanfang } from '@shared/zeit'
+import { berlinDatum, datumVerschieben, datumZuTagesanfang, naechsterTagesanfang, wochenanfang } from '@shared/zeit'
 import { HochrechnungKarte } from '../components/HochrechnungKarte'
 import { Karte } from '../components/Karte'
 import { MonatsVerlauf, type Monatswert } from '../components/MonatsVerlauf'
@@ -129,6 +129,11 @@ export function AuswertungScreen(): ReactElement {
   )
 
   const hochrechnung = useMemo(() => hochrechnungBerechnen(bloecke, heute, urlaubswochen), [bloecke, heute, urlaubswochen])
+  // Verteilung nach Kunden aus den lokalen Blöcken (bis 13 Wochen zurück); nur wenn überhaupt Kunden vergeben sind.
+  const kundenAnteile = useMemo(
+    () => (bloecke.some((b) => b.kunde) ? verteilungNachKunde(bloecke, datumZuTagesanfang(verlaufVon), naechsterTagesanfang(datumZuTagesanfang(heute))) : []),
+    [bloecke, verlaufVon, heute]
+  )
   const zeitraumLabel = ZEITRAEUME.find((z) => z.tage === tage)?.label ?? `${tage} Tage`
 
   return (
@@ -172,6 +177,14 @@ export function AuswertungScreen(): ReactElement {
         <p className="text-xs tracking-wide text-mute uppercase">Verteilung der Tätigkeiten, letzte {zeitraumLabel}</p>
         <VerteilungsRing werte={anteile} />
       </Karte>
+
+      {kundenAnteile.length > 0 && (
+        <Karte>
+          <p className="text-xs tracking-wide text-mute uppercase">Verteilung nach Kunden, letzte {zeitraumLabel}</p>
+          <VerteilungsRing werte={kundenAnteile} />
+          {tage > LOKALE_WOCHEN * 7 && <p className="mt-2 text-xs text-dim">Nach Kunden nur für die letzten {LOKALE_WOCHEN} Wochen, weiter zurück liegen die Blöcke nicht mehr auf diesem Rechner.</p>}
+        </Karte>
+      )}
 
       <h2 className="mt-2 text-lg font-light">Hochrechnung</h2>
       <HochrechnungKarte

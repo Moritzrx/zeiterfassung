@@ -22,11 +22,14 @@ const api: Api = {
     }
   },
   fokus: {
-    starten: (taetigkeit, beginn) => ipcRenderer.invoke('fokus:starten', taetigkeit, beginn),
+    starten: (taetigkeit, beginn, kunde) => ipcRenderer.invoke('fokus:starten', taetigkeit, beginn, kunde ?? null),
     beenden: () => ipcRenderer.invoke('fokus:beenden')
   },
+  kunden: {
+    liste: () => ipcRenderer.invoke('kunden:liste')
+  },
   weg: {
-    starten: (taetigkeit, beginn) => ipcRenderer.invoke('weg:starten', taetigkeit, beginn),
+    starten: (taetigkeit, beginn, kunde) => ipcRenderer.invoke('weg:starten', taetigkeit, beginn, kunde ?? null),
     beenden: () => ipcRenderer.invoke('weg:beenden')
   },
   abwesenheit: {

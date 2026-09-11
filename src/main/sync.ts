@@ -17,6 +17,7 @@ interface Zeile {
   programm_roh: string | null
   fenstertitel: string | null
   taetigkeit: string | null
+  kunde?: string | null
   bewertung: Block['bewertung']
   notiz: string | null
   manuell_geprueft: boolean
@@ -26,8 +27,14 @@ interface Zeile {
   testdaten?: boolean
 }
 
+/**
+ * Ob die Datenbank die Spalte "kunde" schon kennt (Skript 14). Solange nicht, wird sie beim Senden weggelassen,
+ * sonst scheiterte JEDER Abgleich mit "column kunde does not exist" (11. September 2026). Der Anfangsabgleich prüft es.
+ */
+let spalteKunde = true
+
 function zuZeile(b: Block): Zeile {
-  return {
+  const zeile: Zeile = {
     id: b.id,
     user_id: b.userId,
     start: b.start,
@@ -43,6 +50,8 @@ function zuZeile(b: Block): Zeile {
     geraet: b.geraet,
     geloescht_am: b.geloeschtAm
   }
+  if (spalteKunde) zeile.kunde = b.kunde
+  return zeile
 }
 
 function vonZeile(z: Zeile): Block {
@@ -56,6 +65,7 @@ function vonZeile(z: Zeile): Block {
     programmRoh: z.programm_roh,
     fenstertitel: z.fenstertitel,
     taetigkeit: z.taetigkeit,
+    kunde: z.kunde ?? null,
     bewertung: z.bewertung,
     notiz: z.notiz,
     manuellGeprueft: z.manuell_geprueft,
@@ -134,8 +144,21 @@ export class Sync {
     }
   }
 
+  /** Steht die Spalte "kunde" schon in der Datenbank? Für den Hinweis in den Einstellungen. */
+  kundeSpalteVorhanden(): boolean {
+    return spalteKunde
+  }
+
   async anfangsAbgleich(): Promise<void> {
     if (!supabaseKonfiguriert()) return
+    try {
+      // Skript 14 gelaufen? Sonst die Spalte "kunde" beim Senden weglassen.
+      const probe = await supabase().from('block').select('kunde').eq('user_id', this.userId).limit(1)
+      spalteKunde = !probe.error
+      if (probe.error) console.warn('Sync: Spalte "kunde" fehlt noch (Skript 14), Kunden werden bis dahin nur lokal gespeichert.')
+    } catch {
+      spalteKunde = false
+    }
     try {
       const von = new Date(Date.now() - WOCHEN_ZURUECK * 7 * 86_400_000).toISOString()
       // Blöcke der letzten Minuten könnten noch unterwegs sein, die werden nicht als verwaist gewertet.

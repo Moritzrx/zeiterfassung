@@ -54,13 +54,17 @@ export interface Api {
     onStatus: (rueckruf: (status: ErfassungsStatus) => void) => Abmelden
   }
   fokus: {
-    /** Startet einen Fokus mit dieser Tätigkeit ab dem Beginn (ISO, heute, darf in der Vergangenheit liegen). */
-    starten: (taetigkeit: string, beginn: string) => Promise<void>
+    /** Startet einen Fokus mit dieser Tätigkeit (und optional Kunde) ab dem Beginn (ISO, heute, darf in der Vergangenheit liegen). */
+    starten: (taetigkeit: string, beginn: string, kunde?: string | null) => Promise<void>
     beenden: () => Promise<void>
   }
+  kunden: {
+    /** Alle bekannten Kunden (Projekte) des Teams, alphabetisch. */
+    liste: () => Promise<string[]>
+  }
   weg: {
-    /** "Ich bin weg": ab dem Beginn (ISO, bis drei Stunden zurück) läuft ein produktiver Block mit dieser Tätigkeit bis zur Rückkehr. */
-    starten: (taetigkeit: string, beginn: string) => Promise<void>
+    /** "Ich bin weg": ab dem Beginn (ISO, bis drei Stunden zurück) läuft ein produktiver Block mit dieser Tätigkeit (und optional Kunde) bis zur Rückkehr. */
+    starten: (taetigkeit: string, beginn: string, kunde?: string | null) => Promise<void>
     /** Rückkehr von Hand melden (sonst beendet die erste Eingabe die Abwesenheit). */
     beenden: () => Promise<void>
   }

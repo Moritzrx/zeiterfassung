@@ -92,6 +92,11 @@ function BlockZeileInnen({
               · <TaetigkeitSymbol name={block.taetigkeit} groesse={12} /> {block.taetigkeit}
             </span>
           )}
+          {block.kunde && (
+            <span className="shrink-0 rounded-chip bg-panel-2 px-1.5 py-0.5 text-xs text-mute" title="Kunde oder Projekt">
+              {block.kunde}
+            </span>
+          )}
           {block.manuellGeprueft && block.quelle === 'auto' && (
             <Check size={12} strokeWidth={2} className="shrink-0 text-dim" aria-label="von Hand geprüft" />
           )}

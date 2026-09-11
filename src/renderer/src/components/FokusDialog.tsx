@@ -4,8 +4,10 @@ import { berlinTeile, berlinZuUtc } from '@shared/zeit'
 import { fehlerText, uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
 import { useTaetigkeiten } from '../taetigkeiten'
+import { useKunden } from '../kunden'
 import { tonSpielen } from '../toene'
 import { hinweisZeigen } from './Hinweis'
+import { KundenWahl } from './KundenWahl'
 import { Portal } from './Portal'
 
 const EREIGNIS = 'fokus-dialog'
@@ -44,7 +46,9 @@ const FELD =
  */
 function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactElement {
   const taetigkeiten = useTaetigkeiten()
+  const kunden = useKunden()
   const [name, setName] = useState('')
+  const [kunde, setKunde] = useState('')
   const [minuten, setMinuten] = useState<number | null>(0)
   const [uhr, setUhr] = useState('')
   const [fehler, setFehler] = useState<string | null>(null)
@@ -85,9 +89,9 @@ function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactEleme
     if (!window.api) return
     setLaeuft(true)
     try {
-      await window.api.fokus.starten(n, b.toISOString())
+      await window.api.fokus.starten(n, b.toISOString(), kunde.trim() || null)
       tonSpielen('erfolg')
-      hinweisZeigen(`Fokus „${n}“ läuft${minuten === 0 ? '' : ` seit ${uhrzeit(b.toISOString())}`}. Alles zählt jetzt dazu.`)
+      hinweisZeigen(`Fokus „${n}“${kunde.trim() ? ` für ${kunde.trim()}` : ''} läuft${minuten === 0 ? '' : ` seit ${uhrzeit(b.toISOString())}`}. Alles zählt jetzt dazu.`)
       onSchliessen()
     } catch (e) {
       setFehler(fehlerText(e))
@@ -147,6 +151,11 @@ function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactEleme
                 if (e.key === 'Enter') void starten()
               }}
             />
+          </div>
+
+          <div className="mt-5">
+            <p className="text-xs tracking-wide text-mute uppercase">Kunde (optional)</p>
+            <KundenWahl wert={kunde} onChange={setKunde} kunden={kunden} />
           </div>
 
           <div className="mt-5">

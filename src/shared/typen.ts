@@ -15,6 +15,8 @@ export interface Block {
   programmRoh: string | null
   fenstertitel: string | null
   taetigkeit: string | null
+  /** Kunde oder Projekt als zweite Dimension neben der Tätigkeit (seit 11. September 2026), sonst null */
+  kunde: string | null
   bewertung: Bewertung
   notiz: string | null
   manuellGeprueft: boolean
@@ -217,11 +219,14 @@ export interface NeuerEintrag {
   ende: string
   taetigkeit: string
   notiz: string | null
+  kunde?: string | null
 }
 
 /** Was sich an einem Block von Hand ändern lässt. */
 export interface BlockAenderung {
   taetigkeit?: string | null
+  /** Kunde setzen (leer oder null = kein Kunde) */
+  kunde?: string | null
   bewertung?: Bewertung
   start?: string
   ende?: string
@@ -256,6 +261,8 @@ export interface Fokus {
   taetigkeit: string
   /** Beginn als ISO-Zeit, kann rückwirkend liegen */
   seit: string
+  /** Kunde für alle Blöcke im Fokus, sonst null */
+  kunde?: string | null
 }
 
 /**
@@ -266,6 +273,8 @@ export interface Weg {
   taetigkeit: string
   /** Beginn als ISO-Zeit, kann bis zu drei Stunden zurückliegen */
   seit: string
+  /** Kunde des Termins, sonst null */
+  kunde?: string | null
 }
 
 /**

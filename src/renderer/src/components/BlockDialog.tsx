@@ -10,6 +10,8 @@ import { datumText, dauerText } from '../format'
 import { hinweisZeigen } from './Hinweis'
 import { tonSpielen } from '../toene'
 import { TaetigkeitSymbol } from '../symbole'
+import { useKunden } from '../kunden'
+import { KundenWahl } from './KundenWahl'
 
 /** Vergleich von Tätigkeitsnamen wie beim Speichern: ohne Groß/Klein, Leerzeichen und Bindestriche. */
 const schluessel = (name: string): string => name.toLowerCase().replace(/[\s-]/g, '')
@@ -121,6 +123,9 @@ export function BlockDialog({
     ...new Set((gruppe ?? []).map((b) => fensterInfo(b.programm, b.fenstertitel).titel || b.fenstertitel).filter((t): t is string => !!t))
   ]
   const [taetigkeit, setTaetigkeit] = useState(block.taetigkeit ?? '')
+  // Kunde (Projekt) als zweite Dimension; in der Gruppe nur gesetzt, wenn einer gewählt wurde.
+  const [kunde, setKunde] = useState(block.kunde ?? '')
+  const kunden = useKunden()
   const [bewertung, setBewertung] = useState<Bewertung>(
     block.bewertung === 'ungeklaert' ? 'produktiv' : block.bewertung
   )
@@ -162,6 +167,7 @@ export function BlockDialog({
     try {
       const aenderung: Parameters<typeof window.api.bloecke.aendern>[1] = {
         taetigkeit: taetigkeit.trim() || null,
+        kunde: kunde.trim() || null,
         bewertung,
         notiz
       }
@@ -182,6 +188,7 @@ export function BlockDialog({
         for (const e of buendel.values()) {
           const fuerAlle: typeof aenderung = { taetigkeit: e.taetigkeit, bewertung: e.bewertung }
           if (notiz.trim()) fuerAlle.notiz = notiz
+          if (kunde.trim()) fuerAlle.kunde = kunde.trim()
           n += await window.api.bloecke.mehrereAendern(e.ids, fuerAlle)
         }
         tonSpielen('erfolg')
@@ -367,6 +374,11 @@ export function BlockDialog({
                 )}
               </>
             )}
+          </div>
+
+          <div className="flex flex-col gap-1 text-xs text-mute sm:col-span-2">
+            Kunde (optional)
+            <KundenWahl wert={kunde} onChange={setKunde} kunden={kunden} kompakt />
           </div>
 
           <div className="flex flex-col gap-1 text-xs text-mute">

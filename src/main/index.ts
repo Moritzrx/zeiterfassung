@@ -51,6 +51,7 @@ import { Speicher } from './speicher'
 import { supabase, supabaseKonfiguriert } from './supabase'
 import { Sync } from './sync'
 import { Taetigkeiten } from './taetigkeiten'
+import { Kunden } from './kunden'
 import { TrayLeiste } from './tray'
 import { alleUrlaube, urlaubAnlegen, urlaubListe, urlaubLoeschen } from './urlaub'
 import { Ziele } from './ziele'
@@ -69,6 +70,7 @@ interface Sitzung {
   sync: Sync
   regelwerk: Regelwerk
   taetigkeiten: Taetigkeiten
+  kunden: Kunden
   ziele: Ziele
   profil: Profil
   auszeichnungen: Auszeichnungen
@@ -314,11 +316,13 @@ function sitzungStarten(userId: string): void {
   speicher.aufraeumen()
   const regelwerk = new Regelwerk(userId)
   const taetigkeiten = new Taetigkeiten(userId)
+  const kunden = new Kunden(userId)
   const ziele = new Ziele(userId)
   const profil = new Profil(userId)
   const auszeichnungen = new Auszeichnungen(userId)
   const feier = new Feier(userId)
   taetigkeiten.ausBloecken(speicher.alle())
+  kunden.ausBloecken(speicher.alle())
   const erfassung = new Erfassung(speicher, userId, (programm, titel) =>
     regelnAnwenden(programm, titel, regelwerk.liste(), userId)
   )
@@ -328,6 +332,7 @@ function sitzungStarten(userId: string): void {
     // Aus der Datenbank geholte Blöcke nach den aktuellen Regeln bewerten.
     speicher.fehlbloeckeAusblenden(istFehlblock)
     taetigkeiten.ausBloecken(speicher.alle())
+    kunden.ausBloecken(speicher.alle())
     alleNeuBewerten(speicher, regelwerk.liste(), userId)
     bloeckeGeaendert()
     statusVerteilen()
@@ -339,6 +344,7 @@ function sitzungStarten(userId: string): void {
     sync,
     regelwerk,
     taetigkeiten,
+    kunden,
     ziele,
     profil,
     auszeichnungen,
@@ -363,6 +369,7 @@ function sitzungStarten(userId: string): void {
   // Auszeichnungen erst prüfen, wenn Regeln und der erste Abgleich da sind, sonst zählen veraltete Blöcke mit.
   void Promise.all([regelnAktualisieren(s), sync.erstAbgleich]).then(() => auszeichnungenPruefen(s))
   void taetigkeiten.laden()
+  void kunden.laden()
   statusVerteilen()
 }
 
@@ -390,15 +397,16 @@ function ipcRegistrieren(): void {
   })
 
   // Fokus: ab dem Beginn (heute, darf zurückliegen) zählt alles als produktiv mit dieser Tätigkeit.
-  ipcMain.handle('fokus:starten', (_ereignis, taetigkeit: string, beginnIso: string): void => {
+  ipcMain.handle('fokus:starten', (_ereignis, taetigkeit: string, beginnIso: string, kundeName: string | null = null): void => {
     if (!sitzung) return
     const name = sitzung.taetigkeiten.merken(taetigkeit)
     if (!name) throw new Error('Bitte eine Tätigkeit angeben.')
+    const kunde = kundeName ? sitzung.kunden.merken(kundeName) || null : null
     const jetzt = new Date()
     const gewuenscht = Date.parse(beginnIso) || jetzt.getTime()
     const beginn = new Date(Math.min(jetzt.getTime(), Math.max(gewuenscht, tagesanfang(jetzt).getTime())))
-    sitzung.erfassung.fokusStarten(name, beginn, jetzt)
-    const n = fokusRueckwirkend(sitzung.speicher, name, beginn, jetzt, sitzung.erfassung.laufendeId())
+    sitzung.erfassung.fokusStarten(name, beginn, jetzt, kunde)
+    const n = fokusRueckwirkend(sitzung.speicher, name, beginn, jetzt, sitzung.erfassung.laufendeId(), kunde)
     if (n) console.log(`Fokus „${name}“: ${n} Blöcke rückwirkend übernommen`)
     bloeckeGeaendert()
     statusVerteilen()
@@ -407,14 +415,15 @@ function ipcRegistrieren(): void {
   ipcMain.handle('fokus:beenden', () => fokusBeenden())
 
   // "Ich bin weg": ab dem Beginn (bis drei Stunden zurück) ein produktiver Hand-Block bis zur Rückkehr.
-  ipcMain.handle('weg:starten', (_ereignis, taetigkeit: string, beginnIso: string): void => {
+  ipcMain.handle('weg:starten', (_ereignis, taetigkeit: string, beginnIso: string, kundeName: string | null = null): void => {
     if (!sitzung) return
     const name = sitzung.taetigkeiten.merken(taetigkeit)
     if (!name) throw new Error('Bitte eine Tätigkeit angeben.')
+    const kunde = kundeName ? sitzung.kunden.merken(kundeName) || null : null
     const jetzt = new Date()
     const gewuenscht = Date.parse(beginnIso) || jetzt.getTime()
     const beginn = new Date(Math.min(jetzt.getTime(), Math.max(gewuenscht, jetzt.getTime() - 3 * 3_600_000, tagesanfang(jetzt).getTime())))
-    sitzung.erfassung.wegStarten(name, beginn, jetzt)
+    sitzung.erfassung.wegStarten(name, beginn, jetzt, kunde)
     bloeckeGeaendert()
     statusVerteilen()
   })
@@ -435,22 +444,22 @@ function ipcRegistrieren(): void {
     if (!sitzung) return
     const bloecke = abwesenheitBloecke(id)
     if (!bloecke.length) throw new Error('Diese Abwesenheit gibt es nicht mehr.')
-    eintragAnlegen(sitzung.speicher, sitzung.taetigkeiten, sitzung.userId, { start: bloecke[0].start, ende: bloecke[0].ende, taetigkeit, notiz })
-    for (const b of bloecke) blockAendern(sitzung.speicher, sitzung.taetigkeiten, b.id, { loeschen: true })
+    eintragAnlegen(sitzung.speicher, sitzung.taetigkeiten, sitzung.kunden, sitzung.userId,{ start: bloecke[0].start, ende: bloecke[0].ende, taetigkeit, notiz })
+    for (const b of bloecke) blockAendern(sitzung.speicher, sitzung.taetigkeiten, sitzung.kunden,b.id, { loeschen: true })
     bloeckeGeaendert()
     statusVerteilen()
     auszeichnungenBaldPruefen(sitzung)
   })
   ipcMain.handle('abwesenheit:pause', (_ereignis, id: string): void => {
     if (!sitzung) return
-    for (const b of abwesenheitBloecke(id)) blockAendern(sitzung.speicher, sitzung.taetigkeiten, b.id, { loeschen: true })
+    for (const b of abwesenheitBloecke(id)) blockAendern(sitzung.speicher, sitzung.taetigkeiten, sitzung.kunden,b.id, { loeschen: true })
     bloeckeGeaendert()
     statusVerteilen()
     auszeichnungenBaldPruefen(sitzung)
   })
   ipcMain.handle('abwesenheit:privat', (_ereignis, id: string): void => {
     if (!sitzung) return
-    for (const b of abwesenheitBloecke(id)) blockAendern(sitzung.speicher, sitzung.taetigkeiten, b.id, {})
+    for (const b of abwesenheitBloecke(id)) blockAendern(sitzung.speicher, sitzung.taetigkeiten, sitzung.kunden,b.id, {})
     bloeckeGeaendert()
     statusVerteilen()
   })
@@ -488,7 +497,7 @@ function ipcRegistrieren(): void {
   })
   ipcMain.handle('bloecke:manuellAnlegen', (_ereignis, eintrag: NeuerEintrag): Block => {
     if (!sitzung) throw new Error('Nicht angemeldet.')
-    const block = eintragAnlegen(sitzung.speicher, sitzung.taetigkeiten, sitzung.userId, eintrag)
+    const block = eintragAnlegen(sitzung.speicher, sitzung.taetigkeiten, sitzung.kunden, sitzung.userId,eintrag)
     bloeckeGeaendert()
     statusVerteilen()
     return block
@@ -502,7 +511,7 @@ function ipcRegistrieren(): void {
   ipcMain.handle('bloecke:aendern', (_ereignis, id: string, aenderung: BlockAenderung): Block | null => {
     if (!sitzung) return null
     if (sitzung.erfassung.laufendeId() === id) throw new Error('Der laufende Block lässt sich erst ändern, wenn er beendet ist.')
-    const block = blockAendern(sitzung.speicher, sitzung.taetigkeiten, id, aenderung)
+    const block = blockAendern(sitzung.speicher, sitzung.taetigkeiten, sitzung.kunden,id, aenderung)
     bloeckeGeaendert()
     statusVerteilen()
     auszeichnungenBaldPruefen(sitzung)
@@ -513,7 +522,7 @@ function ipcRegistrieren(): void {
     let n = 0
     for (const id of ids) {
       if (sitzung.erfassung.laufendeId() === id) continue
-      if (blockAendern(sitzung.speicher, sitzung.taetigkeiten, id, aenderung)) n++
+      if (blockAendern(sitzung.speicher, sitzung.taetigkeiten, sitzung.kunden,id, aenderung)) n++
     }
     bloeckeGeaendert()
     statusVerteilen()
@@ -559,6 +568,7 @@ function ipcRegistrieren(): void {
   })
 
   ipcMain.handle('taetigkeiten:liste', (): string[] => sitzung?.taetigkeiten.liste() ?? [])
+  ipcMain.handle('kunden:liste', (): string[] => sitzung?.kunden.liste() ?? [])
 
   ipcMain.handle('taetigkeiten:symbole', (): Record<string, SymbolInfo> => sitzung?.taetigkeiten.symbole() ?? {})
   ipcMain.handle('taetigkeiten:symbolSetzen', async (_ereignis, name: string, symbol: SymbolInfo): Promise<void> => {

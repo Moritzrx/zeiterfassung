@@ -186,6 +186,14 @@ Jede Tätigkeit hat ein Symbol, das für das ganze Team gilt. Ändern: **Einstel
 
 ---
 
+### Kunde oder Projekt
+
+Neben der Tätigkeit ("was") kann jeder Block einen **Kunden** ("für wen") bekommen, zum Beispiel eine Firma oder ein Projekt. Kunden wählst du im Block-Dialog, beim Fokus, bei "Ich bin weg" und beim Eintragen: alle bekannten Kunden als Chips, "Kein Kunde" oder "+ Neuer Kunde". Die Liste gilt für das ganze Team, Schreibweisen werden zusammengeführt. Die Auswertung zeigt zusätzlich eine Verteilung nach Kunden. Regeln bleiben bei Tätigkeiten. Dafür muss einmal das Skript 14 (`supabase/14_kunde.sql`) in Supabase laufen; vorher bleiben Kunden nur auf dem eigenen Rechner.
+
+### Ich bin weg und die Rückfrage nach einer Abwesenheit
+
+Bevor du zu einem Termin, Dreh oder Telefonat gehst: oben auf **"Ich bin weg"**, Tätigkeit wählen, fertig. Bis zur ersten Eingabe am Rechner zählt die Zeit als produktiv mit dieser Tätigkeit, auch wenn der Rechner zuklappt. Warst du ohne Ankündigung 15 Minuten bis 3 Stunden weg, fragt die App danach auf "Heute": **Pause** (zählt nicht), eine **Tätigkeit** (produktiv), **Privat** (bleibt rot) oder **Später**. Ist das Fenster gerade zu, kommt eine kleine Systemmeldung.
+
 ## 5. Supabase einrichten (macht Moritz einmalig)
 
 Die ausführliche Klick-Anleitung mit Bildern steht in [`docs/supabase-einrichtung.md`](docs/supabase-einrichtung.md). Kurzfassung:

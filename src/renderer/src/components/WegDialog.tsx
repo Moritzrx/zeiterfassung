@@ -4,8 +4,10 @@ import { berlinTeile, berlinZuUtc } from '@shared/zeit'
 import { fehlerText, uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
 import { useTaetigkeiten } from '../taetigkeiten'
+import { useKunden } from '../kunden'
 import { tonSpielen } from '../toene'
 import { hinweisZeigen } from './Hinweis'
+import { KundenWahl } from './KundenWahl'
 import { Portal } from './Portal'
 
 const EREIGNIS = 'weg-dialog'
@@ -45,7 +47,9 @@ const FELD =
  */
 function WegDialog({ onSchliessen }: { onSchliessen: () => void }): ReactElement {
   const taetigkeiten = useTaetigkeiten()
+  const kunden = useKunden()
   const [name, setName] = useState('')
+  const [kunde, setKunde] = useState('')
   const [minuten, setMinuten] = useState<number | null>(0)
   const [uhr, setUhr] = useState('')
   const [fehler, setFehler] = useState<string | null>(null)
@@ -90,9 +94,9 @@ function WegDialog({ onSchliessen }: { onSchliessen: () => void }): ReactElement
     if (!window.api) return
     setLaeuft(true)
     try {
-      await window.api.weg.starten(n, b.toISOString())
+      await window.api.weg.starten(n, b.toISOString(), kunde.trim() || null)
       tonSpielen('erfolg')
-      hinweisZeigen(`„${n}“ läuft${minuten === 0 ? '' : ` seit ${uhrzeit(b.toISOString())}`}. Die erste Eingabe am Rechner beendet es.`)
+      hinweisZeigen(`„${n}“${kunde.trim() ? ` für ${kunde.trim()}` : ''} läuft${minuten === 0 ? '' : ` seit ${uhrzeit(b.toISOString())}`}. Die erste Eingabe am Rechner beendet es.`)
       onSchliessen()
     } catch (e) {
       setFehler(fehlerText(e))
@@ -152,6 +156,11 @@ function WegDialog({ onSchliessen }: { onSchliessen: () => void }): ReactElement
                 if (e.key === 'Enter') void starten()
               }}
             />
+          </div>
+
+          <div className="mt-5">
+            <p className="text-xs tracking-wide text-mute uppercase">Kunde (optional)</p>
+            <KundenWahl wert={kunde} onChange={setKunde} kunden={kunden} />
           </div>
 
           <div className="mt-5">

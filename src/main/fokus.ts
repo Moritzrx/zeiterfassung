@@ -17,7 +17,8 @@ export function fokusRueckwirkend(
   taetigkeit: string,
   beginn: Date,
   ende: Date,
-  ausser: string | null
+  ausser: string | null,
+  kunde: string | null = null
 ): number {
   let n = 0
   const beginnIso = beginn.toISOString()
@@ -30,6 +31,7 @@ export function fokusRueckwirkend(
         id: randomUUID(),
         start: beginnIso,
         taetigkeit,
+        kunde,
         bewertung: 'produktiv',
         manuellGeprueft: true,
         geaendertAm: new Date().toISOString()
@@ -39,6 +41,7 @@ export function fokusRueckwirkend(
       speicher.hinzufuegen(hinten)
     } else {
       b.taetigkeit = taetigkeit
+      b.kunde = kunde
       b.bewertung = 'produktiv'
       b.manuellGeprueft = true
       speicher.aktualisieren(b)

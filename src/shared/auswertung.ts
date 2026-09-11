@@ -167,3 +167,32 @@ export function verteilung(
   const rest = sortiert.slice(maxEintraege - 1).reduce((s, e) => s + e.sekunden, 0)
   return [...sortiert.slice(0, maxEintraege - 1), { name: 'Sonstige', sekunden: rest }]
 }
+
+/**
+ * Anteil jedes Kunden (Projekts) an der produktiven Zeit im Zeitraum, wie `verteilung` für Tätigkeiten
+ * (11. September 2026, Kunde als zweite Dimension). Blöcke ohne Kunden landen unter "Ohne Kunde".
+ */
+export function verteilungNachKunde(
+  bloecke: Block[],
+  von: Date,
+  bis: Date,
+  maxEintraege = 8
+): Array<{ name: string; sekunden: number }> {
+  const summen = new Map<string, { name: string; sekunden: number }>()
+  const v = von.getTime()
+  const b2 = bis.getTime()
+  for (const b of bloecke) {
+    if (b.bewertung !== 'produktiv' || b.geloeschtAm) continue
+    const a = anteil(b, v, b2)
+    if (a <= 0) continue
+    const name = b.kunde ?? 'Ohne Kunde'
+    const schluessel = taetigkeitSchluessel(name)
+    const eintrag = summen.get(schluessel) ?? { name, sekunden: 0 }
+    eintrag.sekunden += a
+    summen.set(schluessel, eintrag)
+  }
+  const sortiert = [...summen.values()].sort((a, b) => b.sekunden - a.sekunden)
+  if (sortiert.length <= maxEintraege) return sortiert
+  const rest = sortiert.slice(maxEintraege - 1).reduce((s, e) => s + e.sekunden, 0)
+  return [...sortiert.slice(0, maxEintraege - 1), { name: 'Sonstige', sekunden: rest }]
+}
