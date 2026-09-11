@@ -1,22 +1,24 @@
 import type { ReactElement } from 'react'
-import { Crosshair, Pause, Play, Square } from 'lucide-react'
+import { Crosshair, DoorOpen, LogIn, Pause, Play, Square } from 'lucide-react'
 import { useErfassung } from '../erfassung'
 import { uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
 import { tonSpielen } from '../toene'
 import { fokusDialogOeffnen } from './FokusDialog'
 import { hinweisZeigen } from './Hinweis'
+import { wegDialogOeffnen } from './WegDialog'
 
 const istMac = window.electron?.process?.platform === 'darwin'
 
 const KNOPF =
   'flex items-center gap-2 rounded-chip px-3 py-1.5 text-sm transition-colors [-webkit-app-region:no-drag] disabled:text-dim disabled:hover:bg-transparent'
 
-/** Schmale Leiste ganz oben: Status der Erfassung links, Fokus und Pause rechts. Auf jedem Screen sichtbar. */
+/** Schmale Leiste ganz oben: Status der Erfassung links, "Ich bin weg", Fokus und Pause rechts. Auf jedem Screen sichtbar. */
 export function Kopfzeile(): ReactElement {
   const status = useErfassung()
   const pausiert = status.zustand === 'pausiert'
-  const aktiv = status.zustand === 'laeuft' || status.zustand === 'inaktiv' || status.zustand === 'abwesend'
+  const weg = status.weg
+  const aktiv = status.zustand === 'laeuft' || status.zustand === 'inaktiv' || status.zustand === 'abwesend' || status.zustand === 'weg'
   const fokus = status.fokus
 
   async function fokusBeenden(): Promise<void> {
@@ -26,9 +28,19 @@ export function Kopfzeile(): ReactElement {
     hinweisZeigen(`Fokus „${fokus.taetigkeit}“ beendet. Ab jetzt gelten wieder die Regeln.`)
   }
 
+  async function wegBeenden(): Promise<void> {
+    if (!window.api || !weg) return
+    await window.api.weg.beenden()
+    tonSpielen('erfolg')
+    hinweisZeigen(`Willkommen zurück. „${weg.taetigkeit}“ ist als produktive Zeit gebucht.`)
+  }
+
   let punkt = 'bg-dim'
   let text = 'Erfassung nicht aktiv'
-  if (status.zustand === 'laeuft') {
+  if (status.zustand === 'weg' && weg) {
+    punkt = 'bg-produktiv'
+    text = `Weg: ${weg.taetigkeit} seit ${uhrzeit(weg.seit)}, zählt als produktiv`
+  } else if (status.zustand === 'laeuft') {
     punkt = 'bg-produktiv'
     text = 'Erfassung läuft'
   } else if (status.zustand === 'inaktiv') {
@@ -73,6 +85,23 @@ export function Kopfzeile(): ReactElement {
         )}
       </div>
       <div className="flex items-center gap-1">
+        {weg ? (
+          <button type="button" onClick={() => void wegBeenden()} className={`${KNOPF} bg-produktiv/15 text-produktiv hover:bg-produktiv/25`} title="Rückkehr melden (sonst beendet die erste Eingabe die Abwesenheit)">
+            <LogIn size={16} strokeWidth={1.75} />
+            Zurück
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!aktiv && !pausiert}
+            onClick={wegDialogOeffnen}
+            className={`${KNOPF} text-ink hover:bg-panel-2`}
+            title="Ich bin weg: Termin, Dreh oder Telefonat als produktive Zeit buchen, bis du zurück bist"
+          >
+            <DoorOpen size={16} strokeWidth={1.75} />
+            Ich bin weg
+          </button>
+        )}
         {fokus ? (
           <button type="button" onClick={() => void fokusBeenden()} className={`${KNOPF} text-ink hover:bg-panel-2`} title="Fokus beenden">
             <Square size={14} strokeWidth={2} />
@@ -81,7 +110,7 @@ export function Kopfzeile(): ReactElement {
         ) : (
           <button
             type="button"
-            disabled={!aktiv && !pausiert}
+            disabled={(!aktiv && !pausiert) || !!weg}
             onClick={fokusDialogOeffnen}
             className={`${KNOPF} text-ink hover:bg-panel-2`}
             title="Fokus: eine Tätigkeit für alles, was du jetzt tust (Strg+F)"
@@ -92,7 +121,7 @@ export function Kopfzeile(): ReactElement {
         )}
         <button
           type="button"
-          disabled={!aktiv && !pausiert}
+          disabled={(!aktiv && !pausiert) || !!weg}
           onClick={umschalten}
           className={`${KNOPF} ${pausiert ? 'bg-ink text-ground' : 'text-ink hover:bg-panel-2'}`}
         >

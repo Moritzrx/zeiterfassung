@@ -1,9 +1,11 @@
 import { EventEmitter } from 'events'
 import { randomUUID } from 'crypto'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { hostname } from 'os'
-import { powerMonitor } from 'electron'
+import { join } from 'path'
+import { app, powerMonitor } from 'electron'
 import { activeWindow } from 'get-windows'
-import type { Bewertung, Block, ErfassungsZustand, Fokus, LaufenderBlock } from '@shared/typen'
+import type { Abwesenheit, Bewertung, Block, ErfassungsZustand, Fokus, LaufenderBlock, Weg } from '@shared/typen'
 import type { Zuordnung } from '@shared/regeln'
 import { naechsterTagesanfang } from '@shared/zeit'
 import { istEigenesProgramm, istSchreibtisch, istSystemUeberlagerung, programmNormalisieren } from './programme'
@@ -26,6 +28,25 @@ const MAX_INAKTIV_MS = 12 * 3_600_000
 // "sobald der Rechner zugeklappt wird, blau, bis er wieder läuft"). Höchstens so weit zurück.
 const LUECKE_MAX_MS = 7 * 24 * 3_600_000
 const EIGENES_KURZ_MS = 2 * 60_000 // so lange läuft beim Blick in die eigene App der vorherige Block weiter
+// "Ich bin weg" (11. September 2026): eine angekündigte Abwesenheit läuft als produktiver Hand-Block. Als wirklich
+// weg gilt man, sobald WEG_ABWESEND_S Sekunden keine Eingabe kam (sonst würde der Klick auf den Knopf selbst als
+// Rückkehr zählen); die nächste Eingabe (letzte Eingabe unter WEG_ZURUECK_S Sekunden her) beendet die Abwesenheit
+// rückwirkend zum Zeitpunkt der Eingabe. Spätestens nach WEG_MAX_MS oder um Mitternacht ist Schluss.
+const WEG_ABWESEND_S = 60
+const WEG_ZURUECK_S = 10
+const WEG_MAX_MS = 12 * 3_600_000
+// Rückfrage nach einer Abwesenheit (11. September 2026, "Abwesenheit ist immer rot"): Nach der Rückkehr fragt die
+// App, was das war (Pause, Termin, privat). Nur für Abwesenheiten von der Untätigkeits-Schwelle bis RUECKFRAGE_MAX_MS
+// und aus den letzten RUECKFRAGE_FENSTER_MS; "Später" wird SPAETER_MERKEN_MS lang gemerkt.
+const RUECKFRAGE_MAX_MS = 3 * 3_600_000
+const RUECKFRAGE_FENSTER_MS = 24 * 3_600_000
+const SPAETER_MERKEN_MS = 2 * 24 * 3_600_000
+
+/** Was zwischen zwei App-Starts überlebt: die laufende Abwesenheit und die "später" weggeklickten Rückfragen. */
+interface Ablage {
+  weg: (Weg & { blockId: string }) | null
+  spaeter: Record<string, number>
+}
 
 type Zustand = Exclude<ErfassungsZustand, 'nicht-angemeldet'>
 
@@ -47,6 +68,14 @@ export class Erfassung extends EventEmitter {
   private eigenesSeit: number | null = null
   /** Laufender Fokus: jeder neue Arbeitsblock bekommt diese Tätigkeit und ist produktiv. */
   private fokus: Fokus | null = null
+  /** Laufende angekündigte Abwesenheit ("Ich bin weg") und ihr produktiver Hand-Block. */
+  private weg: Weg | null = null
+  private wegBlock: Block | null = null
+  /** Längste Eingabepause (Sekunden) seit dem Start der Abwesenheit: erst ab WEG_ABWESEND_S zählt eine Eingabe als Rückkehr. */
+  private wegLaengsteRuhe = 0
+  /** Rückfragen, die mit "Später" weggeklickt wurden: Block-Kennung → Zeitpunkt (ms). */
+  private spaeter = new Map<string, number>()
+  private readonly ablagePfad: string
   private letzterTakt = 0
   /** Wann der Rechner in den Ruhezustand ging oder gesperrt wurde (ms), 0 = nicht unterbrochen. */
   private unterbrochenUm = 0
@@ -63,6 +92,8 @@ export class Erfassung extends EventEmitter {
     private readonly bewerter: (programm: string | null, titel: string | null) => Zuordnung | null
   ) {
     super()
+    this.ablagePfad = join(app.getPath('userData'), `abwesenheit-${userId}.json`)
+    this.ablageLaden()
   }
 
   /** Kennung des gerade laufenden Blocks, falls einer läuft. */
@@ -75,9 +106,14 @@ export class Erfassung extends EventEmitter {
     this.zustand = 'laeuft'
     this.letzterTakt = 0
     this.zeitgrenze = Date.now()
-    // Die Zeit seit dem letzten bekannten Block (App war aus, Rechner aus) nachtragen.
-    const letztes = this.speicher.letztesEnde()
-    if (letztes) this.lueckeFuellen(Date.parse(letztes), Date.now())
+    if (this.weg) {
+      // Eine angekündigte Abwesenheit läuft über einen Neustart hinweg weiter (Termin, Rechner war aus).
+      this.zustand = 'weg'
+    } else {
+      // Die Zeit seit dem letzten bekannten Block (App war aus, Rechner aus) nachtragen.
+      const letztes = this.speicher.letztesEnde()
+      if (letztes) this.lueckeFuellen(Date.parse(letztes), Date.now())
+    }
     this.timer = setInterval(() => void this.takt(), TAKT_MS)
     void this.takt()
   }
@@ -85,11 +121,13 @@ export class Erfassung extends EventEmitter {
   /**
    * Füllt eine Lücke ohne Aufzeichnung: ab der Untätigkeits-Schwelle als "Nicht am Rechner" (unproduktiv),
    * ab 90 Minuten als "Abwesend" (inaktiv, blau); an Mitternacht geteilt, höchstens LUECKE_MAX_MS zurück.
+   * Liefert die angelegten Blöcke (für die Rückfrage nach der Rückkehr).
    */
-  private lueckeFuellen(von: number, bis: number): void {
+  private lueckeFuellen(von: number, bis: number): Block[] {
     const dauer = bis - von
-    if (dauer < this.idleSchwelleSekunden * 1000) return
+    if (dauer < this.idleSchwelleSekunden * 1000) return []
     const blau = dauer >= ABWESEND_MS
+    const angelegt: Block[] = []
     let a = Math.max(von, bis - LUECKE_MAX_MS)
     while (a < bis) {
       const e = Math.min(bis, naechsterTagesanfang(new Date(a)).getTime())
@@ -97,9 +135,189 @@ export class Erfassung extends EventEmitter {
       if (blau) b.bewertung = 'inaktiv'
       b.ende = new Date(e).toISOString()
       this.speicher.aktualisieren(b)
+      angelegt.push(b)
       a = e
     }
     this.emit('bloecke')
+    return angelegt
+  }
+
+  /** Meldet eine abgeschlossene Abwesenheit, wenn sie in den Rahmen der Rückfrage fällt (für die Systemmeldung). */
+  private abwesenheitMelden(block: Block): void {
+    const dauer = Date.parse(block.ende) - Date.parse(block.start)
+    if (dauer < this.idleSchwelleSekunden * 1000 || dauer > RUECKFRAGE_MAX_MS) return
+    if (this.speicher.get(block.id)?.geloeschtAm) return
+    const a: Abwesenheit = { id: block.id, start: block.start, ende: block.ende }
+    this.emit('abwesenheit', a)
+  }
+
+  /**
+   * Abgeschlossene Abwesenheiten der letzten 24 Stunden (Untätigkeits-Schwelle bis 3 Stunden), die noch niemand
+   * eingeordnet hat: nicht von Hand geprüft, nicht gelöscht, nicht die gerade laufende, nicht "später" weggeklickt.
+   */
+  offeneAbwesenheiten(jetzt = new Date()): Abwesenheit[] {
+    const mindestens = this.idleSchwelleSekunden * 1000
+    const ab = new Date(jetzt.getTime() - RUECKFRAGE_FENSTER_MS)
+    return this.speicher
+      .imZeitraum(ab, jetzt)
+      .filter((b) => b.quelle === 'auto' && b.programm === null && !b.manuellGeprueft && b.id !== this.inaktiv?.id && !this.spaeter.has(b.id))
+      .filter((b) => {
+        const dauer = Date.parse(b.ende) - Date.parse(b.start)
+        if (dauer < mindestens || dauer > RUECKFRAGE_MAX_MS) return false
+        // An Mitternacht geteilte Stücke einer Nacht (beginnen oder enden genau um 0 Uhr) sind Schlaf, keine Frage wert.
+        const start = new Date(b.start)
+        const ende = new Date(b.ende)
+        return start.getTime() !== naechsterTagesanfang(new Date(start.getTime() - 1)).getTime() && ende.getTime() !== naechsterTagesanfang(new Date(ende.getTime() - 1)).getTime()
+      })
+      // Doppelte Blöcke über denselben Zeitraum (kommen in alten Daten vor) nur einmal fragen; die Antwort gilt für alle.
+      .filter((b, i, alle) => alle.findIndex((x) => x.start === b.start && x.ende === b.ende) === i)
+      .map((b) => ({ id: b.id, start: b.start, ende: b.ende }))
+  }
+
+  /** "Später": die Rückfrage zu dieser Abwesenheit verschwindet, der Block bleibt in der Liste änderbar. */
+  spaeterEinordnen(id: string): void {
+    this.spaeter.set(id, Date.now())
+    this.ablageSpeichern()
+    this.melden()
+  }
+
+  wegStand(): Weg | null {
+    return this.weg
+  }
+
+  /**
+   * "Ich bin weg": ab `beginn` (darf bis zu drei Stunden zurückliegen) läuft ein produktiver Hand-Block mit dieser
+   * Tätigkeit, bis die erste Eingabe die Rückkehr meldet. Laufende Blöcke enden am Beginn, automatische Blöcke im
+   * Zeitraum weichen (Zeit ohne Eingabe, die schon rot gebucht war, gehört zum Termin). Ein Fokus endet.
+   */
+  wegStarten(taetigkeit: string, beginn: Date, jetzt: Date): void {
+    if (this.zustand === 'gestoppt') return
+    if (this.weg) this.wegBeenden(beginn)
+    if (this.zustand === 'pausiert') {
+      this.zustand = 'laeuft'
+      this.pausiertSeit = null
+    }
+    this.fokus = null
+    this.alleSchliessen(beginn)
+    for (const b of this.speicher.imZeitraum(beginn, jetzt)) {
+      if (b.quelle !== 'auto') continue
+      if (Date.parse(b.start) < beginn.getTime()) {
+        b.ende = beginn.toISOString()
+        this.speicher.aktualisieren(b)
+      } else {
+        b.geloeschtAm = new Date().toISOString()
+        b.fenstertitel = null
+        b.notiz = null
+        this.speicher.aktualisieren(b)
+      }
+    }
+    const stempel = new Date().toISOString()
+    this.wegBlock = {
+      id: randomUUID(),
+      userId: this.userId,
+      start: beginn.toISOString(),
+      ende: jetzt.toISOString(),
+      quelle: 'manuell',
+      programm: null,
+      programmRoh: null,
+      fenstertitel: null,
+      taetigkeit,
+      bewertung: 'produktiv',
+      notiz: null,
+      manuellGeprueft: true,
+      geraet: this.geraet,
+      geaendertAm: stempel,
+      geloeschtAm: null
+    }
+    this.speicher.hinzufuegen(this.wegBlock)
+    this.weg = { taetigkeit, seit: beginn.toISOString() }
+    this.wegLaengsteRuhe = 0
+    this.zustand = 'weg'
+    this.inaktivSeit = null
+    this.letzterTakt = 0
+    this.zeitgrenze = jetzt.getTime()
+    this.ablageSpeichern()
+    this.emit('bloecke')
+    this.melden()
+  }
+
+  /** Rückkehr: der Hand-Block endet zu diesem Zeitpunkt, die Erfassung läuft normal weiter. */
+  wegBeenden(jetzt: Date): void {
+    if (!this.weg) return
+    if (this.wegBlock) {
+      const start = Date.parse(this.wegBlock.start)
+      if (jetzt.getTime() - start < KURZ_MS) {
+        // Doch nicht weg gewesen: kein Eintrag.
+        this.wegBlock.geloeschtAm = new Date().toISOString()
+      } else {
+        this.wegBlock.ende = jetzt.toISOString()
+      }
+      this.speicher.aktualisieren(this.wegBlock)
+    }
+    this.weg = null
+    this.wegBlock = null
+    this.wegLaengsteRuhe = 0
+    if (this.zustand === 'weg') this.zustand = 'laeuft'
+    this.letzterTakt = 0
+    this.zeitgrenze = jetzt.getTime()
+    this.ablageSpeichern()
+    this.emit('bloecke')
+    this.melden()
+  }
+
+  /** Solange man weg ist: den Hand-Block verlängern, die Rückkehr an der ersten Eingabe erkennen. */
+  private wegVerarbeiten(jetzt: Date): void {
+    if (!this.weg || !this.wegBlock) return
+    const seit = Date.parse(this.weg.seit)
+    const ruhe = powerMonitor.getSystemIdleTime()
+    // Nur Ruhe SEIT dem Start zählt: Wer den Knopf drückt, war davor vielleicht schon minutenlang untätig
+    // (Rückwirkend gestartet, Dialog per Fernsteuerung), sonst gälte die nächste Mausbewegung sofort als Rückkehr.
+    const seitStart = (Date.now() - Math.max(seit, this.zeitgrenze)) / 1000
+    this.wegLaengsteRuhe = Math.max(this.wegLaengsteRuhe, Math.min(ruhe, seitStart))
+    if (this.wegLaengsteRuhe >= WEG_ABWESEND_S && ruhe < WEG_ZURUECK_S) {
+      this.wegBeenden(new Date(jetzt.getTime() - ruhe * 1000))
+      return
+    }
+    const grenze = Math.min(seit + WEG_MAX_MS, naechsterTagesanfang(new Date(seit)).getTime())
+    if (jetzt.getTime() >= grenze) {
+      this.wegBeenden(new Date(grenze))
+      return
+    }
+    this.wegBlock.ende = jetzt.toISOString()
+    this.speicher.aktualisieren(this.wegBlock)
+  }
+
+  private ablageLaden(): void {
+    try {
+      if (!existsSync(this.ablagePfad)) return
+      const daten = JSON.parse(readFileSync(this.ablagePfad, 'utf8')) as Partial<Ablage>
+      const jetzt = Date.now()
+      for (const [id, zeit] of Object.entries(daten.spaeter ?? {})) {
+        if (jetzt - zeit < SPAETER_MERKEN_MS) this.spaeter.set(id, zeit)
+      }
+      if (daten.weg && jetzt - Date.parse(daten.weg.seit) < WEG_MAX_MS) {
+        const block = this.speicher.get(daten.weg.blockId)
+        if (block && !block.geloeschtAm) {
+          this.weg = { taetigkeit: daten.weg.taetigkeit, seit: daten.weg.seit }
+          this.wegBlock = block
+          this.wegLaengsteRuhe = WEG_ABWESEND_S
+        }
+      }
+    } catch (fehler) {
+      console.error('Abwesenheits-Ablage:', fehler)
+    }
+  }
+
+  private ablageSpeichern(): void {
+    const daten: Ablage = {
+      weg: this.weg && this.wegBlock ? { ...this.weg, blockId: this.wegBlock.id } : null,
+      spaeter: Object.fromEntries(this.spaeter)
+    }
+    try {
+      writeFileSync(this.ablagePfad, JSON.stringify(daten))
+    } catch (fehler) {
+      console.error('Abwesenheits-Ablage:', fehler)
+    }
   }
 
   stop(): void {
@@ -190,9 +408,10 @@ export class Erfassung extends EventEmitter {
   weiter(): void {
     this.letzterTakt = 0
     this.zeitgrenze = Date.now()
-    // Die Zeit im Ruhezustand oder am Sperrbildschirm nachtragen (rot unter 90 Minuten, sonst blau).
-    if (this.unterbrochenUm && this.zustand !== 'pausiert' && this.zustand !== 'gestoppt') {
-      this.lueckeFuellen(this.unterbrochenUm, Date.now())
+    // Die Zeit im Ruhezustand oder am Sperrbildschirm nachtragen (rot unter 90 Minuten, sonst blau);
+    // während "Ich bin weg" gehört sie zum Termin, der Hand-Block läuft einfach weiter.
+    if (this.unterbrochenUm && this.zustand !== 'pausiert' && this.zustand !== 'gestoppt' && !this.weg) {
+      for (const b of this.lueckeFuellen(this.unterbrochenUm, Date.now())) this.abwesenheitMelden(b)
     }
     this.unterbrochenUm = 0
   }
@@ -204,6 +423,8 @@ export class Erfassung extends EventEmitter {
     pausiertSeit: string | null
     eigenesFenster: boolean
     fokus: Fokus | null
+    weg: Weg | null
+    offeneAbwesenheiten: Abwesenheit[]
   } {
     const b = this.aktuell
     return {
@@ -221,7 +442,9 @@ export class Erfassung extends EventEmitter {
       inaktivSeit: this.inaktivSeit?.toISOString() ?? null,
       pausiertSeit: this.pausiertSeit?.toISOString() ?? null,
       eigenesFenster: this.eigenesSeit !== null,
-      fokus: this.fokus
+      fokus: this.fokus,
+      weg: this.weg,
+      offeneAbwesenheiten: this.zustand === 'gestoppt' ? [] : this.offeneAbwesenheiten()
     }
   }
 
@@ -250,13 +473,23 @@ export class Erfassung extends EventEmitter {
       const ab = this.letzterTakt
       this.alleSchliessen(new Date(ab))
       this.zeitgrenze = jetzt.getTime()
-      if (this.zustand !== 'pausiert') this.lueckeFuellen(ab, jetzt.getTime())
+      // Während "Ich bin weg" gehört die Lücke zum Termin (der Hand-Block wird unten verlängert).
+      if (this.zustand !== 'pausiert' && !this.weg) {
+        for (const b of this.lueckeFuellen(ab, jetzt.getTime())) this.abwesenheitMelden(b)
+      }
     }
     this.letzterTakt = jetzt.getTime()
 
     if (this.zustand === 'pausiert') {
       // Eine Pause endet spätestens um Mitternacht.
       if (this.pausiertSeit && jetzt >= naechsterTagesanfang(this.pausiertSeit)) this.fortsetzen()
+      return
+    }
+
+    // Angekündigte Abwesenheit: nur den Hand-Block verlängern und auf die Rückkehr warten.
+    if (this.weg) {
+      this.wegVerarbeiten(jetzt)
+      this.melden()
       return
     }
 
@@ -270,10 +503,12 @@ export class Erfassung extends EventEmitter {
       return
     }
 
-    // Wieder Eingaben: inaktiven Block beenden.
+    // Wieder Eingaben: inaktiven Block beenden und nach der Abwesenheit fragen.
     if (this.inaktiv) {
-      this.schliessen(this.inaktiv, jetzt)
+      const abwesenheit = this.inaktiv
+      this.schliessen(abwesenheit, jetzt)
       this.inaktiv = null
+      this.abwesenheitMelden(abwesenheit)
     }
     this.inaktivSeit = null
     this.zustand = 'laeuft'

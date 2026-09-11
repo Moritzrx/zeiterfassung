@@ -8,6 +8,8 @@ export interface TrayAktionen {
   pause: () => void
   fortsetzen: () => void
   fokusBeenden: () => void
+  /** Rückkehr von "Ich bin weg" melden */
+  wegBeenden: () => void
   beenden: () => void
 }
 
@@ -18,6 +20,8 @@ export interface TrayStand {
   pausiert: boolean
   /** Tätigkeit des laufenden Fokus, sonst null */
   fokus: string | null
+  /** Tätigkeit der laufenden angekündigten Abwesenheit ("Ich bin weg"), sonst null */
+  weg: string | null
 }
 
 /**
@@ -41,7 +45,7 @@ export class TrayLeiste {
     this.tray = new Tray(this.bild)
     this.tray.setToolTip('wessamedia Zeit')
     this.tray.on('click', () => this.aktionen.oeffnen())
-    this.aktualisieren({ angemeldet: false, heuteText: '0,0 h', rang: 0, pausiert: false, fokus: null })
+    this.aktualisieren({ angemeldet: false, heuteText: '0,0 h', rang: 0, pausiert: false, fokus: null, weg: null })
   }
 
   aktualisieren(stand: TrayStand): void {
@@ -49,11 +53,13 @@ export class TrayLeiste {
     const menue = Menu.buildFromTemplate([
       { label: zeile, enabled: false },
       ...(stand.fokus ? [{ label: `Fokus: ${stand.fokus}`, enabled: false }] : []),
+      ...(stand.weg ? [{ label: `Weg: ${stand.weg}`, enabled: false }] : []),
       { type: 'separator' as const },
       stand.pausiert
         ? { label: 'Erfassung fortsetzen', click: () => this.aktionen.fortsetzen(), enabled: stand.angemeldet }
         : { label: 'Pause', click: () => this.aktionen.pause(), enabled: stand.angemeldet },
       ...(stand.fokus ? [{ label: 'Fokus beenden', click: () => this.aktionen.fokusBeenden() }] : []),
+      ...(stand.weg ? [{ label: 'Zurück (Abwesenheit beenden)', click: () => this.aktionen.wegBeenden() }] : []),
       { label: 'Fenster öffnen', click: () => this.aktionen.oeffnen() },
       { type: 'separator' },
       { label: 'Beenden', click: () => this.aktionen.beenden() }

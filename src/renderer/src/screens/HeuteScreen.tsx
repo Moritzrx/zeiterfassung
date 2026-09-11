@@ -14,6 +14,7 @@ import { AnimierteZahl } from '../components/AnimierteZahl'
 import { BlockDialog } from '../components/BlockDialog'
 import { BlockZeile } from '../components/BlockZeile'
 import { fokusDialogOeffnen } from '../components/FokusDialog'
+import { AbwesenheitKarte } from '../components/AbwesenheitKarte'
 import { wortmarkeLage } from '../components/wortmarke'
 import { useHintergrundArt } from '../hintergrundart'
 import { hinweisZeigen } from '../components/Hinweis'
@@ -89,6 +90,8 @@ export function HeuteScreen(): ReactElement {
   let geradeText = 'Keine Erfassung aktiv'
   if (status.zustand === 'inaktiv') geradeText = 'Nicht am Rechner, keine Eingabe mehr. Zählt als unproduktiv, ab 90 Minuten als Abwesend (blau). Unterwegs gearbeitet? Unter „Eintragen“ nachtragen.'
   else if (status.zustand === 'abwesend') geradeText = 'Abwesend: länger als 90 Minuten keine Eingabe. Diese Zeit zählt nicht, weder als produktiv noch als unproduktiv.'
+  else if (status.zustand === 'weg' && status.weg)
+    geradeText = `Du bist weg: „${status.weg.taetigkeit}“ seit ${uhrzeit(status.weg.seit)}. Die Zeit zählt als produktiv. Die erste Eingabe am Rechner beendet es, oder oben „Zurück“.`
   else if (status.zustand === 'pausiert') geradeText = 'Pausiert'
   else if (status.zustand === 'laeuft' && status.eigenesFenster) geradeText = 'Du bist gerade in wessamedia Zeit. Diese Zeit zählt nicht als Arbeit.'
   else if (status.zustand === 'laeuft' && !laufend) geradeText = 'Kein Fenster im Vordergrund'
@@ -317,6 +320,8 @@ export function HeuteScreen(): ReactElement {
           )}
         </Karte>
       )}
+
+      {istHeute && <AbwesenheitKarte liste={status.offeneAbwesenheiten} />}
 
       <UngeklaertPostfach
         anzahl={ungeklaert}

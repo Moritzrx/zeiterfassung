@@ -58,6 +58,22 @@ export interface Api {
     starten: (taetigkeit: string, beginn: string) => Promise<void>
     beenden: () => Promise<void>
   }
+  weg: {
+    /** "Ich bin weg": ab dem Beginn (ISO, bis drei Stunden zurück) läuft ein produktiver Block mit dieser Tätigkeit bis zur Rückkehr. */
+    starten: (taetigkeit: string, beginn: string) => Promise<void>
+    /** Rückkehr von Hand melden (sonst beendet die erste Eingabe die Abwesenheit). */
+    beenden: () => Promise<void>
+  }
+  abwesenheit: {
+    /** Die Abwesenheit war ein Termin o. Ä.: als produktiver Hand-Block mit dieser Tätigkeit buchen, der rote Block verschwindet. */
+    zuordnen: (id: string, taetigkeit: string, notiz: string | null) => Promise<void>
+    /** Die Abwesenheit war eine Pause: zählt nirgends, der rote Block verschwindet. */
+    pause: (id: string) => Promise<void>
+    /** Privat oder Handy: bleibt unproduktiv, gilt als eingeordnet. */
+    privat: (id: string) => Promise<void>
+    /** Später einordnen: die Rückfrage verschwindet, der Block bleibt in der Liste änderbar. */
+    spaeter: (id: string) => Promise<void>
+  }
   bloecke: {
     /** Alle Blöcke eines Berliner Kalendertags ("JJJJ-MM-TT"). */
     tag: (datum: string) => Promise<Block[]>

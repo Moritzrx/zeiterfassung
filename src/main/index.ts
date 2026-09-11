@@ -20,7 +20,8 @@ import type {
   Tagessumme,
   TeamMitglied,
   TeamWoche,
-  Ziel
+  Ziel,
+  Abwesenheit
 } from '@shared/typen'
 import { rang, rangName } from '@shared/rang'
 import { regelnAnwenden } from '@shared/regeln'
@@ -157,6 +158,8 @@ function statusBerechnen(): ErfassungsStatus {
       pausiertSeit: null,
       eigenesFenster: false,
       fokus: null,
+      weg: null,
+      offeneAbwesenheiten: [],
       heuteProduktivSekunden: 0,
       wocheProduktivSekunden: 0,
       rang: 0,
@@ -180,6 +183,8 @@ function statusBerechnen(): ErfassungsStatus {
     pausiertSeit: e.pausiertSeit,
     eigenesFenster: e.eigenesFenster,
     fokus: e.fokus,
+    weg: e.weg,
+    offeneAbwesenheiten: e.offeneAbwesenheiten,
     heuteProduktivSekunden: heute,
     wocheProduktivSekunden: woche,
     rang: aktuellerRang,
@@ -198,7 +203,8 @@ function statusVerteilen(): void {
     heuteText: stundenText(status.heuteProduktivSekunden),
     rang: status.rang,
     pausiert: status.zustand === 'pausiert',
-    fokus: status.fokus?.taetigkeit ?? null
+    fokus: status.fokus?.taetigkeit ?? null,
+    weg: status.weg?.taetigkeit ?? null
   })
 }
 
@@ -208,6 +214,31 @@ function fokusBeenden(): void {
   sitzung.erfassung.fokusBeenden(new Date())
   bloeckeGeaendert()
   statusVerteilen()
+}
+
+/** Rückkehr von "Ich bin weg" über das Fenster oder das Symbol-Menü melden. */
+function wegBeenden(): void {
+  if (!sitzung) return
+  sitzung.erfassung.wegBeenden(new Date())
+  bloeckeGeaendert()
+  statusVerteilen()
+  auszeichnungenBaldPruefen(sitzung)
+}
+
+/**
+ * Nach einer Abwesenheit (15 Minuten bis 3 Stunden) einmal fragen, was das war: die Karte auf "Heute" zeigt es
+ * sowieso; ist das Fenster gerade nicht zu sehen, kommt zusätzlich eine Systemmeldung, ein Klick öffnet die App.
+ */
+function abwesenheitMelden(a: Abwesenheit): void {
+  if (fenster && !fenster.isDestroyed() && fenster.isVisible() && fenster.isFocused()) return
+  if (!Notification.isSupported()) return
+  const minuten = Math.round((Date.parse(a.ende) - Date.parse(a.start)) / 60_000)
+  const meldung = new Notification({
+    title: `Du warst ${minuten} Minuten weg`,
+    body: 'Was war das? Pause, Termin oder privat: zum Einordnen Fenster öffnen.'
+  })
+  meldung.on('click', fensterZeigen)
+  meldung.show()
 }
 
 function bloeckeGeaendert(): void {
@@ -315,6 +346,7 @@ function sitzungStarten(userId: string): void {
   sitzung = s
   profilAnwenden(s)
   erfassung.on('status', statusVerteilen)
+  erfassung.on('abwesenheit', (a: Abwesenheit) => abwesenheitMelden(a))
   erfassung.on('bloecke', () => {
     // Sobald ein Block endet, können kurze Wechsel davor ihre Nachbarn erben.
     alleNeuBewerten(s.speicher, s.regelwerk.liste(), s.userId)
@@ -368,6 +400,59 @@ function ipcRegistrieren(): void {
     auszeichnungenBaldPruefen(sitzung)
   })
   ipcMain.handle('fokus:beenden', () => fokusBeenden())
+
+  // "Ich bin weg": ab dem Beginn (bis drei Stunden zurück) ein produktiver Hand-Block bis zur Rückkehr.
+  ipcMain.handle('weg:starten', (_ereignis, taetigkeit: string, beginnIso: string): void => {
+    if (!sitzung) return
+    const name = sitzung.taetigkeiten.merken(taetigkeit)
+    if (!name) throw new Error('Bitte eine Tätigkeit angeben.')
+    const jetzt = new Date()
+    const gewuenscht = Date.parse(beginnIso) || jetzt.getTime()
+    const beginn = new Date(Math.min(jetzt.getTime(), Math.max(gewuenscht, jetzt.getTime() - 3 * 3_600_000, tagesanfang(jetzt).getTime())))
+    sitzung.erfassung.wegStarten(name, beginn, jetzt)
+    bloeckeGeaendert()
+    statusVerteilen()
+  })
+  ipcMain.handle('weg:beenden', () => wegBeenden())
+
+  // Rückfrage nach einer Abwesenheit: Termin (Hand-Block mit Tätigkeit, roter Block weg), Pause (roter Block weg),
+  // privat (bleibt rot, gilt als eingeordnet), später (Rückfrage verschwindet).
+  // Ein Ruheblock und alle Doppelgänger über exakt denselben Zeitraum (kommen in alten Daten vor).
+  const abwesenheitBloecke = (id: string): Block[] => {
+    if (!sitzung) return []
+    const block = sitzung.speicher.get(id)
+    if (!block || block.geloeschtAm) return []
+    return sitzung.speicher
+      .imZeitraum(new Date(block.start), new Date(block.ende))
+      .filter((b) => b.quelle === 'auto' && b.programm === null && b.start === block.start && b.ende === block.ende)
+  }
+  ipcMain.handle('abwesenheit:zuordnen', (_ereignis, id: string, taetigkeit: string, notiz: string | null): void => {
+    if (!sitzung) return
+    const bloecke = abwesenheitBloecke(id)
+    if (!bloecke.length) throw new Error('Diese Abwesenheit gibt es nicht mehr.')
+    eintragAnlegen(sitzung.speicher, sitzung.taetigkeiten, sitzung.userId, { start: bloecke[0].start, ende: bloecke[0].ende, taetigkeit, notiz })
+    for (const b of bloecke) blockAendern(sitzung.speicher, sitzung.taetigkeiten, b.id, { loeschen: true })
+    bloeckeGeaendert()
+    statusVerteilen()
+    auszeichnungenBaldPruefen(sitzung)
+  })
+  ipcMain.handle('abwesenheit:pause', (_ereignis, id: string): void => {
+    if (!sitzung) return
+    for (const b of abwesenheitBloecke(id)) blockAendern(sitzung.speicher, sitzung.taetigkeiten, b.id, { loeschen: true })
+    bloeckeGeaendert()
+    statusVerteilen()
+    auszeichnungenBaldPruefen(sitzung)
+  })
+  ipcMain.handle('abwesenheit:privat', (_ereignis, id: string): void => {
+    if (!sitzung) return
+    for (const b of abwesenheitBloecke(id)) blockAendern(sitzung.speicher, sitzung.taetigkeiten, b.id, {})
+    bloeckeGeaendert()
+    statusVerteilen()
+  })
+  ipcMain.handle('abwesenheit:spaeter', (_ereignis, id: string): void => {
+    if (!sitzung) return
+    for (const b of abwesenheitBloecke(id)) sitzung.erfassung.spaeterEinordnen(b.id)
+  })
 
   ipcMain.handle('bloecke:tag', (_ereignis, datum: string): Block[] => {
     if (!sitzung) return []
@@ -663,6 +748,7 @@ void app.whenReady().then(async () => {
     pause: () => sitzung?.erfassung.pause(),
     fortsetzen: () => sitzung?.erfassung.fortsetzen(),
     fokusBeenden,
+    wegBeenden,
     beenden: () => {
       beendet = true
       app.quit()

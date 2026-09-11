@@ -8,6 +8,8 @@ const LEER: ErfassungsStatus = {
   pausiertSeit: null,
   eigenesFenster: false,
   fokus: null,
+  weg: null,
+  offeneAbwesenheiten: [],
   heuteProduktivSekunden: 0,
   wocheProduktivSekunden: 0,
   rang: 0,

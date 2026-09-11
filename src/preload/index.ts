@@ -25,6 +25,16 @@ const api: Api = {
     starten: (taetigkeit, beginn) => ipcRenderer.invoke('fokus:starten', taetigkeit, beginn),
     beenden: () => ipcRenderer.invoke('fokus:beenden')
   },
+  weg: {
+    starten: (taetigkeit, beginn) => ipcRenderer.invoke('weg:starten', taetigkeit, beginn),
+    beenden: () => ipcRenderer.invoke('weg:beenden')
+  },
+  abwesenheit: {
+    zuordnen: (id, taetigkeit, notiz) => ipcRenderer.invoke('abwesenheit:zuordnen', id, taetigkeit, notiz),
+    pause: (id) => ipcRenderer.invoke('abwesenheit:pause', id),
+    privat: (id) => ipcRenderer.invoke('abwesenheit:privat', id),
+    spaeter: (id) => ipcRenderer.invoke('abwesenheit:spaeter', id)
+  },
   bloecke: {
     tag: (datum) => ipcRenderer.invoke('bloecke:tag', datum),
     zeitraum: (von, bis) => ipcRenderer.invoke('bloecke:zeitraum', von, bis),

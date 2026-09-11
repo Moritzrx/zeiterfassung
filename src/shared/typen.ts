@@ -226,6 +226,8 @@ export type ErfassungsZustand =
   | 'laeuft'
   | 'inaktiv'
   | 'abwesend'
+  /** "Ich bin weg": angekündigte Abwesenheit läuft als produktiver Block (Termin, Dreh, Telefonat) */
+  | 'weg'
   | 'pausiert'
   | 'gestoppt'
   | 'nicht-angemeldet'
@@ -249,6 +251,26 @@ export interface Fokus {
   seit: string
 }
 
+/**
+ * "Ich bin weg" (11. September 2026): eine angekündigte Abwesenheit (Kundentermin, Dreh, Telefonat, Fahrt).
+ * Sie läuft als produktiver Hand-Block mit dieser Tätigkeit, bis die erste Eingabe am Rechner die Rückkehr meldet.
+ */
+export interface Weg {
+  taetigkeit: string
+  /** Beginn als ISO-Zeit, kann bis zu drei Stunden zurückliegen */
+  seit: string
+}
+
+/**
+ * Eine abgeschlossene Abwesenheit ("Nicht am Rechner" oder "Abwesend"), die noch niemand eingeordnet hat:
+ * Die App fragt nach der Rückkehr, was das war (Pause, Termin mit Tätigkeit, privat).
+ */
+export interface Abwesenheit {
+  id: string
+  start: string
+  ende: string
+}
+
 /** Was das Fenster über den Stand der Erfassung wissen muss. Wird alle 5 Sekunden geschickt. */
 export interface ErfassungsStatus {
   zustand: ErfassungsZustand
@@ -259,6 +281,10 @@ export interface ErfassungsStatus {
   eigenesFenster: boolean
   /** Laufender Fokus (Tätigkeit für alles), sonst null */
   fokus: Fokus | null
+  /** Laufende angekündigte Abwesenheit ("Ich bin weg"), sonst null */
+  weg: Weg | null
+  /** Abgeschlossene Abwesenheiten der letzten 24 Stunden (15 Minuten bis 3 Stunden), die noch einzuordnen sind */
+  offeneAbwesenheiten: Abwesenheit[]
   heuteProduktivSekunden: number
   wocheProduktivSekunden: number
   rang: number
