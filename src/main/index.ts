@@ -96,6 +96,15 @@ function versteckterStart(): boolean {
   return process.platform === 'darwin' && app.getLoginItemSettings().wasOpenedAtLogin
 }
 
+/**
+ * Ob die App beim Anmelden startet. Unter Windows muss die Abfrage dieselben Argumente nennen wie das Setzen
+ * (`--hidden`), sonst vergleicht Electron gegen einen Eintrag ohne Argumente und meldet fälschlich "aus"
+ * (Diagnose "Autostart: false" trotz vorhandenem Registry-Eintrag, 11. September 2026). macOS ignoriert die Option.
+ */
+function autostartAn(): boolean {
+  return app.getLoginItemSettings({ args: ['--hidden'] }).openAtLogin
+}
+
 function fensterAnlegen(): BrowserWindow {
   const neu = new BrowserWindow({
     width: 1000,
@@ -622,7 +631,7 @@ function ipcRegistrieren(): void {
     version: app.getVersion(),
     plattform: process.platform === 'darwin' ? 'mac' : process.platform === 'win32' ? 'windows' : 'linux',
     gepackt: app.isPackaged,
-    autostart: app.isPackaged ? app.getLoginItemSettings().openAtLogin : false,
+    autostart: app.isPackaged ? autostartAn() : false,
     bildschirmrecht: bildschirmrecht()
   }))
   // Diagnose als Text für den Chat (Einstellungen → System → "Diagnose kopieren"): Stand von App, System, Erfassung,
@@ -633,7 +642,7 @@ function ipcRegistrieren(): void {
     z.push(`wessamedia Zeit ${app.getVersion()} (${app.isPackaged ? 'installiert' : 'Entwicklung'})`)
     z.push(`System: ${process.platform} ${release()} · Electron ${process.versions.electron} · Node ${process.versions.node}`)
     z.push(`Zeit: ${jetzt.toISOString()} (${berlinDatum(jetzt)} ${berlinTeile(jetzt).stunde}:${String(berlinTeile(jetzt).minute).padStart(2, '0')} Berlin)`)
-    z.push(`Autostart: ${app.isPackaged ? app.getLoginItemSettings().openAtLogin : 'nur installiert'} · Bildschirmaufnahme: ${bildschirmrecht()}`)
+    z.push(`Autostart: ${app.isPackaged ? autostartAn() : 'nur installiert'} · Bildschirmaufnahme: ${bildschirmrecht()}`)
     z.push(`Datenbank konfiguriert: ${supabaseKonfiguriert()}`)
     if (sitzung) {
       const s = sitzung
@@ -665,7 +674,7 @@ function ipcRegistrieren(): void {
   ipcMain.handle('system:autostartSetzen', (_ereignis, an: boolean): boolean => {
     if (!app.isPackaged) return false
     app.setLoginItemSettings({ openAtLogin: an, args: an ? ['--hidden'] : [] })
-    return app.getLoginItemSettings().openAtLogin
+    return autostartAn()
   })
 
   ipcMain.handle('team:stand', async (): Promise<TeamMitglied[]> => {
