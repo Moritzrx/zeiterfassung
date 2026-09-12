@@ -91,6 +91,8 @@ Das **rote X** oben im Fenster schließt nur das Fenster, die Erfassung läuft w
 
 Regeln kennen nur das Programm, nicht dein Thema. Wer sich über Instagram weiterbildet, springt zwischen Claude, Instagram und YouTube hin und her, und jeder Wechsel wäre ein eigener Block zum Zuordnen. Dafür gibt es den **Fokus**: Klick oben rechts auf **Fokus** (oder auf der Heute-Karte "Fokus starten", oder Strg+F, am Mac Cmd+F), Tätigkeit antippen, Beginn wählen (jetzt, vor 15/30/60 Minuten oder seit einer Uhrzeit), fertig. Ab dann zählt alles als produktiv mit dieser Tätigkeit, egal welches Programm vorne ist. Rückwirkend gestartet wird die Zeit seit dem Beginn als Block mit dieser Tätigkeit nachgetragen (gab es in der Zeit schon Blöcke, bekommen die die Tätigkeit). Oben steht "Fokus: Instagram Learning · seit 09:01" und daneben **Fokus beenden**; auch das Symbol-Menü kann ihn beenden oder einen neuen starten. Der Fokus endet von selbst um Mitternacht oder wenn du länger als 90 Minuten nichts tust; ein Neustart der App (Update) beendet ihn nicht. Seit Version 1.0.40 ist der Fokus der einzige Weg, Zeit zu zählen (siehe oben), "Ich bin weg" bleibt für Termine außer Haus.
 
+**Ehrlich bleibt es trotzdem (seit 1.0.42):** Was eine Regel als unproduktiv einstuft (Netflix, privates YouTube), bleibt auch im Fokus rot; nur Produktives und Ungeklärtes bekommt die Fokus-Tätigkeit. Alle zwei Stunden fragt eine Systemmeldung, ob der Fokus noch stimmt. Kommst du von "Ich bin weg" zurück, fragt die App gleich nach dem nächsten Fokus. Das Symbol unten rechts (Windows) ist grün, solange Zeit zählt, sonst grau; am Mac steht in der Menüleiste "Kein Fokus".
+
 **Am Rechner oder unterwegs (seit 1.0.41):** Jede Tätigkeit gehört an einen Ort. "Am Rechner" (Instagram Learning, Konzept, Orga …) steht im Fokus-Dialog, "Unterwegs" (Dreh, Fahrt, Kundentermin, Telefonat) bei **Ich bin weg** und in der Rückfrage nach einer Abwesenheit. So kann man einen Dreh nicht versehentlich als Fokus starten (der würde nach 3 Minuten ohne Eingabe rot). Umsortieren unter Einstellungen → Tätigkeiten und Symbole, Chip rechts antippen; gilt für alle drei. Eine neue Tätigkeit, die man bei "Ich bin weg" eintippt, ist automatisch unterwegs. Dafür muss einmal das Skript 16 (`supabase/16_taetigkeit_unterwegs.sql`) laufen; vorher zeigen beide Dialoge alle Tätigkeiten.
 
 Nachträglich geht es auch: In der Tagesliste **Auswählen**, den ersten und den letzten Block der Phase anklicken, **Alles dazwischen**, dann unten die Tätigkeit setzen.
@@ -161,11 +163,10 @@ Der Wochenrang fängt jeden Montag bei null an. Die Liga dagegen bleibt, wie die
 - **Liga**: je eine Medaille beim ersten Erreichen von Bronze-, Silber-, Gold-, Kristall-, Meister-, Champion-, Titan- und Legenden-Liga.
 - **Tage**: Perfekte Woche (alle 7 Tage mindestens 5 h), Durchläufer (7 Tage in Folge mindestens 4 h), Marathon (10 h an einem Tag), Ultra (12 h an einem Tag), Sprint (3 h am Stück).
 - **Team**: Wochensieger (die meisten Stunden im Team in einer abgeschlossenen Woche), Dauersieger (3 Wochen in Folge), Team-Woche (alle drei erreichen in derselben Woche ihr Ziel).
-- **Lernen und Disziplin**: Alle Lernziele, Lernmeister (4 Wochen in Folge alle Lernziele), Fokus-Woche (Rang 10 mit höchstens 2 h unproduktiv), Aufgeräumt (abgeschlossene Woche mit 40 h ohne Ungeklärtes), Blitzsauber (4 solche Wochen in Folge).
+- **Lernen und Disziplin**: Alle Lernziele, Lernmeister (4 Wochen in Folge alle Lernziele), Fokus-Woche (Rang 10 mit höchstens 2 h unproduktiv), Aufgeräumt (abgeschlossene Woche mit 40 h, höchstens 2 h unproduktiv, ohne Ungeklärtes), Blitzsauber (4 solche Wochen in Folge).
 - **Uhrzeit**: Frühaufsteher (2 h vor 8 Uhr in einer Woche), Nachteule (2 h nach 22 Uhr), Wochenend-Krieger (15 h an einem Wochenende).
 
 Die Stunden-Meilensteine und die neuen Typen brauchen einmalig das Skript 13 in Supabase (siehe Abschnitt 5).
-- **Aufgeräumt**: eine abgeschlossene Woche mit mindestens 20 produktiven Stunden und keinem einzigen ungeklärten Block.
 
 ### Wochenzusammenfassung
 

@@ -223,7 +223,8 @@ function statusVerteilen(): void {
     pausiert: status.zustand === 'pausiert',
     fokus: status.fokus?.taetigkeit ?? null,
     weg: status.weg?.taetigkeit ?? null,
-    ohneFokus: status.zustand === 'ohne-fokus'
+    ohneFokus: status.zustand === 'ohne-fokus',
+    zaehlt: status.zustand === 'laeuft' || status.zustand === 'weg'
   })
 }
 
@@ -245,6 +246,36 @@ function ohneFokusMelden(minuten: number): void {
     body: `Du arbeitest seit ${minuten} Minuten ohne Fokus, diese Zeit zählt nicht. Klicken und Fokus starten.`
   })
   meldung.on('click', fokusDialogOeffnen)
+  meldung.show()
+}
+
+/**
+ * Rückkehr von "Ich bin weg" durch eine Eingabe erkannt (12. September 2026): im Fokus-Modus läuft danach nichts,
+ * bis ein Fokus startet. Ist das Fenster vorne, geht der Fokus-Dialog direkt auf, sonst fragt eine Systemmeldung.
+ */
+function wegZurueckMelden(taetigkeit: string): void {
+  if (!sitzung || !sitzung.erfassung.nurFokus || sitzung.erfassung.fokusStand()) return
+  if (fenster && !fenster.isDestroyed() && fenster.isVisible() && fenster.isFocused()) {
+    fenster.webContents.send('fokus:dialogOeffnen')
+    return
+  }
+  if (!Notification.isSupported()) return
+  const meldung = new Notification({
+    title: 'Willkommen zurück',
+    body: `„${taetigkeit}“ ist gebucht. Ab jetzt zählt erst wieder ein Fokus: klicken und starten.`
+  })
+  meldung.on('click', fokusDialogOeffnen)
+  meldung.show()
+}
+
+/** Alle zwei Stunden Fokus einmal nachfragen, ob er noch stimmt (12. September 2026). */
+function fokusLangeMelden(taetigkeit: string, stunden: number): void {
+  if (!Notification.isSupported()) return
+  const meldung = new Notification({
+    title: `Fokus „${taetigkeit}“ läuft seit ${stunden} Stunden`,
+    body: 'Stimmt das noch? Sonst oben „Fokus beenden“ oder einen neuen Fokus starten.'
+  })
+  meldung.on('click', fensterZeigen)
   meldung.show()
 }
 
@@ -392,6 +423,8 @@ function sitzungStarten(userId: string): void {
   erfassung.on('status', statusVerteilen)
   erfassung.on('abwesenheit', (a: Abwesenheit) => abwesenheitMelden(a))
   erfassung.on('ohne-fokus', (minuten: number) => ohneFokusMelden(minuten))
+  erfassung.on('weg-zurueck', (taetigkeit: string) => wegZurueckMelden(taetigkeit))
+  erfassung.on('fokus-lange', (taetigkeit: string, stunden: number) => fokusLangeMelden(taetigkeit, stunden))
   erfassung.on('bloecke', () => {
     // Sobald ein Block endet, können kurze Wechsel davor ihre Nachbarn erben.
     alleNeuBewerten(s.speicher, s.regelwerk.liste(), s.userId)

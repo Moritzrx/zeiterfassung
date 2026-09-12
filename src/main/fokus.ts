@@ -24,7 +24,9 @@ export function fokusRueckwirkend(
   const beginnIso = beginn.toISOString()
   const beginnMs = beginn.getTime()
   for (const b of speicher.imZeitraum(beginn, ende)) {
-    if (b.id === ausser || b.quelle !== 'auto' || b.bewertung === 'inaktiv') continue
+    // Abwesend (blau) und Unproduktives (Zeit ohne Eingabe, von einer Regel als unproduktiv eingestuft) bleiben,
+    // wie beim laufenden Fokus: der Fokus schlägt nur Produktives und Ungeklärtes (12. September 2026).
+    if (b.id === ausser || b.quelle !== 'auto' || b.bewertung === 'inaktiv' || b.bewertung === 'unproduktiv') continue
     if (Date.parse(b.start) < beginnMs - MINDEST_REST_MS) {
       const hinten: Block = {
         ...b,

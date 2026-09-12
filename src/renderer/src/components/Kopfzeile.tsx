@@ -37,7 +37,13 @@ export function Kopfzeile(): ReactElement {
     if (!window.api || !weg) return
     await window.api.weg.beenden()
     tonSpielen('erfolg')
-    hinweisZeigen(`Willkommen zurück. „${weg.taetigkeit}“ ist als produktive Zeit gebucht.`)
+    if (status.nurFokus) {
+      // Im Fokus-Modus zählt ab jetzt nichts mehr, bis ein Fokus läuft: gleich den Dialog anbieten.
+      hinweisZeigen(`Willkommen zurück. „${weg.taetigkeit}“ ist gebucht. Jetzt einen Fokus starten.`)
+      fokusDialogOeffnen()
+    } else {
+      hinweisZeigen(`Willkommen zurück. „${weg.taetigkeit}“ ist als produktive Zeit gebucht.`)
+    }
   }
 
   let punkt = 'bg-dim'

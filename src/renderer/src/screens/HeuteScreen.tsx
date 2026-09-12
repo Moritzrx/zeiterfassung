@@ -289,8 +289,11 @@ export function HeuteScreen(): ReactElement {
           {status.fokus && (
             <p className="mt-2 flex items-center gap-1.5 text-sm text-produktiv">
               <Crosshair size={14} strokeWidth={2} />
-              Fokus „{status.fokus.taetigkeit}“ seit {uhrzeit(status.fokus.seit)}: alles zählt als produktiv dazu, egal welches Programm.
+              Fokus „{status.fokus.taetigkeit}“ seit {uhrzeit(status.fokus.seit)}: alles zählt als produktiv dazu, egal welches Programm. Nur was eine Regel als unproduktiv einstuft, bleibt rot.
             </p>
+          )}
+          {status.fokus && laufend && laufend.programm && laufend.bewertung === 'unproduktiv' && (
+            <p className="mt-2 text-xs text-unproduktiv">Zählt laut Regel als unproduktiv, auch im Fokus. Wenn das falsch ist: Regel unter Einstellungen → Regeln ändern.</p>
           )}
           {laufend ? (
             <div className="mt-2 flex items-center gap-4">

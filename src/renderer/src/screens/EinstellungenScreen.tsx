@@ -133,6 +133,8 @@ export function EinstellungenScreen(): ReactElement {
   const [system, setSystem] = useState<SystemInfo | null>(null)
   const [ziele, setZiele] = useState<Ziel[]>([])
   const [regeln, setRegeln] = useState<Regel[]>([])
+  // Im Fokus-Modus ist die Regelliste eingeklappt (12. September 2026: fast bedeutungslos, aber lang).
+  const [regelnOffen, setRegelnOffen] = useState(false)
   const [symbolFuer, setSymbolFuer] = useState<string | null>(null)
   const [toene, setToene] = useState(toneEinstellung)
   const [update, setUpdate] = useState<UpdateStatus | null>(null)
@@ -471,8 +473,16 @@ export function EinstellungenScreen(): ReactElement {
         <p className="mt-1 text-xs text-dim">
           Erst wird das Programm geprüft, dann der Fenstertitel. Persönliche Regeln gewinnen gegen Team-Regeln. Änderungen wirken
           sofort auf alle nicht von Hand geprüften Blöcke.
-          {erfassung.nurFokus && ' Solange „Nur im Fokus aufzeichnen“ an ist, entstehen keine Blöcke nach Regeln; sie gelten dann nur noch für alte Blöcke.'}
+          {erfassung.nurFokus &&
+            ' Im Fokus-Modus entstehen keine Blöcke nach Regeln. Regeln, die etwas als unproduktiv einstufen (etwa Netflix), gelten trotzdem auch im Fokus; alles andere nur noch für alte Blöcke.'}
         </p>
+        {erfassung.nurFokus && (
+          <button type="button" onClick={() => setRegelnOffen((o) => !o)} className="mt-2 rounded-chip bg-panel-2 px-3 py-1.5 text-sm text-ink hover:bg-inaktiv">
+            {regelnOffen ? 'Regeln ausblenden' : `${sichtbareRegeln.length} Regeln anzeigen`}
+          </button>
+        )}
+        {(!erfassung.nurFokus || regelnOffen) && (
+        <>
         <div className="mt-2 divide-y divide-panel-2">
           {sichtbareRegeln.map((r) => (
             <div key={r.id} className={`py-3 ${r.aktiv ? '' : 'opacity-50'}`}>
@@ -569,6 +579,8 @@ export function EinstellungenScreen(): ReactElement {
             </div>
           </div>
         </div>
+        </>
+        )}
       </Karte>
 
       <Karte>

@@ -68,6 +68,8 @@ const GRAU = [142, 142, 147]
 const SCHWARZ = [0, 0, 0]
 writeFileSync(join(ORDNER, 'tray-win.png'), kreis(32, GRAU))
 writeFileSync(join(ORDNER, 'tray-win-paused.png'), kreis(32, [90, 90, 96]))
+// Grün (#00C076 wie "produktiv"), solange Zeit gezählt wird: Fokus oder "Ich bin weg" läuft.
+writeFileSync(join(ORDNER, 'tray-win-fokus.png'), kreis(32, [0, 192, 118]))
 writeFileSync(join(ORDNER, 'trayTemplate.png'), kreis(16, SCHWARZ))
 writeFileSync(join(ORDNER, 'trayTemplate@2x.png'), kreis(32, SCHWARZ))
 console.log('Platzhalter geschrieben nach', ORDNER)

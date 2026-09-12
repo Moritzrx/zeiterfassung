@@ -40,6 +40,8 @@ const OHNE_FOKUS_ERINNERUNG_MS = 10 * 60_000
 const OHNE_FOKUS_ABSTAND_MS = 45 * 60_000
 /** Ein Fokus überlebt einen Neustart der App höchstens so lange (und nie über Mitternacht hinaus). */
 const FOKUS_MAX_MS = 12 * 3_600_000
+/** Alle zwei Stunden Fokus einmal nachfragen, ob er noch stimmt ("morgens gestartet, den ganzen Tag alles darunter"). */
+const FOKUS_ERINNERUNG_MS = 2 * 3_600_000
 // Rückfrage nach einer Abwesenheit (11. September 2026, "Abwesenheit ist immer rot"): Nach der Rückkehr fragt die
 // App, was das war (Pause, Termin, privat). Nur für Abwesenheiten von der Untätigkeits-Schwelle bis RUECKFRAGE_MAX_MS
 // und aus den letzten RUECKFRAGE_FENSTER_MS; "Später" wird SPAETER_MERKEN_MS lang gemerkt.
@@ -120,6 +122,8 @@ export class Erfassung extends EventEmitter {
   private ohneFokusAktivMs = 0
   /** Wann zuletzt "Kein Fokus" gemeldet wurde (ms). */
   private ohneFokusGemeldet = 0
+  /** Bis zu welcher vollen Zwei-Stunden-Marke der laufende Fokus schon nachgefragt wurde (0, 2, 4 ...). */
+  private fokusErinnertStunden = 0
   /** Rückfragen, die mit "Später" weggeklickt wurden: Block-Kennung → Zeitpunkt (ms). */
   private spaeter = new Map<string, number>()
   private readonly ablagePfad: string
@@ -331,7 +335,10 @@ export class Erfassung extends EventEmitter {
     const seitStart = (Date.now() - Math.max(seit, this.zeitgrenze)) / 1000
     this.wegLaengsteRuhe = Math.max(this.wegLaengsteRuhe, Math.min(ruhe, seitStart))
     if (this.wegLaengsteRuhe >= WEG_ABWESEND_S && ruhe < WEG_ZURUECK_S) {
+      const taetigkeit = this.weg.taetigkeit
       this.wegBeenden(new Date(jetzt.getTime() - ruhe * 1000))
+      // Rückkehr durch Eingabe erkannt: das Fenster bzw. die Systemmeldung fragt nach dem nächsten Fokus.
+      this.emit('weg-zurueck', taetigkeit)
       return
     }
     const grenze = Math.min(seit + WEG_MAX_MS, naechsterTagesanfang(new Date(seit)).getTime())
@@ -363,6 +370,7 @@ export class Erfassung extends EventEmitter {
       // Ein Fokus überlebt einen Neustart am selben Tag (bis 12 Stunden), sonst ginge nach einem Update still Zeit verloren.
       if (daten.fokus && jetzt - Date.parse(daten.fokus.seit) < FOKUS_MAX_MS && jetzt < naechsterTagesanfang(new Date(daten.fokus.seit)).getTime()) {
         this.fokus = { taetigkeit: daten.fokus.taetigkeit, seit: daten.fokus.seit, kunde: daten.fokus.kunde ?? null }
+        this.fokusErinnertStunden = Math.floor((jetzt - Date.parse(daten.fokus.seit)) / FOKUS_ERINNERUNG_MS) * 2
       }
     } catch (fehler) {
       console.error('Abwesenheits-Ablage:', fehler)
@@ -411,6 +419,7 @@ export class Erfassung extends EventEmitter {
       this.letzterTakt = 0
     }
     this.ohneFokusAktivMs = 0
+    this.fokusErinnertStunden = 0
     this.ablageSpeichern()
     const b = this.aktuell
     if (b) {
@@ -448,8 +457,10 @@ export class Erfassung extends EventEmitter {
   }
 
   private fokusAnwenden(block: Block): void {
-    // Zeit ohne Eingabe ("Nicht am Rechner", programm null) bleibt auch im Fokus unproduktiv.
-    if (!this.fokus || block.programm === null) return
+    // Zeit ohne Eingabe ("Nicht am Rechner", programm null) bleibt auch im Fokus unproduktiv. Ebenso, was eine Regel als
+    // unproduktiv einstuft (Netflix, privates YouTube): der Fokus schlägt nur produktive und ungeklärte Bewertungen
+    // (12. September 2026, damit die Zahlen ehrlich bleiben, ohne dass jemand zuordnen muss).
+    if (!this.fokus || block.programm === null || block.bewertung === 'unproduktiv') return
     block.taetigkeit = this.fokus.taetigkeit
     block.kunde = this.fokus.kunde ?? null
     block.bewertung = 'produktiv'
@@ -674,6 +685,15 @@ export class Erfassung extends EventEmitter {
 
     // Ein Fokus endet spätestens um Mitternacht, damit er nicht vergessen am nächsten Tag weiterläuft.
     if (this.fokus && jetzt >= naechsterTagesanfang(new Date(this.fokus.seit))) this.fokusBeenden(jetzt)
+
+    // Alle zwei Stunden Fokus einmal nachfragen, ob er noch stimmt.
+    if (this.fokus) {
+      const stunden = Math.floor((jetzt.getTime() - Date.parse(this.fokus.seit)) / FOKUS_ERINNERUNG_MS) * 2
+      if (stunden >= 2 && stunden > this.fokusErinnertStunden) {
+        this.fokusErinnertStunden = stunden
+        this.emit('fokus-lange', this.fokus.taetigkeit, stunden)
+      }
+    }
 
     // Nur im Fokus: ohne Fokus wird nichts aufgezeichnet, die App erinnert nur ab und zu daran.
     if (this.ohneFokus()) {

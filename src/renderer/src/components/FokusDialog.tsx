@@ -194,7 +194,8 @@ function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactEleme
               {nurFokus
                 ? 'Rückwirkend heißt: Die Zeit seit dem Beginn wird als ein Block mit dieser Tätigkeit nachgetragen.'
                 : 'Rückwirkend heißt: Die Blöcke seit dem Beginn bekommen die Tätigkeit sofort, auch schon bewertete.'}{' '}
-              Der Fokus endet von selbst um Mitternacht oder wenn du länger als 90 Minuten nichts tust.
+              Der Fokus endet von selbst um Mitternacht oder wenn du länger als 90 Minuten nichts tust. Was eine Regel als unproduktiv
+              einstuft (etwa Netflix), bleibt auch im Fokus rot.
             </p>
           </div>
 

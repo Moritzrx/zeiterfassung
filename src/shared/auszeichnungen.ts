@@ -61,8 +61,8 @@ export const AUSZEICHNUNGEN: Record<AuszeichnungTyp, { titel: string; text: stri
   alle_lernziele: { titel: 'Alle Lernziele', text: 'Alle Lernziele einer Woche erreicht.', farbe: '#00C076', gruppe: 'lernen' },
   lernmeister: { titel: 'Lernmeister', text: 'Vier Wochen in Folge alle Lernziele erreicht.', farbe: '#34D399', gruppe: 'lernen' },
   fokus_woche: { titel: 'Fokus-Woche', text: `Eine abgeschlossene Woche auf Rang ${RANG_ZIEL} oder höher mit einer Fokus-Quote von mindestens ${Math.round(FOKUS_QUOTE_ZIEL * 100)} Prozent: von allem, was die App gezählt hat, war so viel produktiv.`, farbe: '#FF4D4D', gruppe: 'lernen' },
-  aufgeraeumt: { titel: 'Aufgeräumt', text: 'Eine abgeschlossene Woche mit mindestens 40 produktiven Stunden und keinem ungeklärten Block.', farbe: '#C9CDD6', gruppe: 'lernen' },
-  blitzsauber: { titel: 'Blitzsauber', text: 'Vier abgeschlossene Wochen in Folge mit mindestens 40 produktiven Stunden und nichts Ungeklärtem.', farbe: '#E2E8F0', gruppe: 'lernen' },
+  aufgeraeumt: { titel: 'Aufgeräumt', text: 'Eine abgeschlossene Woche mit mindestens 40 produktiven Stunden, höchstens 2 Stunden unproduktiv und keinem ungeklärten Block.', farbe: '#C9CDD6', gruppe: 'lernen' },
+  blitzsauber: { titel: 'Blitzsauber', text: 'Vier abgeschlossene Wochen in Folge: je mindestens 40 produktive Stunden, höchstens 2 Stunden unproduktiv, nichts Ungeklärtes.', farbe: '#E2E8F0', gruppe: 'lernen' },
 
   fruehaufsteher: { titel: 'Frühaufsteher', text: 'In einer Woche mindestens 2 produktive Stunden vor 8 Uhr.', farbe: '#FDBA74', gruppe: 'uhrzeit' },
   nachteule: { titel: 'Nachteule', text: 'In einer Woche mindestens 2 produktive Stunden nach 22 Uhr.', farbe: '#A78BFA', gruppe: 'uhrzeit' },
@@ -351,7 +351,8 @@ export function auszeichnungenPruefen(
     meldenFolge('lernmeister', 4, alleZiele)
   }
   melden('fokus_woche', erste((w) => abgeschlossen(w) && !w.leer && fokusQuote(w) >= FOKUS_QUOTE_ZIEL && aufZiel(w)))
-  const sauber = (w: Wochenstatistik): boolean => abgeschlossen(w) && !w.leer && w.produktiv >= 40 * STUNDE && w.ungeklaert === 0
+  // Seit "nur im Fokus" (12. September 2026) gibt es kaum noch Ungeklärtes, darum zählt zusätzlich: höchstens 2 h unproduktiv.
+  const sauber = (w: Wochenstatistik): boolean => abgeschlossen(w) && !w.leer && w.produktiv >= 40 * STUNDE && w.ungeklaert === 0 && w.unproduktiv <= 2 * STUNDE
   melden('aufgeraeumt', erste(sauber))
   meldenFolge('blitzsauber', 4, sauber)
 
