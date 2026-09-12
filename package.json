@@ -1,7 +1,7 @@
 {
   "name": "wessamedia-zeit",
   "productName": "wessamedia Zeit",
-  "version": "1.0.40",
+  "version": "1.0.41",
   "description": "Zeiterfassung für wessamedia: automatisch am Rechner, von Hand für alles andere.",
   "private": true,
   "main": "./out/main/index.js",

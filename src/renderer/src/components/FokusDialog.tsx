@@ -4,7 +4,7 @@ import { berlinTeile, berlinZuUtc } from '@shared/zeit'
 import { useErfassung } from '../erfassung'
 import { fehlerText, uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
-import { useTaetigkeiten } from '../taetigkeiten'
+import { useTaetigkeitenNachOrt } from '../taetigkeiten'
 import { useKunden } from '../kunden'
 import { tonSpielen } from '../toene'
 import { hinweisZeigen } from './Hinweis'
@@ -46,7 +46,8 @@ const FELD =
  * fertig. Ab dann zählt alles als produktiv mit dieser Tätigkeit, egal welches Programm vorne ist.
  */
 function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactElement {
-  const taetigkeiten = useTaetigkeiten()
+  // Nur Tätigkeiten am Rechner: Dreh, Fahrt und Kundentermin gehören zu "Ich bin weg" (12. September 2026).
+  const { amRechner: taetigkeiten, eingeordnet } = useTaetigkeitenNachOrt()
   const kunden = useKunden()
   const nurFokus = useErfassung().nurFokus
   const [name, setName] = useState('')
@@ -153,6 +154,7 @@ function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactEleme
                 if (e.key === 'Enter') void starten()
               }}
             />
+            {eingeordnet && <p className="mt-2 text-xs text-dim">Dreh, Fahrt, Kundentermin und andere Unterwegs-Tätigkeiten findest du unter „Ich bin weg“.</p>}
           </div>
 
           <div className="mt-5">

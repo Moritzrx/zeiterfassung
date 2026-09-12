@@ -462,8 +462,11 @@ function ipcRegistrieren(): void {
   // "Ich bin weg": ab dem Beginn (bis drei Stunden zurück) ein produktiver Hand-Block bis zur Rückkehr.
   ipcMain.handle('weg:starten', (_ereignis, taetigkeit: string, beginnIso: string, kundeName: string | null = null): void => {
     if (!sitzung) return
+    const neu = !sitzung.taetigkeiten.kennt(taetigkeit)
     const name = sitzung.taetigkeiten.merken(taetigkeit)
     if (!name) throw new Error('Bitte eine Tätigkeit angeben.')
+    // Eine hier neu angelegte Tätigkeit ist eine Unterwegs-Tätigkeit (gehört nicht in den Fokus-Dialog).
+    if (neu) void sitzung.taetigkeiten.unterwegsSetzen(name, true).catch(() => undefined)
     const kunde = kundeName ? sitzung.kunden.merken(kundeName) || null : null
     const jetzt = new Date()
     const gewuenscht = Date.parse(beginnIso) || jetzt.getTime()
@@ -489,7 +492,10 @@ function ipcRegistrieren(): void {
     if (!sitzung) return
     const bloecke = abwesenheitBloecke(id)
     if (!bloecke.length) throw new Error('Diese Abwesenheit gibt es nicht mehr.')
+    // Eine hier neu angelegte Tätigkeit ist eine Unterwegs-Tätigkeit (man war ja nicht am Rechner).
+    const neu = !sitzung.taetigkeiten.kennt(taetigkeit)
     eintragAnlegen(sitzung.speicher, sitzung.taetigkeiten, sitzung.kunden, sitzung.userId,{ start: bloecke[0].start, ende: bloecke[0].ende, taetigkeit, notiz })
+    if (neu) void sitzung.taetigkeiten.unterwegsSetzen(sitzung.taetigkeiten.merken(taetigkeit), true).catch(() => undefined)
     for (const b of bloecke) blockAendern(sitzung.speicher, sitzung.taetigkeiten, sitzung.kunden,b.id, { loeschen: true })
     bloeckeGeaendert()
     statusVerteilen()
@@ -630,6 +636,13 @@ function ipcRegistrieren(): void {
     return n
   })
 
+  ipcMain.handle('taetigkeiten:unterwegs', (): Record<string, boolean> => sitzung?.taetigkeiten.unterwegs() ?? {})
+  // Einordnung "unterwegs" (Dreh, Fahrt, Kundentermin ...) für das ganze Team; das Fenster lädt die Listen über bloecke:aenderung neu.
+  ipcMain.handle('taetigkeiten:unterwegsSetzen', async (_ereignis, name: string, an: boolean): Promise<void> => {
+    if (!sitzung) return
+    await sitzung.taetigkeiten.unterwegsSetzen(name, an)
+    bloeckeGeaendert()
+  })
   ipcMain.handle('taetigkeiten:symbole', (): Record<string, SymbolInfo> => sitzung?.taetigkeiten.symbole() ?? {})
   ipcMain.handle('taetigkeiten:symbolSetzen', async (_ereignis, name: string, symbol: SymbolInfo): Promise<void> => {
     if (!sitzung) throw new Error('Nicht angemeldet.')

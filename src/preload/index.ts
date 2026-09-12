@@ -69,6 +69,8 @@ const api: Api = {
     loeschen: (id) => ipcRenderer.invoke('regeln:loeschen', id)
   },
   taetigkeiten: {
+    unterwegs: () => ipcRenderer.invoke('taetigkeiten:unterwegs'),
+    unterwegsSetzen: (name, an) => ipcRenderer.invoke('taetigkeiten:unterwegsSetzen', name, an),
     liste: () => ipcRenderer.invoke('taetigkeiten:liste'),
     symbole: () => ipcRenderer.invoke('taetigkeiten:symbole'),
     symbolSetzen: (name, symbol) => ipcRenderer.invoke('taetigkeiten:symbolSetzen', name, symbol)

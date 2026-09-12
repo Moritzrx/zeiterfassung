@@ -3,7 +3,7 @@ import { Coffee, Plus, Smartphone } from 'lucide-react'
 import type { Abwesenheit } from '@shared/typen'
 import { fehlerText, uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
-import { useTaetigkeiten } from '../taetigkeiten'
+import { useTaetigkeitenNachOrt } from '../taetigkeiten'
 import { tonSpielen } from '../toene'
 import { hinweisZeigen } from './Hinweis'
 import { Karte } from './Karte'
@@ -26,7 +26,8 @@ function minutenText(a: Abwesenheit): string {
  * Pause (zählt nicht), eine Tätigkeit (produktiver Hand-Block), privat (bleibt rot) oder später.
  */
 export function AbwesenheitKarte({ liste }: { liste: Abwesenheit[] }): ReactElement | null {
-  const taetigkeiten = useTaetigkeiten()
+  // Wer weg war, war nicht am Rechner: nur Unterwegs-Tätigkeiten (Dreh, Fahrt, Kundentermin ...), sonst alle.
+  const { unterwegs: taetigkeiten } = useTaetigkeitenNachOrt()
   if (!liste.length) return null
   return (
     <Karte className="mb-4">

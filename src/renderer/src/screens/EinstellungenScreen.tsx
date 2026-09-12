@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactElement, type ReactNode } from 'react'
-import { Trash2 } from 'lucide-react'
+import { DoorOpen, Monitor, Trash2 } from 'lucide-react'
 import { STANDARD_GESAMTZIEL } from '@shared/rang'
 import { taetigkeitSchluessel } from '@shared/regeln'
 import type { Profil, Regel, RegelBewertung, SymbolInfo, SystemInfo, UpdateStatus, Urlaub, Ziel } from '@shared/typen'
@@ -11,7 +11,7 @@ import { useErfassung } from '../erfassung'
 import { kurzDatum, uhrzeit } from '../format'
 import { useNutzer } from '../nutzer'
 import { SymbolBild, useSymbolZuordnung } from '../symbole'
-import { useTaetigkeiten } from '../taetigkeiten'
+import { useTaetigkeiten, useUnterwegs } from '../taetigkeiten'
 import { KLICK_ARTEN, klickProbe, tonProbe, tonSpielen, toneEinstellung, toneEinstellungSetzen, type Ton } from '../toene'
 import { arbeitstageSetzen, useArbeitstage } from '../arbeitstage'
 import { hintergrundArtSetzen, useHintergrundArt } from '../hintergrundart'
@@ -117,6 +117,18 @@ export function EinstellungenScreen(): ReactElement {
   const erfassung = useErfassung()
   const taetigkeiten = useTaetigkeiten()
   const zuordnung = useSymbolZuordnung()
+  const unterwegs = useUnterwegs()
+
+  async function unterwegsSetzen(name: string, an: boolean): Promise<void> {
+    if (!window.api) return
+    try {
+      await window.api.taetigkeiten.unterwegsSetzen(name, an)
+      tonSpielen('erfolg')
+      hinweisZeigen(an ? `„${name}“ gilt jetzt als unterwegs und steht bei „Ich bin weg“.` : `„${name}“ gilt jetzt als am Rechner und steht im Fokus.`)
+    } catch (e) {
+      hinweisZeigen(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : String(e))
+    }
+  }
   const [profil, setProfil] = useState<Profil | null>(null)
   const [system, setSystem] = useState<SystemInfo | null>(null)
   const [ziele, setZiele] = useState<Ziel[]>([])
@@ -561,20 +573,32 @@ export function EinstellungenScreen(): ReactElement {
 
       <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">Tätigkeiten und Symbole</p>
-        <p className="mt-1 text-xs text-dim">Auf ein Symbol klicken, um es zu ändern. Gilt für alle drei.</p>
+        <p className="mt-1 text-xs text-dim">
+          Auf ein Symbol klicken, um es zu ändern. Rechts steht, wo die Tätigkeit hingehört: „Am Rechner“ erscheint im Fokus, „Unterwegs“
+          (Dreh, Fahrt, Kundentermin) bei „Ich bin weg“ und in der Rückfrage nach einer Abwesenheit. Antippen wechselt. Gilt für alle drei.
+        </p>
         <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
           {taetigkeiten.map((t) => {
             const symbol = zuordnung[taetigkeitSchluessel(t)] ?? { typ: 'lucide', name: 'tag' }
+            const istUnterwegs = !!unterwegs[taetigkeitSchluessel(t)]
             return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setSymbolFuer(t)}
-                className="flex items-center gap-3 rounded-chip px-2 py-2 text-left text-sm transition-colors hover:bg-panel-2"
-              >
-                <SymbolBild symbol={symbol} groesse={18} />
-                <span className="truncate">{t}</span>
-              </button>
+              <div key={t} className="flex items-center gap-2 rounded-chip px-2 py-1.5 transition-colors hover:bg-panel-2">
+                <button type="button" onClick={() => setSymbolFuer(t)} className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm" title="Symbol ändern">
+                  <SymbolBild symbol={symbol} groesse={18} />
+                  <span className="truncate">{t}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void unterwegsSetzen(t, !istUnterwegs)}
+                  className={`flex shrink-0 items-center gap-1 rounded-chip px-2 py-1 text-xs transition-colors ${
+                    istUnterwegs ? 'bg-produktiv/15 text-produktiv' : 'bg-panel-2 text-mute hover:text-ink'
+                  }`}
+                  title={istUnterwegs ? 'Unterwegs: steht bei „Ich bin weg“. Antippen für „Am Rechner“.' : 'Am Rechner: steht im Fokus. Antippen für „Unterwegs“.'}
+                >
+                  {istUnterwegs ? <DoorOpen size={12} strokeWidth={2} /> : <Monitor size={12} strokeWidth={2} />}
+                  {istUnterwegs ? 'Unterwegs' : 'Am Rechner'}
+                </button>
+              </div>
             )
           })}
         </div>

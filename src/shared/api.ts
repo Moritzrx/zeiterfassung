@@ -118,6 +118,10 @@ export interface Api {
     loeschen: (id: string) => Promise<number>
   }
   taetigkeiten: {
+    /** Vergleichsschlüssel der Unterwegs-Tätigkeiten (nicht am Rechner: Dreh, Fahrt, Kundentermin), Wert true. */
+    unterwegs: () => Promise<Record<string, boolean>>
+    /** Einordnung "unterwegs" für das ganze Team setzen; braucht das Skript 16 in Supabase. */
+    unterwegsSetzen: (name: string, an: boolean) => Promise<void>
     /** Alle bekannten Tätigkeitsnamen des Teams, alphabetisch. */
     liste: () => Promise<string[]>
     /** Symbol je Vergleichsschlüssel (siehe taetigkeitSchluessel). */

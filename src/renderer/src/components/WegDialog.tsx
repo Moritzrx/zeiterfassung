@@ -3,7 +3,7 @@ import { DoorOpen, X } from 'lucide-react'
 import { berlinTeile, berlinZuUtc } from '@shared/zeit'
 import { fehlerText, uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
-import { useTaetigkeiten } from '../taetigkeiten'
+import { useTaetigkeitenNachOrt } from '../taetigkeiten'
 import { useKunden } from '../kunden'
 import { tonSpielen } from '../toene'
 import { hinweisZeigen } from './Hinweis'
@@ -46,7 +46,8 @@ const FELD =
  * erste Eingabe am Rechner die Rückkehr meldet. Kein Nachtragen unter "Eintragen", keine rote Zeit.
  */
 function WegDialog({ onSchliessen }: { onSchliessen: () => void }): ReactElement {
-  const taetigkeiten = useTaetigkeiten()
+  // Nur Unterwegs-Tätigkeiten (Dreh, Fahrt, Kundentermin ...); solange keine eingeordnet ist, alle.
+  const { unterwegs: taetigkeiten, eingeordnet } = useTaetigkeitenNachOrt()
   const kunden = useKunden()
   const [name, setName] = useState('')
   const [kunde, setKunde] = useState('')
@@ -156,6 +157,11 @@ function WegDialog({ onSchliessen }: { onSchliessen: () => void }): ReactElement
                 if (e.key === 'Enter') void starten()
               }}
             />
+            <p className="mt-2 text-xs text-dim">
+              {eingeordnet
+                ? 'Eine neue Tätigkeit hier gilt als „unterwegs“ und erscheint künftig nicht im Fokus. Umsortieren unter Einstellungen → Tätigkeiten und Symbole.'
+                : 'Unter Einstellungen → Tätigkeiten und Symbole kannst du Dreh, Fahrt und Co. als „unterwegs“ markieren, dann stehen hier nur noch die.'}
+            </p>
           </div>
 
           <div className="mt-5">
