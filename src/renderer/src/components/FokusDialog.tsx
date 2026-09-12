@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import { Crosshair, X } from 'lucide-react'
 import { berlinTeile, berlinZuUtc } from '@shared/zeit'
+import { useErfassung } from '../erfassung'
 import { fehlerText, uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
 import { useTaetigkeiten } from '../taetigkeiten'
@@ -47,6 +48,7 @@ const FELD =
 function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactElement {
   const taetigkeiten = useTaetigkeiten()
   const kunden = useKunden()
+  const nurFokus = useErfassung().nurFokus
   const [name, setName] = useState('')
   const [kunde, setKunde] = useState('')
   const [minuten, setMinuten] = useState<number | null>(0)
@@ -187,8 +189,10 @@ function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactEleme
               )}
             </div>
             <p className="mt-2 text-xs text-dim">
-              Rückwirkend heißt: Die Blöcke seit dem Beginn bekommen die Tätigkeit sofort, auch schon bewertete.
-              Der Fokus endet von selbst um Mitternacht oder wenn du eine Stunde lang nichts tust.
+              {nurFokus
+                ? 'Rückwirkend heißt: Die Zeit seit dem Beginn wird als ein Block mit dieser Tätigkeit nachgetragen.'
+                : 'Rückwirkend heißt: Die Blöcke seit dem Beginn bekommen die Tätigkeit sofort, auch schon bewertete.'}{' '}
+              Der Fokus endet von selbst um Mitternacht oder wenn du länger als 90 Minuten nichts tust.
             </p>
           </div>
 

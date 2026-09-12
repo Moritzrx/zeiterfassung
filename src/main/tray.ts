@@ -8,6 +8,8 @@ export interface TrayAktionen {
   pause: () => void
   fortsetzen: () => void
   fokusBeenden: () => void
+  /** Fenster öffnen und den Fokus-Dialog zeigen */
+  fokusStarten: () => void
   /** Rückkehr von "Ich bin weg" melden */
   wegBeenden: () => void
   beenden: () => void
@@ -22,6 +24,8 @@ export interface TrayStand {
   fokus: string | null
   /** Tätigkeit der laufenden angekündigten Abwesenheit ("Ich bin weg"), sonst null */
   weg: string | null
+  /** Nur im Fokus aufzeichnen, und gerade läuft keiner: es zählt keine Zeit */
+  ohneFokus: boolean
 }
 
 /**
@@ -45,7 +49,7 @@ export class TrayLeiste {
     this.tray = new Tray(this.bild)
     this.tray.setToolTip('wessamedia Zeit')
     this.tray.on('click', () => this.aktionen.oeffnen())
-    this.aktualisieren({ angemeldet: false, heuteText: '0,0 h', rang: 0, pausiert: false, fokus: null, weg: null })
+    this.aktualisieren({ angemeldet: false, heuteText: '0,0 h', rang: 0, pausiert: false, fokus: null, weg: null, ohneFokus: false })
   }
 
   aktualisieren(stand: TrayStand): void {
@@ -54,7 +58,9 @@ export class TrayLeiste {
       { label: zeile, enabled: false },
       ...(stand.fokus ? [{ label: `Fokus: ${stand.fokus}`, enabled: false }] : []),
       ...(stand.weg ? [{ label: `Weg: ${stand.weg}`, enabled: false }] : []),
+      ...(stand.ohneFokus ? [{ label: 'Kein Fokus, Zeit zählt nicht', enabled: false }] : []),
       { type: 'separator' as const },
+      ...(stand.ohneFokus ? [{ label: 'Fokus starten …', click: () => this.aktionen.fokusStarten() }] : []),
       stand.pausiert
         ? { label: 'Erfassung fortsetzen', click: () => this.aktionen.fortsetzen(), enabled: stand.angemeldet }
         : { label: 'Pause', click: () => this.aktionen.pause(), enabled: stand.angemeldet },
@@ -65,7 +71,7 @@ export class TrayLeiste {
       { label: 'Beenden', click: () => this.aktionen.beenden() }
     ])
     this.tray.setContextMenu(menue)
-    this.tray.setToolTip(stand.pausiert ? 'wessamedia Zeit · Erfassung pausiert' : `wessamedia Zeit · ${zeile}`)
+    this.tray.setToolTip(stand.pausiert ? 'wessamedia Zeit · Erfassung pausiert' : stand.ohneFokus ? `wessamedia Zeit · Kein Fokus · ${zeile}` : `wessamedia Zeit · ${zeile}`)
     this.tray.setImage(stand.pausiert ? this.bildPause : this.bild)
     if (process.platform === 'darwin') {
       this.tray.setTitle(stand.angemeldet ? (stand.pausiert ? 'Pause' : stand.heuteText) : '')

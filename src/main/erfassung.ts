@@ -35,6 +35,11 @@ const EIGENES_KURZ_MS = 2 * 60_000 // so lange läuft beim Blick in die eigene A
 const WEG_ABWESEND_S = 60
 const WEG_ZURUECK_S = 10
 const WEG_MAX_MS = 12 * 3_600_000
+/** Ohne Fokus: nach so viel aktiver Zeit am Rechner einmal erinnern, danach frühestens nach dem Abstand wieder. */
+const OHNE_FOKUS_ERINNERUNG_MS = 10 * 60_000
+const OHNE_FOKUS_ABSTAND_MS = 45 * 60_000
+/** Ein Fokus überlebt einen Neustart der App höchstens so lange (und nie über Mitternacht hinaus). */
+const FOKUS_MAX_MS = 12 * 3_600_000
 // Rückfrage nach einer Abwesenheit (11. September 2026, "Abwesenheit ist immer rot"): Nach der Rückkehr fragt die
 // App, was das war (Pause, Termin, privat). Nur für Abwesenheiten von der Untätigkeits-Schwelle bis RUECKFRAGE_MAX_MS
 // und aus den letzten RUECKFRAGE_FENSTER_MS; "Später" wird SPAETER_MERKEN_MS lang gemerkt.
@@ -74,6 +79,10 @@ export async function bildschirmrechtAnfragen(): Promise<Bildschirmrecht> {
 interface Ablage {
   weg: (Weg & { blockId: string }) | null
   spaeter: Record<string, number>
+  /** Laufender Fokus, damit ein Neustart (Update, Absturz) ihn nicht still beendet. */
+  fokus?: Fokus | null
+  /** Einstellung "Nur im Fokus aufzeichnen" (seit 12. September 2026 Standard). */
+  nurFokus?: boolean
 }
 
 type Zustand = Exclude<ErfassungsZustand, 'nicht-angemeldet'>
@@ -88,6 +97,12 @@ export class Erfassung extends EventEmitter {
   pausiertSeit: Date | null = null
   idleSchwelleSekunden = 180
   fenstertitelSpeichern = true
+  /**
+   * Nur im Fokus aufzeichnen (12. September 2026, Entscheidung des Auftraggebers: "alles einzeln zuordnen ist zu
+   * anstrengend"): Ohne Fokus (und ohne "Ich bin weg") entsteht kein Block, auch keine Untätigkeit; im Fokus werden
+   * Programme und Fenstertitel wie bisher mitgeschrieben, alles produktiv mit der Fokus-Tätigkeit.
+   */
+  nurFokus = true
 
   private aktuell: Block | null = null
   private inaktiv: Block | null = null
@@ -101,6 +116,10 @@ export class Erfassung extends EventEmitter {
   private wegBlock: Block | null = null
   /** Längste Eingabepause (Sekunden) seit dem Start der Abwesenheit: erst ab WEG_ABWESEND_S zählt eine Eingabe als Rückkehr. */
   private wegLaengsteRuhe = 0
+  /** Ohne Fokus: aktive Zeit am Rechner (ms) seit der letzten Erinnerung bzw. seit dem Fokus-Ende. */
+  private ohneFokusAktivMs = 0
+  /** Wann zuletzt "Kein Fokus" gemeldet wurde (ms). */
+  private ohneFokusGemeldet = 0
   /** Rückfragen, die mit "Später" weggeklickt wurden: Block-Kennung → Zeitpunkt (ms). */
   private spaeter = new Map<string, number>()
   private readonly ablagePfad: string
@@ -137,6 +156,9 @@ export class Erfassung extends EventEmitter {
     if (this.weg) {
       // Eine angekündigte Abwesenheit läuft über einen Neustart hinweg weiter (Termin, Rechner war aus).
       this.zustand = 'weg'
+    } else if (this.ohneFokus()) {
+      // Nur im Fokus: ohne Fokus wird nichts aufgezeichnet, also auch keine Lücke nachgetragen.
+      this.zustand = 'ohne-fokus'
     } else {
       // Die Zeit seit dem letzten bekannten Block (App war aus, Rechner aus) nachtragen.
       const letztes = this.speicher.letztesEnde()
@@ -155,6 +177,11 @@ export class Erfassung extends EventEmitter {
     const dauer = bis - von
     if (dauer < this.idleSchwelleSekunden * 1000) return []
     const blau = dauer >= ABWESEND_MS
+    if (blau && this.fokus) {
+      // Wer so lange weg war, hat den Fokus beendet (sonst zählte der Abend nach der Rückkehr als Fokus-Zeit).
+      this.fokus = null
+      this.ablageSpeichern()
+    }
     const angelegt: Block[] = []
     let a = Math.max(von, bis - LUECKE_MAX_MS)
     while (a < bis) {
@@ -286,7 +313,7 @@ export class Erfassung extends EventEmitter {
     this.weg = null
     this.wegBlock = null
     this.wegLaengsteRuhe = 0
-    if (this.zustand === 'weg') this.zustand = 'laeuft'
+    if (this.zustand === 'weg') this.zustand = this.nurFokus && !this.fokus ? 'ohne-fokus' : 'laeuft'
     this.letzterTakt = 0
     this.zeitgrenze = jetzt.getTime()
     this.ablageSpeichern()
@@ -327,10 +354,15 @@ export class Erfassung extends EventEmitter {
       if (daten.weg && jetzt - Date.parse(daten.weg.seit) < WEG_MAX_MS) {
         const block = this.speicher.get(daten.weg.blockId)
         if (block && !block.geloeschtAm) {
-          this.weg = { taetigkeit: daten.weg.taetigkeit, seit: daten.weg.seit }
+          this.weg = { taetigkeit: daten.weg.taetigkeit, seit: daten.weg.seit, kunde: daten.weg.kunde ?? null }
           this.wegBlock = block
           this.wegLaengsteRuhe = WEG_ABWESEND_S
         }
+      }
+      if (typeof daten.nurFokus === 'boolean') this.nurFokus = daten.nurFokus
+      // Ein Fokus überlebt einen Neustart am selben Tag (bis 12 Stunden), sonst ginge nach einem Update still Zeit verloren.
+      if (daten.fokus && jetzt - Date.parse(daten.fokus.seit) < FOKUS_MAX_MS && jetzt < naechsterTagesanfang(new Date(daten.fokus.seit)).getTime()) {
+        this.fokus = { taetigkeit: daten.fokus.taetigkeit, seit: daten.fokus.seit, kunde: daten.fokus.kunde ?? null }
       }
     } catch (fehler) {
       console.error('Abwesenheits-Ablage:', fehler)
@@ -340,7 +372,9 @@ export class Erfassung extends EventEmitter {
   private ablageSpeichern(): void {
     const daten: Ablage = {
       weg: this.weg && this.wegBlock ? { ...this.weg, blockId: this.wegBlock.id } : null,
-      spaeter: Object.fromEntries(this.spaeter)
+      spaeter: Object.fromEntries(this.spaeter),
+      fokus: this.fokus,
+      nurFokus: this.nurFokus
     }
     try {
       writeFileSync(this.ablagePfad, JSON.stringify(daten))
@@ -368,7 +402,16 @@ export class Erfassung extends EventEmitter {
    * Blöcke behandelt `fokusRueckwirkend` (src/main/fokus.ts).
    */
   fokusStarten(taetigkeit: string, beginn: Date, jetzt: Date, kunde: string | null = null): void {
+    if (this.zustand === 'gestoppt') return
     this.fokus = { taetigkeit, seit: beginn.toISOString(), kunde }
+    if (this.zustand === 'ohne-fokus') {
+      // Ab jetzt wird wieder aufgezeichnet; Untätigkeit vor dem Start wird nicht rückwirkend gebucht.
+      this.zustand = 'laeuft'
+      this.zeitgrenze = jetzt.getTime()
+      this.letzterTakt = 0
+    }
+    this.ohneFokusAktivMs = 0
+    this.ablageSpeichern()
     const b = this.aktuell
     if (b) {
       if (Date.parse(b.start) < beginn.getTime() - KURZ_MS) {
@@ -395,6 +438,12 @@ export class Erfassung extends EventEmitter {
       this.schliessen(this.aktuell, jetzt)
       this.aktuell = null
     }
+    if (this.nurFokus && !this.weg && this.zustand !== 'pausiert') {
+      // Nur im Fokus: ohne Fokus wird nichts mehr aufgezeichnet, auch keine Untätigkeit.
+      this.alleSchliessen(jetzt)
+      this.zustand = 'ohne-fokus'
+    }
+    this.ablageSpeichern()
     this.melden()
   }
 
@@ -407,6 +456,104 @@ export class Erfassung extends EventEmitter {
     block.manuellGeprueft = true
   }
 
+  /** Nur im Fokus, und gerade läuft weder ein Fokus noch "Ich bin weg": es wird nichts aufgezeichnet. */
+  private ohneFokus(): boolean {
+    return this.nurFokus && !this.fokus && !this.weg
+  }
+
+  /** Schalter "Nur im Fokus aufzeichnen" (Einstellungen → Erfassung). Aus = wie früher: durchgehend, nach Regeln bewertet. */
+  nurFokusSetzen(an: boolean): void {
+    if (this.nurFokus === an) return
+    this.nurFokus = an
+    const jetzt = new Date()
+    if (this.zustand !== 'gestoppt' && this.zustand !== 'pausiert' && !this.weg) {
+      if (an && !this.fokus) {
+        this.alleSchliessen(jetzt)
+        this.zustand = 'ohne-fokus'
+      } else if (!an && this.zustand === 'ohne-fokus') {
+        this.zustand = 'laeuft'
+        this.zeitgrenze = jetzt.getTime()
+        this.letzterTakt = 0
+      }
+    }
+    this.ohneFokusAktivMs = 0
+    this.ablageSpeichern()
+    this.emit('bloecke')
+    this.melden()
+  }
+
+  /** Ohne Fokus: nichts aufzeichnen, offene Blöcke schließen, nach 10 Minuten Arbeit am Rechner einmal erinnern. */
+  private ohneFokusVerarbeiten(jetzt: Date): void {
+    if (this.aktuell || this.inaktiv) this.alleSchliessen(jetzt)
+    this.inaktivSeit = null
+    this.zustand = 'ohne-fokus'
+    const ruhe = powerMonitor.getSystemIdleTime()
+    if (ruhe >= this.idleSchwelleSekunden) {
+      // Nicht am Rechner: keine Erinnerung nötig, Zähler von vorn.
+      this.ohneFokusAktivMs = 0
+      return
+    }
+    if (ruhe < 60) this.ohneFokusAktivMs += TAKT_MS
+    if (this.ohneFokusAktivMs >= OHNE_FOKUS_ERINNERUNG_MS && jetzt.getTime() - this.ohneFokusGemeldet >= OHNE_FOKUS_ABSTAND_MS) {
+      this.ohneFokusGemeldet = jetzt.getTime()
+      this.emit('ohne-fokus', Math.round(this.ohneFokusAktivMs / 60_000))
+      this.ohneFokusAktivMs = 0
+    }
+  }
+
+  /**
+   * Nur im Fokus: Wird der Fokus rückwirkend gestartet, gibt es für die Zeit davor keine Aufzeichnung. Jede Lücke
+   * zwischen Beginn und jetzt, die noch kein Block deckt, wird als produktiver Hand-Block mit der Fokus-Tätigkeit
+   * nachgetragen (ohne Programm, wie ein Eintrag von Hand). Liefert die Zahl der angelegten Blöcke.
+   */
+  fokusNachtragen(beginn: Date, jetzt: Date): number {
+    if (!this.nurFokus || !this.fokus) return 0
+    const belegt = this.speicher
+      .imZeitraum(beginn, jetzt)
+      .filter((b) => !b.geloeschtAm)
+      .map((b) => [Date.parse(b.start), Date.parse(b.ende)] as [number, number])
+      .sort((a, b) => a[0] - b[0])
+    const ende = jetzt.getTime()
+    const luecken: Array<[number, number]> = []
+    let frei = beginn.getTime()
+    for (const [s, e] of belegt) {
+      if (s > frei) luecken.push([frei, Math.min(s, ende)])
+      frei = Math.max(frei, e)
+    }
+    if (frei < ende) luecken.push([frei, ende])
+    const stempel = new Date().toISOString()
+    let n = 0
+    for (const [s, e] of luecken) {
+      if (e - s < KURZ_MS) continue
+      this.speicher.hinzufuegen({
+        id: randomUUID(),
+        userId: this.userId,
+        start: new Date(s).toISOString(),
+        ende: new Date(e).toISOString(),
+        quelle: 'manuell',
+        programm: null,
+        programmRoh: null,
+        fenstertitel: null,
+        taetigkeit: this.fokus.taetigkeit,
+        kunde: this.fokus.kunde ?? null,
+        bewertung: 'produktiv',
+        notiz: null,
+        manuellGeprueft: true,
+        geraet: this.geraet,
+        geaendertAm: stempel,
+        geloeschtAm: null
+      })
+      n++
+    }
+    if (n) this.emit('bloecke')
+    return n
+  }
+
+  /** Nächsten Takt sofort ausführen (nach dem Fokus-Start, damit der erste Block nicht erst 5 Sekunden später beginnt). */
+  sofort(): void {
+    void this.takt()
+  }
+
   pause(): void {
     if (this.zustand === 'pausiert' || this.zustand === 'gestoppt') return
     this.alleSchliessen(new Date())
@@ -417,7 +564,7 @@ export class Erfassung extends EventEmitter {
 
   fortsetzen(): void {
     if (this.zustand !== 'pausiert') return
-    this.zustand = 'laeuft'
+    this.zustand = this.ohneFokus() ? 'ohne-fokus' : 'laeuft'
     this.pausiertSeit = null
     this.letzterTakt = 0
     this.zeitgrenze = Date.now()
@@ -440,7 +587,7 @@ export class Erfassung extends EventEmitter {
     this.zeitgrenze = Date.now()
     // Die Zeit im Ruhezustand oder am Sperrbildschirm nachtragen (rot unter 90 Minuten, sonst blau);
     // während "Ich bin weg" gehört sie zum Termin, der Hand-Block läuft einfach weiter.
-    if (this.unterbrochenUm && this.zustand !== 'pausiert' && this.zustand !== 'gestoppt' && !this.weg) {
+    if (this.unterbrochenUm && this.zustand !== 'pausiert' && this.zustand !== 'gestoppt' && !this.weg && !this.ohneFokus()) {
       for (const b of this.lueckeFuellen(this.unterbrochenUm, Date.now())) this.abwesenheitMelden(b)
     }
     this.unterbrochenUm = 0
@@ -455,10 +602,12 @@ export class Erfassung extends EventEmitter {
     fokus: Fokus | null
     weg: Weg | null
     offeneAbwesenheiten: Abwesenheit[]
+    nurFokus: boolean
   } {
     const b = this.aktuell
     return {
       zustand: this.zustand,
+      nurFokus: this.nurFokus,
       laufenderBlock: b
         ? {
             id: b.id,
@@ -503,8 +652,8 @@ export class Erfassung extends EventEmitter {
       const ab = this.letzterTakt
       this.alleSchliessen(new Date(ab))
       this.zeitgrenze = jetzt.getTime()
-      // Während "Ich bin weg" gehört die Lücke zum Termin (der Hand-Block wird unten verlängert).
-      if (this.zustand !== 'pausiert' && !this.weg) {
+      // Während "Ich bin weg" gehört die Lücke zum Termin (der Hand-Block wird unten verlängert); ohne Fokus gibt es nichts nachzutragen.
+      if (this.zustand !== 'pausiert' && !this.weg && !this.ohneFokus()) {
         for (const b of this.lueckeFuellen(ab, jetzt.getTime())) this.abwesenheitMelden(b)
       }
     }
@@ -525,6 +674,13 @@ export class Erfassung extends EventEmitter {
 
     // Ein Fokus endet spätestens um Mitternacht, damit er nicht vergessen am nächsten Tag weiterläuft.
     if (this.fokus && jetzt >= naechsterTagesanfang(new Date(this.fokus.seit))) this.fokusBeenden(jetzt)
+
+    // Nur im Fokus: ohne Fokus wird nichts aufgezeichnet, die App erinnert nur ab und zu daran.
+    if (this.ohneFokus()) {
+      this.ohneFokusVerarbeiten(jetzt)
+      this.melden()
+      return
+    }
 
     const idleSekunden = powerMonitor.getSystemIdleTime()
     if (idleSekunden >= this.idleSchwelleSekunden) {
@@ -644,7 +800,10 @@ export class Erfassung extends EventEmitter {
       }
       this.zustand = 'abwesend'
       // Wer so lange weg ist, hat den Fokus beendet; sonst zählt der Abend nach der Rückkehr falsch.
-      this.fokus = null
+      if (this.fokus) {
+        this.fokus = null
+        this.ablageSpeichern()
+      }
     }
 
     const start = Date.parse(this.inaktiv.start)

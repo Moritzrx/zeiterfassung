@@ -88,7 +88,8 @@ export function HeuteScreen(): ReactElement {
   }, [liste, laufendId, istHeute])
 
   let geradeText = 'Keine Erfassung aktiv'
-  if (status.zustand === 'inaktiv') geradeText = 'Nicht am Rechner, keine Eingabe mehr. Zählt als unproduktiv, ab 90 Minuten als Abwesend (blau). Unterwegs gearbeitet? Unter „Eintragen“ nachtragen.'
+  if (status.zustand === 'ohne-fokus') geradeText = 'Kein Fokus. Ohne Fokus nimmt die App nichts auf, und keine Zeit zählt. Starte einen Fokus mit dem, woran du gerade arbeitest; Programme und Tabs werden dann automatisch darunter mitgeschrieben.'
+  else if (status.zustand === 'inaktiv') geradeText = 'Nicht am Rechner, keine Eingabe mehr. Zählt als unproduktiv, ab 90 Minuten als Abwesend (blau). Unterwegs gearbeitet? Unter „Eintragen“ nachtragen.'
   else if (status.zustand === 'abwesend') geradeText = 'Abwesend: länger als 90 Minuten keine Eingabe. Diese Zeit zählt nicht, weder als produktiv noch als unproduktiv.'
   else if (status.zustand === 'weg' && status.weg)
     geradeText = `Du bist weg: „${status.weg.taetigkeit}“ seit ${uhrzeit(status.weg.seit)}. Die Zeit zählt als produktiv. Die erste Eingabe am Rechner beendet es, oder oben „Zurück“.`
@@ -178,7 +179,11 @@ export function HeuteScreen(): ReactElement {
     if (!window.api || !status.fokus) return
     await window.api.fokus.beenden()
     tonSpielen('schliessen')
-    hinweisZeigen(`Fokus „${status.fokus.taetigkeit}“ beendet. Ab jetzt gelten wieder die Regeln.`)
+    hinweisZeigen(
+      status.nurFokus
+        ? `Fokus „${status.fokus.taetigkeit}“ beendet. Bis zum nächsten Fokus zählt keine Zeit.`
+        : `Fokus „${status.fokus.taetigkeit}“ beendet. Ab jetzt gelten wieder die Regeln.`
+    )
   }
 
   function weiterDurchgehen(): void {

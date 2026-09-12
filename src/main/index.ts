@@ -176,6 +176,7 @@ function statusBerechnen(): ErfassungsStatus {
       fokus: null,
       weg: null,
       offeneAbwesenheiten: [],
+      nurFokus: true,
       heuteProduktivSekunden: 0,
       wocheProduktivSekunden: 0,
       rang: 0,
@@ -201,6 +202,7 @@ function statusBerechnen(): ErfassungsStatus {
     fokus: e.fokus,
     weg: e.weg,
     offeneAbwesenheiten: e.offeneAbwesenheiten,
+    nurFokus: e.nurFokus,
     heuteProduktivSekunden: heute,
     wocheProduktivSekunden: woche,
     rang: aktuellerRang,
@@ -220,8 +222,30 @@ function statusVerteilen(): void {
     rang: status.rang,
     pausiert: status.zustand === 'pausiert',
     fokus: status.fokus?.taetigkeit ?? null,
-    weg: status.weg?.taetigkeit ?? null
+    weg: status.weg?.taetigkeit ?? null,
+    ohneFokus: status.zustand === 'ohne-fokus'
   })
+}
+
+/** Fenster nach vorn holen und den Fokus-Dialog öffnen (Symbol-Menü, Klick auf die Erinnerung). */
+function fokusDialogOeffnen(): void {
+  fensterZeigen()
+  if (fenster && !fenster.isDestroyed()) fenster.webContents.send('fokus:dialogOeffnen')
+}
+
+/**
+ * Nur im Fokus: Wer zehn Minuten am Rechner arbeitet, ohne einen Fokus zu starten, bekommt einmal eine Systemmeldung
+ * (höchstens alle 45 Minuten), sonst geht die Zeit still verloren. Ist das Fenster sichtbar, reicht die Kopfzeile.
+ */
+function ohneFokusMelden(minuten: number): void {
+  if (fenster && !fenster.isDestroyed() && fenster.isVisible() && fenster.isFocused()) return
+  if (!Notification.isSupported()) return
+  const meldung = new Notification({
+    title: 'Kein Fokus aktiv',
+    body: `Du arbeitest seit ${minuten} Minuten ohne Fokus, diese Zeit zählt nicht. Klicken und Fokus starten.`
+  })
+  meldung.on('click', fokusDialogOeffnen)
+  meldung.show()
 }
 
 /** Fokus über das Fenster oder das Symbol-Menü beenden. */
@@ -367,6 +391,7 @@ function sitzungStarten(userId: string): void {
   profilAnwenden(s)
   erfassung.on('status', statusVerteilen)
   erfassung.on('abwesenheit', (a: Abwesenheit) => abwesenheitMelden(a))
+  erfassung.on('ohne-fokus', (minuten: number) => ohneFokusMelden(minuten))
   erfassung.on('bloecke', () => {
     // Sobald ein Block endet, können kurze Wechsel davor ihre Nachbarn erben.
     alleNeuBewerten(s.speicher, s.regelwerk.liste(), s.userId)
@@ -404,6 +429,13 @@ function ipcRegistrieren(): void {
   ipcMain.handle('erfassung:fortsetzen', () => {
     sitzung?.erfassung.fortsetzen()
   })
+  // Einstellung "Nur im Fokus aufzeichnen" (Standard an): aus = durchgehend aufzeichnen und nach Regeln bewerten wie früher.
+  ipcMain.handle('erfassung:nurFokusSetzen', (_ereignis, an: boolean) => {
+    if (!sitzung) return
+    sitzung.erfassung.nurFokusSetzen(an)
+    bloeckeGeaendert()
+    statusVerteilen()
+  })
 
   // Fokus: ab dem Beginn (heute, darf zurückliegen) zählt alles als produktiv mit dieser Tätigkeit.
   ipcMain.handle('fokus:starten', (_ereignis, taetigkeit: string, beginnIso: string, kundeName: string | null = null): void => {
@@ -417,6 +449,10 @@ function ipcRegistrieren(): void {
     sitzung.erfassung.fokusStarten(name, beginn, jetzt, kunde)
     const n = fokusRueckwirkend(sitzung.speicher, name, beginn, jetzt, sitzung.erfassung.laufendeId(), kunde)
     if (n) console.log(`Fokus „${name}“: ${n} Blöcke rückwirkend übernommen`)
+    // Nur im Fokus: für die Zeit vor dem Start gibt es keine Aufzeichnung, die Lücken werden als Hand-Blöcke nachgetragen.
+    const m = sitzung.erfassung.fokusNachtragen(beginn, jetzt)
+    if (m) console.log(`Fokus „${name}“: ${m} Blöcke nachgetragen`)
+    sitzung.erfassung.sofort()
     bloeckeGeaendert()
     statusVerteilen()
     auszeichnungenBaldPruefen(sitzung)
@@ -650,7 +686,7 @@ function ipcRegistrieren(): void {
       const alle = s.speicher.alle()
       const heute = s.speicher.imZeitraum(tagesanfang(jetzt), naechsterTagesanfang(jetzt))
       z.push(`Konto: ${s.userId.slice(0, 8)}…`)
-      z.push(`Erfassung: ${e.zustand}${e.laufenderBlock ? ` · läuft seit ${e.laufenderBlock.start} (${e.laufenderBlock.programm ?? '-'})` : ''}${e.fokus ? ` · Fokus ${e.fokus.taetigkeit}` : ''}${e.weg ? ` · Weg ${e.weg.taetigkeit}` : ''}`)
+      z.push(`Erfassung: ${e.zustand}${e.laufenderBlock ? ` · läuft seit ${e.laufenderBlock.start} (${e.laufenderBlock.programm ?? '-'})` : ''}${e.fokus ? ` · Fokus ${e.fokus.taetigkeit}` : ''}${e.weg ? ` · Weg ${e.weg.taetigkeit}` : ''} · nur im Fokus: ${e.nurFokus ? 'ja' : 'nein'}`)
       z.push(`Untätigkeit ab ${s.erfassung.idleSchwelleSekunden} s · Fenstertitel speichern: ${s.erfassung.fenstertitelSpeichern}`)
       z.push(`Blöcke lokal: ${alle.length} (heute ${heute.length}, ungeklärt ${s.speicher.anzahlUngeklaert()}, offene Rückfragen ${e.offeneAbwesenheiten.length})`)
       z.push(`Abgleich: ${s.sync.letzterSync ? s.sync.letzterSync.toISOString() : 'noch keiner'} · wartend ${s.speicher.anzahlAusstehend()}${s.sync.fehler ? ` · Fehler: ${s.sync.fehler}` : ''}`)
@@ -825,6 +861,7 @@ void app.whenReady().then(async () => {
     pause: () => sitzung?.erfassung.pause(),
     fortsetzen: () => sitzung?.erfassung.fortsetzen(),
     fokusBeenden,
+    fokusStarten: fokusDialogOeffnen,
     wegBeenden,
     beenden: () => {
       beendet = true

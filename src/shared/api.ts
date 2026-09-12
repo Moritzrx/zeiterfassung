@@ -52,11 +52,15 @@ export interface Api {
     fortsetzen: () => Promise<void>
     /** Wird bei jedem Takt der Erfassung aufgerufen. */
     onStatus: (rueckruf: (status: ErfassungsStatus) => void) => Abmelden
+    /** Einstellung "Nur im Fokus aufzeichnen": an = ohne Fokus kein Block (Standard), aus = durchgehend nach Regeln. */
+    nurFokusSetzen: (an: boolean) => Promise<void>
   }
   fokus: {
     /** Startet einen Fokus mit dieser Tätigkeit (und optional Kunde) ab dem Beginn (ISO, heute, darf in der Vergangenheit liegen). */
     starten: (taetigkeit: string, beginn: string, kunde?: string | null) => Promise<void>
     beenden: () => Promise<void>
+    /** Der Hintergrundprozess möchte den Fokus-Dialog sehen (Symbol-Menü, Klick auf die Erinnerung "Kein Fokus"). */
+    onDialogOeffnen: (rueckruf: () => void) => Abmelden
   }
   kunden: {
     /** Alle bekannten Kunden (Projekte) des Teams, alphabetisch. */

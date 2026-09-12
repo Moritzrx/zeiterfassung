@@ -19,11 +19,17 @@ const api: Api = {
       const handler = (_e: IpcRendererEvent, status: ErfassungsStatus): void => rueckruf(status)
       ipcRenderer.on('erfassung:status', handler)
       return () => ipcRenderer.removeListener('erfassung:status', handler)
-    }
+    },
+    nurFokusSetzen: (an) => ipcRenderer.invoke('erfassung:nurFokusSetzen', an)
   },
   fokus: {
     starten: (taetigkeit, beginn, kunde) => ipcRenderer.invoke('fokus:starten', taetigkeit, beginn, kunde ?? null),
-    beenden: () => ipcRenderer.invoke('fokus:beenden')
+    beenden: () => ipcRenderer.invoke('fokus:beenden'),
+    onDialogOeffnen: (rueckruf) => {
+      const handler = (): void => rueckruf()
+      ipcRenderer.on('fokus:dialogOeffnen', handler)
+      return () => ipcRenderer.removeListener('fokus:dialogOeffnen', handler)
+    }
   },
   kunden: {
     liste: () => ipcRenderer.invoke('kunden:liste'),

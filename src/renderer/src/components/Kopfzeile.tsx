@@ -18,14 +18,19 @@ export function Kopfzeile(): ReactElement {
   const status = useErfassung()
   const pausiert = status.zustand === 'pausiert'
   const weg = status.weg
-  const aktiv = status.zustand === 'laeuft' || status.zustand === 'inaktiv' || status.zustand === 'abwesend' || status.zustand === 'weg'
+  const ohneFokus = status.zustand === 'ohne-fokus'
+  const aktiv = status.zustand === 'laeuft' || status.zustand === 'inaktiv' || status.zustand === 'abwesend' || status.zustand === 'weg' || ohneFokus
   const fokus = status.fokus
 
   async function fokusBeenden(): Promise<void> {
     if (!window.api || !fokus) return
     await window.api.fokus.beenden()
     tonSpielen('schliessen')
-    hinweisZeigen(`Fokus „${fokus.taetigkeit}“ beendet. Ab jetzt gelten wieder die Regeln.`)
+    hinweisZeigen(
+      status.nurFokus
+        ? `Fokus „${fokus.taetigkeit}“ beendet. Bis zum nächsten Fokus zählt keine Zeit.`
+        : `Fokus „${fokus.taetigkeit}“ beendet. Ab jetzt gelten wieder die Regeln.`
+    )
   }
 
   async function wegBeenden(): Promise<void> {
@@ -40,9 +45,12 @@ export function Kopfzeile(): ReactElement {
   if (status.zustand === 'weg' && weg) {
     punkt = 'bg-produktiv'
     text = `Weg: ${weg.taetigkeit} seit ${uhrzeit(weg.seit)}, zählt als produktiv`
+  } else if (ohneFokus) {
+    punkt = 'bg-dim'
+    text = 'Kein Fokus, Zeit zählt nicht'
   } else if (status.zustand === 'laeuft') {
     punkt = 'bg-produktiv'
-    text = 'Erfassung läuft'
+    text = fokus ? 'Fokus läuft' : 'Erfassung läuft'
   } else if (status.zustand === 'inaktiv') {
     punkt = 'bg-unproduktiv'
     text = status.inaktivSeit ? `Nicht am Rechner seit ${uhrzeit(status.inaktivSeit)}, zählt als unproduktiv` : 'Nicht am Rechner'
@@ -112,8 +120,8 @@ export function Kopfzeile(): ReactElement {
             type="button"
             disabled={(!aktiv && !pausiert) || !!weg}
             onClick={fokusDialogOeffnen}
-            className={`${KNOPF} text-ink hover:bg-panel-2`}
-            title="Fokus: eine Tätigkeit für alles, was du jetzt tust (Strg+F)"
+            className={`${KNOPF} ${ohneFokus ? 'knopf-primaer' : 'text-ink hover:bg-panel-2'}`}
+            title={ohneFokus ? 'Kein Fokus: Erst mit einem Fokus zählt deine Zeit (Strg+F)' : 'Fokus: eine Tätigkeit für alles, was du jetzt tust (Strg+F)'}
           >
             <Crosshair size={16} strokeWidth={1.75} />
             Fokus

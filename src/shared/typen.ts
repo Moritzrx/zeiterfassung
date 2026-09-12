@@ -240,6 +240,8 @@ export type ErfassungsZustand =
   | 'abwesend'
   /** "Ich bin weg": angekündigte Abwesenheit läuft als produktiver Block (Termin, Dreh, Telefonat) */
   | 'weg'
+  /** Nur im Fokus aufzeichnen, und gerade läuft kein Fokus: es wird nichts aufgezeichnet, keine Zeit zählt */
+  | 'ohne-fokus'
   | 'pausiert'
   | 'gestoppt'
   | 'nicht-angemeldet'
@@ -301,6 +303,8 @@ export interface ErfassungsStatus {
   weg: Weg | null
   /** Abgeschlossene Abwesenheiten der letzten 24 Stunden (15 Minuten bis 3 Stunden), die noch einzuordnen sind */
   offeneAbwesenheiten: Abwesenheit[]
+  /** Einstellung "Nur im Fokus aufzeichnen": ohne Fokus entsteht kein Block (Standard seit 12. September 2026) */
+  nurFokus: boolean
   heuteProduktivSekunden: number
   wocheProduktivSekunden: number
   rang: number

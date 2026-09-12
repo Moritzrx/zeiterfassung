@@ -113,6 +113,11 @@ function Oberflaeche(): ReactElement {
     window.addEventListener('keydown', taste)
     return () => window.removeEventListener('keydown', taste)
   }, [])
+  // Der Hintergrundprozess öffnet den Fokus-Dialog aus dem Symbol-Menü oder nach der Erinnerung "Kein Fokus".
+  useEffect(() => {
+    if (!window.api) return
+    return window.api.fokus.onDialogOeffnen(() => fokusDialogOeffnen())
+  }, [])
   const wechselnRef = useRef(wechseln)
   wechselnRef.current = wechseln
 

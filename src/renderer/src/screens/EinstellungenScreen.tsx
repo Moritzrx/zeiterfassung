@@ -310,7 +310,13 @@ export function EinstellungenScreen(): ReactElement {
       <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">Erfassung</p>
         <div className="mt-1 divide-y divide-panel-2">
-          <Zeile titel="Untätigkeit nach" hinweis="Minuten ohne Maus und Tastatur, bis die Zeit als „Nicht am Rechner“ (unproduktiv, rot) zählt. Standard 3. Ab 90 Minuten weg wird daraus „Abwesend“ (blau) und zählt gar nicht.">
+          <Zeile
+            titel="Nur im Fokus aufzeichnen"
+            hinweis="An: Ohne Fokus nimmt die App nichts auf, und keine Zeit zählt; im Fokus werden Programme und Tabs unter der Fokus-Tätigkeit mitgeschrieben. Aus: wie früher, alles wird durchgehend aufgezeichnet und nach Regeln bewertet, Ungeklärtes muss von Hand zugeordnet werden."
+          >
+            <Schalter an={erfassung.nurFokus} onChange={(an) => void window.api?.erfassung.nurFokusSetzen(an)} />
+          </Zeile>
+          <Zeile titel="Untätigkeit nach" hinweis="Minuten ohne Maus und Tastatur, bis die Zeit (im Fokus) als „Nicht am Rechner“ (unproduktiv, rot) zählt. Standard 3. Ab 90 Minuten weg wird daraus „Abwesend“ (blau), zählt gar nicht und beendet den Fokus.">
             {profil && (
               <Zahl
                 wert={Math.round(profil.idleSchwelleSekunden / 60)}
@@ -453,6 +459,7 @@ export function EinstellungenScreen(): ReactElement {
         <p className="mt-1 text-xs text-dim">
           Erst wird das Programm geprüft, dann der Fenstertitel. Persönliche Regeln gewinnen gegen Team-Regeln. Änderungen wirken
           sofort auf alle nicht von Hand geprüften Blöcke.
+          {erfassung.nurFokus && ' Solange „Nur im Fokus aufzeichnen“ an ist, entstehen keine Blöcke nach Regeln; sie gelten dann nur noch für alte Blöcke.'}
         </p>
         <div className="mt-2 divide-y divide-panel-2">
           {sichtbareRegeln.map((r) => (
