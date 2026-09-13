@@ -1,4 +1,5 @@
 import type { Block } from '@shared/typen'
+import { berlinDatum } from '@shared/zeit'
 import type { Speicher } from './speicher'
 import { supabase, supabaseKonfiguriert } from './supabase'
 
@@ -83,6 +84,8 @@ function vonZeile(z: Zeile): Block {
  */
 export class Sync {
   letzterSync: Date | null = null
+  /** Berliner Kalendertag des letzten Vollabgleichs (Start bzw. erster Takt nach Mitternacht). */
+  private vollabgleichTag: string | null = null
   fehler: string | null = null
   private timer: NodeJS.Timeout | null = null
   private laeuft = false
@@ -110,6 +113,14 @@ export class Sync {
 
   async lauf(): Promise<void> {
     if (!supabaseKonfiguriert() || this.laeuft) return
+    // Einmal je Kalendertag (Berlin) ein Vollabgleich wie beim Start: holt Änderungen der Datenbank und wirft lokal
+    // weg, was dort nicht mehr existiert (13. September 2026, damit der nächtliche Neustart auf null auch in
+    // Apps ankommt, die tagelang durchlaufen, ohne Neustart).
+    const heute = berlinDatum(new Date())
+    if (this.vollabgleichTag && this.vollabgleichTag !== heute) {
+      this.vollabgleichTag = heute
+      await this.anfangsAbgleich()
+    }
     this.laeuft = true
     try {
       const jetzt = Date.now()
@@ -161,6 +172,7 @@ export class Sync {
 
   async anfangsAbgleich(): Promise<void> {
     if (!supabaseKonfiguriert()) return
+    this.vollabgleichTag = berlinDatum(new Date())
     try {
       // Skript 14 gelaufen? Sonst die Spalte "kunde" beim Senden weglassen.
       const probe = await supabase().from('block').select('kunde').eq('user_id', this.userId).limit(1)

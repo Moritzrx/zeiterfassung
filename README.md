@@ -233,7 +233,7 @@ Die Namen, Ziele und Startregeln bekommen die Konten durch Skript 2. Es sucht di
   - Mac: `~/Library/Application Support/wessamedia Zeit/`
   
   Dort liegen auch die gespeicherte Anmeldung (verschlüsselt) und die Einstellungen. Der Ordner bleibt beim Deinstallieren stehen; wer ihn löscht, muss sich einmal neu anmelden, verliert aber keine Daten, die schon in der Datenbank sind.
-- Der Abgleich läuft alle 60 Sekunden. Rechts oben im Fenster steht, wann zuletzt abgeglichen wurde.
+- Der Abgleich läuft alle 60 Sekunden. Rechts oben im Fenster steht, wann zuletzt abgeglichen wurde. Einmal am Tag (nach Mitternacht) macht die App zusätzlich einen Vollabgleich wie beim Start: Blöcke, die in der Datenbank gelöscht wurden, verschwinden dann auch aus dem Zwischenspeicher, ohne Neustart.
 
 ---
 
