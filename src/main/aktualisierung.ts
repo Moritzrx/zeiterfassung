@@ -156,7 +156,8 @@ async function macInstallieren(dmg: string, version: string): Promise<void> {
   const einhaengepunkt = join(app.getPath('temp'), `wessamedia-zeit-dmg-${process.pid}`)
   const neu = join(eltern, `${kurz} ${version}.neu.app`)
   rmSync(neu, { recursive: true, force: true })
-  await ausfuehren('hdiutil', ['attach', '-nobrowse', '-readonly', '-noautoopen', '-mountpoint', einhaengepunkt, dmg])
+  mkdirSync(einhaengepunkt, { recursive: true })
+  await ausfuehren('hdiutil', ['attach', '-nobrowse', '-readonly', '-noautoopen', '-quiet', '-mountpoint', einhaengepunkt, dmg])
   try {
     const quelle = join(einhaengepunkt, name)
     if (!existsSync(quelle)) throw new Error('Im Abbild fehlt die App')
@@ -166,13 +167,17 @@ async function macInstallieren(dmg: string, version: string): Promise<void> {
   }
   // Sicherheitshalber jedes Quarantäne-Merkmal entfernen, sonst fragt Gatekeeper beim Start erneut.
   await ausfuehren('xattr', ['-cr', neu]).catch(() => undefined)
-  // Alte Fassung in den Papierkorb (auf einem anderen Laufwerk stattdessen daneben), neue an ihren Platz.
+  rmSync(dmg, { force: true })
+  // Neustart vormerken, solange die alte Programmdatei noch an ihrem Platz liegt: Electron startet dafür sofort einen
+  // kleinen Helfer aus der laufenden App, der auf das Ende dieser Instanz wartet und dann die neue Programmdatei öffnet.
+  app.relaunch({ execPath: join(bundle, 'Contents', 'MacOS', kurz), args: [] })
+  // Alte Fassung in den Papierkorb (klappt das nicht, in den Temp-Ordner), neue an ihren Platz.
   let alt = join(homedir(), '.Trash', `${kurz} ${status.aktuelleVersion} alt.app`)
   try {
     rmSync(alt, { recursive: true, force: true })
     renameSync(bundle, alt)
   } catch {
-    alt = join(eltern, `${kurz}.alt.app`)
+    alt = join(app.getPath('temp'), `${kurz} ${status.aktuelleVersion} alt.app`)
     rmSync(alt, { recursive: true, force: true })
     renameSync(bundle, alt)
   }
@@ -182,8 +187,11 @@ async function macInstallieren(dmg: string, version: string): Promise<void> {
     renameSync(alt, bundle)
     throw e
   }
-  // Neu starten: erst diese Instanz beenden (Einzelinstanz-Sperre), dann die neue öffnen.
-  const kind = spawn('/bin/sh', ['-c', `sleep 2; open -a "${bundle}"`], { detached: true, stdio: 'ignore' })
+  // Zweiter Weg zur Sicherheit: Ein losgelöstes Shell-Skript wartet bis zu 20 s, bis diese Instanz weg ist
+  // (Einzelinstanz-Sperre: eine zu früh gestartete zweite Instanz meldet sich nur bei der alten und beendet sich),
+  // und öffnet dann die neue App. Läuft sie durch den Helfer schon, holt das nur das Fenster nach vorn.
+  const skript = `i=0; while pgrep -x "${kurz}" >/dev/null 2>&1 && [ $i -lt 20 ]; do sleep 1; i=$((i+1)); done; sleep 2; open -a "${bundle}"`
+  const kind = spawn('/bin/sh', ['-c', skript], { detached: true, stdio: 'ignore' })
   kind.unref()
   wirklichBeenden()
 }
