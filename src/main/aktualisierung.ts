@@ -1,13 +1,24 @@
 import { app, ipcMain, shell, type BrowserWindow } from 'electron'
 import { autoUpdater } from 'electron-updater'
+import { execFile, spawn } from 'child_process'
+import { accessSync, constants, createWriteStream, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'fs'
+import { homedir } from 'os'
+import { basename, dirname, join, resolve } from 'path'
+import { promisify } from 'util'
 import type { UpdateStatus } from '@shared/typen'
 
 /*
  * Automatische Updates über die GitHub-Veröffentlichungen ("Releases") des Repositorys.
  *   Windows: electron-updater lädt den neuen Installer im Hintergrund (latest.yml + .exe + .blockmap
  *            aus der Veröffentlichung) und installiert ihn beim nächsten Neustart der App.
- *   Mac:     ohne Apple-Signatur kann sich die App nicht selbst ersetzen. Deshalb nur prüfen
- *            (GitHub-API "releases/latest") und auf Wunsch die Download-Seite öffnen.
+ *   Mac:     ohne Apple-Signatur darf electron-updater nichts tun. Seit 14. September 2026 (Auftraggeber:
+ *            "Updates, ohne dass die Jungs jedes Mal neu herunterladen müssen") macht die App es selbst:
+ *            neue Version über die GitHub-API finden, die .dmg im Hintergrund in den Temp-Ordner laden,
+ *            auf Knopfdruck das Abbild einhängen (hdiutil), die App daneben in den Programme-Ordner
+ *            kopieren (ditto), die alte Fassung in den Papierkorb legen, die neue an ihren Platz
+ *            umbenennen und neu starten. Selbst geladene Dateien tragen kein Quarantäne-Merkmal, darum
+ *            fragt Gatekeeper danach nicht erneut. Geht nur, wenn die App in einem beschreibbaren Ordner
+ *            liegt (nicht vom dmg gestartet, nicht von macOS verschoben); sonst wie bisher Download-Seite.
  * Geprüft wird 30 s nach dem Start und danach alle 4 Stunden, außerdem auf Knopfdruck in den
  * Einstellungen. In der Entwicklungsversion passiert nichts.
  */
@@ -20,8 +31,11 @@ const ERSTE_PRUEFUNG_MS = 30_000
 const PRUEF_ABSTAND_MS = 4 * 60 * 60_000
 
 const istMac = process.platform === 'darwin'
+const ausfuehren = promisify(execFile)
 
 let fenster: BrowserWindow | null = null
+/** Beendet die App wirklich (auf dem Mac versteckt Cmd+Q nur das Fenster); kommt aus index.ts. */
+let wirklichBeenden: () => void = () => app.quit()
 let status: UpdateStatus = {
   aktuelleVersion: app.getVersion(),
   zustand: app.isPackaged ? 'unbekannt' : 'entwicklung',
@@ -31,6 +45,16 @@ let status: UpdateStatus = {
   zuletztGeprueft: null,
   selbstInstallierend: !istMac
 }
+
+interface MacVeroeffentlichung {
+  version: string
+  dmgUrl: string
+  groesse: number
+}
+
+/** Die zuletzt gefundene Mac-Veröffentlichung und der Pfad der fertig geladenen .dmg. */
+let macNeu: MacVeroeffentlichung | null = null
+let macDmg: string | null = null
 
 function melden(aenderung: Partial<UpdateStatus>): void {
   status = { ...status, ...aenderung }
@@ -57,17 +81,130 @@ function neuer(a: string, b: string): boolean {
   return false
 }
 
-/** Mac: nur nachsehen, ob es eine neuere Veröffentlichung gibt. */
+/** Der .app-Ordner dieser App (…/wessamedia Zeit.app/Contents/MacOS/wessamedia Zeit → drei Stufen hoch). */
+function macBundle(): string | null {
+  const b = resolve(process.execPath, '..', '..', '..')
+  return b.endsWith('.app') ? b : null
+}
+
+/**
+ * Ob die App sich selbst ersetzen kann: ein echter .app-Ordner, nicht von macOS an einen Zufallsort verschoben
+ * (App Translocation nach dem ersten Start aus dem Download-Ordner), nicht direkt vom eingehängten dmg gestartet,
+ * und der Ordner darüber (meist Programme) ist beschreibbar.
+ */
+function macSelbstInstallierend(): boolean {
+  const b = macBundle()
+  if (!b || b.includes('/AppTranslocation/') || b.startsWith('/Volumes/')) return false
+  try {
+    accessSync(dirname(b), constants.W_OK)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Mac: die neueste Veröffentlichung mit ihrer .dmg aus der GitHub-API holen. */
+async function macVeroeffentlichung(): Promise<MacVeroeffentlichung | null> {
+  const antwort = await fetch(RELEASE_API, { headers: { Accept: 'application/vnd.github+json' } })
+  if (!antwort.ok) throw new Error(`GitHub antwortet mit ${antwort.status}`)
+  const daten = (await antwort.json()) as { tag_name?: string; assets?: Array<{ name: string; size: number; browser_download_url: string }> }
+  const version = (daten.tag_name ?? '').replace(/^v/, '')
+  const dmg = (daten.assets ?? []).find((a) => /-Mac\.dmg$/i.test(a.name))
+  if (!version || !dmg) return null
+  return { version, dmgUrl: dmg.browser_download_url, groesse: dmg.size }
+}
+
+/** Mac: die .dmg in den Temp-Ordner laden (mit Fortschritt); eine schon vollständige Datei wird wiederverwendet. */
+async function macLaden(v: MacVeroeffentlichung): Promise<string> {
+  const ordner = join(app.getPath('temp'), 'wessamedia-zeit-update')
+  mkdirSync(ordner, { recursive: true })
+  const ziel = join(ordner, `wessamedia-Zeit-${v.version}-Mac.dmg`)
+  if (existsSync(ziel) && statSync(ziel).size === v.groesse) return ziel
+  const antwort = await fetch(v.dmgUrl)
+  if (!antwort.ok || !antwort.body) throw new Error(`Download antwortet mit ${antwort.status}`)
+  const gesamt = Number(antwort.headers.get('content-length')) || v.groesse
+  const teil = ziel + '.teil'
+  const datei = createWriteStream(teil)
+  let geladen = 0
+  let zuletzt = -1
+  for await (const stueck of antwort.body as unknown as AsyncIterable<Uint8Array>) {
+    if (!datei.write(stueck)) await new Promise<void>((weiter) => datei.once('drain', () => weiter()))
+    geladen += stueck.length
+    const prozent = gesamt ? Math.min(99, Math.floor((geladen / gesamt) * 100)) : 0
+    if (prozent !== zuletzt) {
+      zuletzt = prozent
+      melden({ zustand: 'laedt', prozent })
+    }
+  }
+  await new Promise<void>((fertig, fehler) => {
+    datei.on('finish', () => fertig())
+    datei.on('error', fehler)
+    datei.end()
+  })
+  if (v.groesse && statSync(teil).size !== v.groesse) throw new Error('Download unvollständig')
+  renameSync(teil, ziel)
+  return ziel
+}
+
+/** Mac: Abbild einhängen, App daneben kopieren, alte in den Papierkorb, neue an ihren Platz, neu starten. */
+async function macInstallieren(dmg: string, version: string): Promise<void> {
+  const bundle = macBundle()
+  if (!bundle || !macSelbstInstallierend()) throw new Error('Die App kann sich an diesem Ort nicht selbst ersetzen')
+  const eltern = dirname(bundle)
+  const name = basename(bundle)
+  const kurz = name.replace(/\.app$/, '')
+  const einhaengepunkt = join(app.getPath('temp'), `wessamedia-zeit-dmg-${process.pid}`)
+  const neu = join(eltern, `${kurz} ${version}.neu.app`)
+  rmSync(neu, { recursive: true, force: true })
+  await ausfuehren('hdiutil', ['attach', '-nobrowse', '-readonly', '-noautoopen', '-mountpoint', einhaengepunkt, dmg])
+  try {
+    const quelle = join(einhaengepunkt, name)
+    if (!existsSync(quelle)) throw new Error('Im Abbild fehlt die App')
+    await ausfuehren('ditto', [quelle, neu])
+  } finally {
+    await ausfuehren('hdiutil', ['detach', einhaengepunkt, '-force']).catch(() => undefined)
+  }
+  // Sicherheitshalber jedes Quarantäne-Merkmal entfernen, sonst fragt Gatekeeper beim Start erneut.
+  await ausfuehren('xattr', ['-cr', neu]).catch(() => undefined)
+  // Alte Fassung in den Papierkorb (auf einem anderen Laufwerk stattdessen daneben), neue an ihren Platz.
+  let alt = join(homedir(), '.Trash', `${kurz} ${status.aktuelleVersion} alt.app`)
+  try {
+    rmSync(alt, { recursive: true, force: true })
+    renameSync(bundle, alt)
+  } catch {
+    alt = join(eltern, `${kurz}.alt.app`)
+    rmSync(alt, { recursive: true, force: true })
+    renameSync(bundle, alt)
+  }
+  try {
+    renameSync(neu, bundle)
+  } catch (e) {
+    renameSync(alt, bundle)
+    throw e
+  }
+  // Neu starten: erst diese Instanz beenden (Einzelinstanz-Sperre), dann die neue öffnen.
+  const kind = spawn('/bin/sh', ['-c', `sleep 2; open -a "${bundle}"`], { detached: true, stdio: 'ignore' })
+  kind.unref()
+  wirklichBeenden()
+}
+
+/** Mac: nachsehen, ob es eine neuere Veröffentlichung gibt, und sie gleich im Hintergrund laden. */
 async function macPruefen(): Promise<void> {
   melden({ zustand: 'prueft', fehler: null })
   try {
-    const antwort = await fetch(RELEASE_API, { headers: { Accept: 'application/vnd.github+json' } })
-    if (!antwort.ok) throw new Error(`GitHub antwortet mit ${antwort.status}`)
-    const daten = (await antwort.json()) as { tag_name?: string }
-    const version = (daten.tag_name ?? '').replace(/^v/, '')
+    const v = await macVeroeffentlichung()
     const jetzt = new Date().toISOString()
-    if (version && neuer(version, status.aktuelleVersion)) melden({ zustand: 'verfuegbar', neueVersion: version, zuletztGeprueft: jetzt })
-    else melden({ zustand: 'aktuell', neueVersion: null, zuletztGeprueft: jetzt })
+    if (!v || !neuer(v.version, status.aktuelleVersion)) {
+      melden({ zustand: 'aktuell', neueVersion: null, zuletztGeprueft: jetzt })
+      return
+    }
+    macNeu = v
+    const selbst = macSelbstInstallierend()
+    melden({ zustand: 'verfuegbar', neueVersion: v.version, zuletztGeprueft: jetzt, selbstInstallierend: selbst, prozent: null })
+    if (!selbst) return
+    melden({ zustand: 'laedt', prozent: 0 })
+    macDmg = await macLaden(v)
+    melden({ zustand: 'bereit', prozent: 100 })
   } catch (e) {
     melden({ zustand: 'fehler', fehler: fehlerText(e), zuletztGeprueft: new Date().toISOString() })
   }
@@ -75,8 +212,8 @@ async function macPruefen(): Promise<void> {
 
 async function pruefen(): Promise<void> {
   if (!app.isPackaged) return
+  if (status.zustand === 'laedt' || status.zustand === 'bereit' || status.zustand === 'installiert') return
   if (istMac) return macPruefen()
-  if (status.zustand === 'laedt' || status.zustand === 'bereit') return
   melden({ zustand: 'prueft', fehler: null })
   try {
     await autoUpdater.checkForUpdates()
@@ -86,7 +223,20 @@ async function pruefen(): Promise<void> {
 }
 
 function installieren(): void {
-  if (istMac || !status.selbstInstallierend) {
+  if (istMac) {
+    if (status.zustand === 'bereit' && macDmg && macNeu) {
+      const { version } = macNeu
+      melden({ zustand: 'installiert' })
+      macInstallieren(macDmg, version).catch((e) => {
+        melden({ zustand: 'fehler', fehler: 'Selbst einspielen nicht möglich: ' + fehlerText(e) })
+        void shell.openExternal(RELEASE_SEITE)
+      })
+      return
+    }
+    void shell.openExternal(RELEASE_SEITE)
+    return
+  }
+  if (!status.selbstInstallierend) {
     void shell.openExternal(RELEASE_SEITE)
     return
   }
@@ -95,8 +245,9 @@ function installieren(): void {
 }
 
 /** Einmal beim Start aufrufen; registriert die IPC-Kanäle und startet die regelmäßige Prüfung. */
-export function aktualisierungStarten(hauptfenster: BrowserWindow): void {
+export function aktualisierungStarten(hauptfenster: BrowserWindow, beenden: () => void): void {
   fenster = hauptfenster
+  wirklichBeenden = beenden
   ipcMain.handle('update:status', (): UpdateStatus => status)
   ipcMain.handle('update:pruefen', async (): Promise<UpdateStatus> => {
     await pruefen()
@@ -106,7 +257,9 @@ export function aktualisierungStarten(hauptfenster: BrowserWindow): void {
 
   if (!app.isPackaged) return
 
-  if (!istMac) {
+  if (istMac) {
+    melden({ selbstInstallierend: macSelbstInstallierend() })
+  } else {
     autoUpdater.autoDownload = true
     autoUpdater.autoInstallOnAppQuit = true
     autoUpdater.allowPrerelease = false

@@ -126,16 +126,20 @@ export interface UpdateStatus {
   aktuelleVersion: string
   /**
    * entwicklung: keine Prüfung in der Entwicklungsversion · unbekannt: noch nicht geprüft · prueft ·
-   * aktuell · verfuegbar (Mac: neue Version auf GitHub) · laedt (Windows: Download läuft) ·
-   * bereit (Windows: installiert beim Neustart) · fehler
+   * aktuell · verfuegbar (neue Version auf GitHub gefunden) · laedt (Download läuft) ·
+   * bereit (geladen; Windows spielt beim Neustart ein, Mac auf Knopfdruck) · installiert (Mac: wird gerade
+   * eingespielt, die App startet gleich neu) · fehler
    */
-  zustand: 'entwicklung' | 'unbekannt' | 'prueft' | 'aktuell' | 'verfuegbar' | 'laedt' | 'bereit' | 'fehler'
+  zustand: 'entwicklung' | 'unbekannt' | 'prueft' | 'aktuell' | 'verfuegbar' | 'laedt' | 'bereit' | 'installiert' | 'fehler'
   neueVersion: string | null
   /** Download-Fortschritt 0–100, sonst null */
   prozent: number | null
   fehler: string | null
   zuletztGeprueft: string | null
-  /** true, wenn die App das Update selbst einspielen kann (Windows); auf dem Mac öffnet sich die Download-Seite */
+  /**
+   * true, wenn die App das Update selbst einspielen kann: Windows immer, Mac wenn sie in einem beschreibbaren
+   * Ordner liegt (Programme). Sonst öffnet der Knopf die Download-Seite.
+   */
   selbstInstallierend: boolean
 }
 

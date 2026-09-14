@@ -101,11 +101,15 @@ function updateText(u: UpdateStatus | null): string {
     case 'aktuell':
       return `Version ${u.aktuelleVersion} ist die neueste.${wann}`
     case 'verfuegbar':
-      return `Version ${u.neueVersion} ist da. Auf dem Mac bitte über die Download-Seite installieren.${wann}`
+      return u.selbstInstallierend
+        ? `Version ${u.neueVersion} ist da und wird geladen.${wann}`
+        : `Version ${u.neueVersion} ist da. Die App liegt an einem Ort, an dem sie sich nicht selbst ersetzen kann (bitte in den Ordner Programme ziehen); bis dahin über die Download-Seite installieren.${wann}`
     case 'laedt':
       return `Version ${u.neueVersion} wird geladen${u.prozent !== null ? ` (${u.prozent} %)` : ''} …`
     case 'bereit':
-      return `Version ${u.neueVersion} ist geladen und wird beim nächsten Start eingespielt.`
+      return `Version ${u.neueVersion} ist geladen. „Jetzt neu starten“ spielt sie ein.`
+    case 'installiert':
+      return `Version ${u.neueVersion} wird eingespielt, die App startet gleich neu.`
     case 'fehler':
       return `Prüfung fehlgeschlagen: ${u.fehler ?? 'unbekannter Fehler'}.${wann}`
   }
@@ -790,14 +794,20 @@ export function EinstellungenScreen(): ReactElement {
             {update && update.zustand !== 'entwicklung' && (
               <button
                 type="button"
-                disabled={update.zustand === 'prueft' || update.zustand === 'laedt'}
+                disabled={update.zustand === 'prueft' || update.zustand === 'laedt' || update.zustand === 'installiert'}
                 onClick={() => {
-                  if (update.zustand === 'bereit' || update.zustand === 'verfuegbar') void window.api.update.installieren()
+                  if (update.zustand === 'bereit' || (update.zustand === 'verfuegbar' && !update.selbstInstallierend)) void window.api.update.installieren()
                   else void window.api.update.pruefen().then(setUpdate)
                 }}
                 className="rounded-chip bg-panel-2 px-3 py-1.5 text-xs text-ink transition-colors hover:bg-inaktiv disabled:opacity-40"
               >
-                {update.zustand === 'bereit' ? 'Jetzt neu starten' : update.zustand === 'verfuegbar' ? 'Download öffnen' : 'Jetzt prüfen'}
+                {update.zustand === 'bereit'
+                  ? 'Jetzt neu starten'
+                  : update.zustand === 'verfuegbar' && !update.selbstInstallierend
+                    ? 'Download öffnen'
+                    : update.zustand === 'installiert'
+                      ? 'Wird eingespielt …'
+                      : 'Jetzt prüfen'}
               </button>
             )}
           </Zeile>

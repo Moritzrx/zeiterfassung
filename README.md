@@ -127,7 +127,7 @@ Bronze 1 bis 3, Silber 4 bis 6, Gold 7 bis 9, Champion 10, Diamant 11 bis 15. Je
 
 ### Updates
 
-Die App sieht kurz nach dem Start und danach alle vier Stunden auf GitHub nach, ob es eine neue Version gibt. Unter Windows wird sie im Hintergrund geladen und beim nächsten Start eingespielt, eine Leiste über der Navigation bietet den Neustart an. Auf dem Mac öffnet die App die Download-Seite, weil sie ohne Apple-Signatur nicht selbst tauschen darf. Unter Einstellungen → System → Updates steht der Stand, dort lässt sich auch sofort prüfen.
+Die App sieht kurz nach dem Start und danach alle vier Stunden auf GitHub nach, ob es eine neue Version gibt. Unter Windows wird sie im Hintergrund geladen und beim nächsten Start eingespielt, eine Leiste über der Navigation bietet den Neustart an. Auf dem Mac (seit 1.0.44) lädt die App die neue `.dmg` ebenfalls im Hintergrund; ein Klick auf **Jetzt neu starten** tauscht die App im Ordner Programme aus (die alte Fassung landet im Papierkorb) und startet sie neu, ohne erneute Warnung von macOS. Das geht nur, wenn die App im Ordner Programme liegt; sonst öffnet der Knopf wie früher die Download-Seite. Unter Einstellungen → System → Updates steht der Stand, dort lässt sich auch sofort prüfen.
 
 ### Wochenrückblick
 
@@ -269,7 +269,7 @@ Für eine nummerierte Version kann Moritz zusätzlich eine Marke setzen (`git ta
 
 ### Neue Version verteilen
 
-Versionsnummer in `package.json` erhöhen, neu bauen, die Dateien weitergeben. Unter Windows installiert die neue `.exe` einfach über die alte. Auf dem Mac die neue App in den Ordner Programme ziehen und "Ersetzen" wählen. Eine automatische Update-Funktion gibt es bewusst nicht.
+Versionsnummer in `package.json` erhöhen, committen, Tag `vX.Y.Z` pushen; GitHub baut beide Installer und hängt sie an die Veröffentlichung. Die installierten Apps holen sich die neue Version dann selbst (Windows beim nächsten Start, Mac nach Klick auf "Jetzt neu starten"). Von Hand geht es weiterhin: unter Windows die neue `.exe` über die alte installieren, auf dem Mac die neue App in den Ordner Programme ziehen und "Ersetzen" wählen.
 
 ---
 

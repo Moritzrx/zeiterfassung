@@ -917,7 +917,10 @@ void app.whenReady().then(async () => {
 
   autostartEinrichten()
   fenster = fensterAnlegen()
-  aktualisierungStarten(fenster)
+  aktualisierungStarten(fenster, () => {
+    beendet = true
+    app.quit()
+  })
 
   const status = await authStatus()
   if (status.angemeldet && status.userId) sitzungStarten(status.userId)

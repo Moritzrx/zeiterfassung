@@ -151,7 +151,7 @@ export interface Api {
     status: () => Promise<UpdateStatus>
     /** Jetzt nach einer neuen Version sehen; liefert den Stand danach. */
     pruefen: () => Promise<UpdateStatus>
-    /** Windows: App neu starten und Update einspielen. Mac: Download-Seite öffnen. */
+    /** Geladenes Update einspielen und die App neu starten (Windows und Mac); sonst die Download-Seite öffnen. */
     installieren: () => Promise<void>
     onStatus: (rueckruf: (status: UpdateStatus) => void) => Abmelden
   }
