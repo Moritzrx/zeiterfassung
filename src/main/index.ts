@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Notification, powerMonitor, shell } from 'electron'
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Notification, powerMonitor, shell } from 'electron'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -679,6 +679,28 @@ function ipcRegistrieren(): void {
     await sitzung.taetigkeiten.unterwegsSetzen(name, an)
     bloeckeGeaendert()
   })
+  // Tätigkeit umbenennen oder zusammenlegen, im ganzen Team (Skript 19); danach Regeln und Ziele neu laden, weil
+  // die Datenbankfunktion auch dort den Namen tauscht.
+  ipcMain.handle('taetigkeiten:umbenennen', async (_ereignis, alt: string, neu: string): Promise<number> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    const n = await sitzung.taetigkeiten.umbenennen(sitzung.speicher, alt, neu)
+    await Promise.all([sitzung.regelwerk.laden().catch(() => false), sitzung.ziele.laden().catch(() => false)])
+    bloeckeGeaendert()
+    statusVerteilen()
+    return n
+  })
+  // Kundenbericht als Datei (15. September 2026): Speichern-Dialog, Vorgabe im Dokumente-Ordner, UTF-8 mit BOM für Excel.
+  ipcMain.handle('bericht:speichern', async (_ereignis, dateiname: string, inhalt: string): Promise<string | null> => {
+    const sauber = dateiname.replace(/[^\wäöüÄÖÜß.\- ]/g, '_')
+    const wahl = await dialog.showSaveDialog(fenster ?? undefined!, {
+      title: 'Bericht speichern',
+      defaultPath: join(app.getPath('documents'), sauber),
+      filters: [{ name: 'CSV-Tabelle', extensions: ['csv'] }]
+    })
+    if (wahl.canceled || !wahl.filePath) return null
+    writeFileSync(wahl.filePath, '﻿' + inhalt, 'utf8')
+    return wahl.filePath
+  })
   ipcMain.handle('taetigkeiten:symbole', (): Record<string, SymbolInfo> => sitzung?.taetigkeiten.symbole() ?? {})
   ipcMain.handle('taetigkeiten:symbolSetzen', async (_ereignis, name: string, symbol: SymbolInfo): Promise<void> => {
     if (!sitzung) throw new Error('Nicht angemeldet.')
@@ -998,6 +1020,9 @@ void app.whenReady().then(async () => {
 
   app.on('activate', fensterZeigen)
   app.on('second-instance', fensterZeigen)
+
+  // Fokus von überall starten (15. September 2026): Strg+Alt+F, am Mac Cmd+Alt+F, auch wenn die App im Hintergrund ist.
+  if (!globalShortcut.register('CommandOrControl+Alt+F', fokusDialogOeffnen)) console.warn('Tastenkürzel Strg/Cmd+Alt+F ist schon belegt')
 })
 
 // Alle Fenster zu heißt nicht Ende: die App läuft im Symbol weiter.
@@ -1017,5 +1042,6 @@ app.on('before-quit', (ereignis) => {
 })
 
 app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
   sitzungBeenden()
 })

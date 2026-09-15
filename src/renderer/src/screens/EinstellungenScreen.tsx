@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactElement, type ReactNode } from 'react'
-import { DoorOpen, Monitor, Trash2 } from 'lucide-react'
+import { DoorOpen, Monitor, Pencil, Trash2, X } from 'lucide-react'
 import { STANDARD_GESAMTZIEL } from '@shared/rang'
 import { taetigkeitSchluessel } from '@shared/regeln'
 import type { Profil, Regel, RegelBewertung, SymbolInfo, SystemInfo, UpdateStatus, Urlaub, Ziel } from '@shared/typen'
@@ -122,6 +122,22 @@ export function EinstellungenScreen(): ReactElement {
   const taetigkeiten = useTaetigkeiten()
   const zuordnung = useSymbolZuordnung()
   const unterwegs = useUnterwegs()
+  const [umbenennenFuer, setUmbenennenFuer] = useState<string | null>(null)
+  const [neuerName, setNeuerName] = useState('')
+
+  async function taetigkeitUmbenennen(alt: string): Promise<void> {
+    const neu = neuerName.trim()
+    if (!window.api || !neu || neu === alt) return
+    try {
+      const n = await window.api.taetigkeiten.umbenennen(alt, neu)
+      tonSpielen('erfolg')
+      const zusammengelegt = taetigkeiten.some((t) => t !== alt && taetigkeitSchluessel(t) === taetigkeitSchluessel(neu))
+      hinweisZeigen(zusammengelegt ? `„${alt}“ und „${neu}“ zusammengelegt, ${n} Blöcke umgestellt.` : `„${alt}“ heißt jetzt „${neu}“, ${n} Blöcke umgestellt.`)
+      setUmbenennenFuer(null)
+    } catch (e) {
+      hinweisZeigen(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : String(e))
+    }
+  }
 
   async function unterwegsSetzen(name: string, an: boolean): Promise<void> {
     if (!window.api) return
@@ -590,18 +606,55 @@ export function EinstellungenScreen(): ReactElement {
       <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">Tätigkeiten und Symbole</p>
         <p className="mt-1 text-xs text-dim">
-          Auf ein Symbol klicken, um es zu ändern. Rechts steht, wo die Tätigkeit hingehört: „Am Rechner“ erscheint im Fokus, „Unterwegs“
+          Auf ein Symbol klicken, um es zu ändern; der Stift daneben benennt um oder legt mit einer vorhandenen Tätigkeit zusammen. Rechts steht, wo die Tätigkeit hingehört: „Am Rechner“ erscheint im Fokus, „Unterwegs“
           (Dreh, Fahrt, Kundentermin) bei „Ich bin weg“ und in der Rückfrage nach einer Abwesenheit. Antippen wechselt. Gilt für alle drei.
         </p>
         <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
           {taetigkeiten.map((t) => {
             const symbol = zuordnung[taetigkeitSchluessel(t)] ?? { typ: 'lucide', name: 'tag' }
             const istUnterwegs = !!unterwegs[taetigkeitSchluessel(t)]
+            if (umbenennenFuer === t) {
+              return (
+                <form
+                  key={t}
+                  className="flex items-center gap-2 rounded-chip px-2 py-1.5"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void taetigkeitUmbenennen(t)
+                  }}
+                >
+                  <SymbolBild symbol={symbol} groesse={18} />
+                  <input
+                    className="min-w-0 flex-1 rounded-chip bg-panel-2 px-2 py-1 text-sm text-ink outline-none focus:ring-1 focus:ring-dim"
+                    value={neuerName}
+                    onChange={(e) => setNeuerName(e.target.value)}
+                    autoFocus
+                  />
+                  <button type="submit" disabled={!neuerName.trim() || neuerName.trim() === t} className="knopf-primaer rounded-chip px-2.5 py-1 text-xs disabled:opacity-60">
+                    Speichern
+                  </button>
+                  <button type="button" onClick={() => setUmbenennenFuer(null)} className="rounded-chip p-1 text-mute hover:text-ink" title="Abbrechen">
+                    <X size={14} strokeWidth={1.75} />
+                  </button>
+                </form>
+              )
+            }
             return (
-              <div key={t} className="flex items-center gap-2 rounded-chip px-2 py-1.5 transition-colors hover:bg-panel-2">
+              <div key={t} className="group flex items-center gap-2 rounded-chip px-2 py-1.5 transition-colors hover:bg-panel-2">
                 <button type="button" onClick={() => setSymbolFuer(t)} className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm" title="Symbol ändern">
                   <SymbolBild symbol={symbol} groesse={18} />
                   <span className="truncate">{t}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUmbenennenFuer(t)
+                    setNeuerName(t)
+                  }}
+                  className="shrink-0 rounded-chip p-1 text-dim opacity-0 transition-opacity hover:text-ink group-hover:opacity-100"
+                  title="Umbenennen oder mit einer anderen Tätigkeit zusammenlegen (gilt für alle drei)"
+                >
+                  <Pencil size={12} strokeWidth={2} />
                 </button>
                 <button
                   type="button"

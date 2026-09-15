@@ -71,6 +71,7 @@ const api: Api = {
   taetigkeiten: {
     unterwegs: () => ipcRenderer.invoke('taetigkeiten:unterwegs'),
     unterwegsSetzen: (name, an) => ipcRenderer.invoke('taetigkeiten:unterwegsSetzen', name, an),
+    umbenennen: (alt, neu) => ipcRenderer.invoke('taetigkeiten:umbenennen', alt, neu),
     liste: () => ipcRenderer.invoke('taetigkeiten:liste'),
     symbole: () => ipcRenderer.invoke('taetigkeiten:symbole'),
     symbolSetzen: (name, symbol) => ipcRenderer.invoke('taetigkeiten:symbolSetzen', name, symbol)
@@ -122,6 +123,9 @@ const api: Api = {
     wochen: (vonDatum, bisDatum) => ipcRenderer.invoke('team:wochen', vonDatum, bisDatum),
     taetigkeiten: (von, bis) => ipcRenderer.invoke('team:taetigkeiten', von, bis),
     aktuell: () => ipcRenderer.invoke('team:aktuell')
+  },
+  bericht: {
+    speichern: (dateiname, inhalt) => ipcRenderer.invoke('bericht:speichern', dateiname, inhalt)
   },
   profil: {
     eigenes: () => ipcRenderer.invoke('profil:eigenes'),

@@ -56,13 +56,21 @@ export function Wochenzusammenfassung({ stat, ziele, zwischenstand, neueAuszeich
           <p className="text-xs text-mute">Produktiv</p>
           <p className="text-2xl font-light text-produktiv">{stundenText(stat.produktiv)}</p>
         </div>
-        <div>
-          <p className="text-xs text-mute">Fokus-Quote</p>
-          <p className={`text-2xl font-light ${fokusQuote(stat) >= FOKUS_QUOTE_ZIEL ? 'text-produktiv' : 'text-unproduktiv'}`}>
-            {Math.round(fokusQuote(stat) * 100)} %
-          </p>
-          <p className="text-xs text-dim">{stundenText(stat.unproduktiv)} h unproduktiv</p>
-        </div>
+        {stat.unproduktiv + stat.ungeklaert > 0 ? (
+          <div>
+            <p className="text-xs text-mute">Fokus-Quote</p>
+            <p className={`text-2xl font-light ${fokusQuote(stat) >= FOKUS_QUOTE_ZIEL ? 'text-produktiv' : 'text-unproduktiv'}`}>
+              {Math.round(fokusQuote(stat) * 100)} %
+            </p>
+            <p className="text-xs text-dim">{stundenText(stat.unproduktiv)} h unproduktiv</p>
+          </div>
+        ) : (
+          <div>
+            <p className="text-xs text-mute">Pausen im Fokus</p>
+            <p className={`text-2xl font-light ${stat.pausen <= 2 * 3600 ? 'text-produktiv' : 'text-abwesend'}`}>{stundenText(stat.pausen)} h</p>
+            <p className="text-xs text-dim">Zeit ohne Eingabe, zählt nicht</p>
+          </div>
+        )}
       </div>
 
       {lernziele.length > 0 && (

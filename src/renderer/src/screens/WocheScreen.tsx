@@ -205,8 +205,9 @@ export function WocheScreen(): ReactElement {
     (s, t) => ({ produktiv: s.produktiv + t.produktiv, unproduktiv: s.unproduktiv + t.unproduktiv, ungeklaert: s.ungeklaert + t.ungeklaert }),
     { produktiv: 0, unproduktiv: 0, ungeklaert: 0 }
   )
+  // Ohne rote oder ungeklärte Zeit (Fokus-Modus seit 15. September 2026) gibt es nichts zu berichten, die Zeile entfällt.
   const fokusText =
-    wochenSumme.produktiv + wochenSumme.unproduktiv + wochenSumme.ungeklaert > 0
+    wochenSumme.unproduktiv + wochenSumme.ungeklaert > 0
       ? `Fokus-Quote ${Math.round(fokusQuote(wochenSumme) * 100)} %, ${stundenText(wochenSumme.unproduktiv * 3600)} h unproduktiv (Ablenkung am Rechner und Zeit ohne Eingabe).`
       : null
 

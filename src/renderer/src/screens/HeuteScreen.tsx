@@ -9,7 +9,8 @@ import {
   wochenanfang
 } from '@shared/zeit'
 import { anzeigeName } from '@shared/fenster'
-import { zeilenBilden, type Zeile } from '../zeilen'
+import { lueckenFinden, zeilenBilden, type Luecke, type Zeile } from '../zeilen'
+import { NachtragDialog } from '../components/NachtragDialog'
 import { AnimierteZahl } from '../components/AnimierteZahl'
 import { BlockDialog } from '../components/BlockDialog'
 import { BlockZeile } from '../components/BlockZeile'
@@ -24,7 +25,7 @@ import { Mehrfachleiste } from '../components/Mehrfachleiste'
 import { TagesRing, type RingAnteile } from '../components/TagesRing'
 import { UngeklaertPostfach } from '../components/UngeklaertPostfach'
 import { useErfassung, useSekundentakt, useTakt } from '../erfassung'
-import { datumText, laufzeitText, stundenText, uhrzeit } from '../format'
+import { datumText, dauerText, laufzeitText, stundenText, uhrzeit } from '../format'
 import { useTaetigkeiten } from '../taetigkeiten'
 
 /** Sekunden je Bewertung innerhalb eines Tages, am Rand anteilig. */
@@ -86,9 +87,21 @@ export function HeuteScreen(): ReactElement {
     const z = zeilenBilden(liste, laufendId)
     return istHeute ? z.reverse() : z
   }, [liste, laufendId, istHeute])
+  // Lücken ohne Aufzeichnung (kein Fokus lief) zum Nachtragen, zwischen die Zeilen einsortiert (heute neueste zuerst).
+  const [nachtrag, setNachtrag] = useState<Luecke | null>(null)
+  const eintraege = useMemo(() => {
+    const luecken = lueckenFinden(liste, datum, istHeute ? jetzt : null)
+    const alle: Array<{ typ: 'zeile'; zeit: string; zeile: Zeile } | { typ: 'luecke'; zeit: string; luecke: Luecke }> = [
+      ...zeilen.map((zeile) => ({ typ: 'zeile' as const, zeit: zeile.block.start, zeile })),
+      ...luecken.map((luecke) => ({ typ: 'luecke' as const, zeit: luecke.start, luecke }))
+    ]
+    alle.sort((a, b) => (istHeute ? b.zeit.localeCompare(a.zeit) : a.zeit.localeCompare(b.zeit)))
+    return alle
+  }, [zeilen, liste, datum, istHeute, jetzt])
 
   let geradeText = 'Keine Erfassung aktiv'
   if (status.zustand === 'ohne-fokus') geradeText = 'Kein Fokus. Ohne Fokus nimmt die App nichts auf, und keine Zeit zählt. Starte einen Fokus mit dem, woran du gerade arbeitest; Programme und Tabs werden dann automatisch darunter mitgeschrieben.'
+  else if (status.zustand === 'inaktiv' && status.nurFokus) geradeText = 'Pause: keine Eingabe mehr. Diese Zeit zählt nicht. Warst du beim Kunden oder am Telefon? Nach der Rückkehr fragt die App kurz nach, dann ist es mit einem Klick gebucht.'
   else if (status.zustand === 'inaktiv') geradeText = 'Nicht am Rechner, keine Eingabe mehr. Zählt als unproduktiv, ab 90 Minuten als Abwesend (blau). Unterwegs gearbeitet? Unter „Eintragen“ nachtragen.'
   else if (status.zustand === 'abwesend') geradeText = 'Abwesend: länger als 90 Minuten keine Eingabe. Diese Zeit zählt nicht, weder als produktiv noch als unproduktiv.'
   else if (status.zustand === 'weg' && status.weg)
@@ -356,23 +369,54 @@ export function HeuteScreen(): ReactElement {
             </button>
           )}
         </div>
-        {liste.length === 0 ? (
+        {eintraege.length === 0 ? (
           <p className="mt-2 text-sm text-dim">Keine Blöcke an diesem Tag.</p>
         ) : (
           <div className="mt-1 divide-y divide-panel-2">
-            {zeilen.map((z) => (
-              <BlockZeile
-                key={z.id}
-                block={z.block}
-                laeuft={z.id === laufendId}
-                onClick={klickFuer(z.id)}
-                auswahlModus={auswahl !== null}
-                ausgewaehlt={auswahl ? z.bloecke.every((b) => auswahl.has(b.id)) : false}
-                abschnitte={z.bloecke.length}
-                sekunden={z.sekunden}
-              />
-            ))}
+            {eintraege.map((e) =>
+              e.typ === 'luecke' ? (
+                <div key={`luecke-${e.luecke.start}`} className="-mx-2 flex items-center gap-4 rounded-chip px-2 py-2.5">
+                  <div className="w-24 shrink-0 text-sm text-dim">
+                    {uhrzeit(e.luecke.start)} – {uhrzeit(e.luecke.ende)}
+                  </div>
+                  <div className="min-w-0 flex-1 text-sm text-dim">Keine Aufzeichnung, kein Fokus lief</div>
+                  <div className="w-20 shrink-0 text-right text-sm text-dim">{dauerText((Date.parse(e.luecke.ende) - Date.parse(e.luecke.start)) / 1000)}</div>
+                  <div className="flex w-24 shrink-0 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setNachtrag(e.luecke)}
+                      className="rounded-chip bg-panel-2 px-2.5 py-1 text-xs text-ink transition-colors hover:bg-inaktiv"
+                      title="Diese Zeit mit einer Tätigkeit nachtragen"
+                    >
+                      Nachtragen
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <BlockZeile
+                  key={e.zeile.id}
+                  block={e.zeile.block}
+                  laeuft={e.zeile.id === laufendId}
+                  onClick={klickFuer(e.zeile.id)}
+                  auswahlModus={auswahl !== null}
+                  ausgewaehlt={auswahl ? e.zeile.bloecke.every((b) => auswahl.has(b.id)) : false}
+                  abschnitte={e.zeile.bloecke.length}
+                  sekunden={e.zeile.sekunden}
+                />
+              )
+            )}
           </div>
+        )}
+        {nachtrag && (
+          <NachtragDialog
+            start={nachtrag.start}
+            ende={nachtrag.ende}
+            onSchliessen={() => setNachtrag(null)}
+            onGespeichert={() => {
+              setNachtrag(null)
+              void laden()
+            }}
+          />
         )}
         {auswahl && <div className="h-16" />}
       </Karte>

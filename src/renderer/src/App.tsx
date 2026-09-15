@@ -107,7 +107,11 @@ function Oberflaeche(): ReactElement {
       }
       if (e.key === ' ' && !imFeld && (!ziel || ziel === document.body) && window.api) {
         e.preventDefault()
-        void window.api.erfassung.status().then((s) => (s.zustand === 'pausiert' ? window.api.erfassung.fortsetzen() : window.api.erfassung.pause()))
+        // Im Fokus-Modus gibt es keine Pause mehr (Fokus beenden ist die Pause), die Leertaste bleibt dann ohne Wirkung.
+        void window.api.erfassung.status().then((s) => {
+          if (s.nurFokus && s.zustand !== 'pausiert') return
+          return s.zustand === 'pausiert' ? window.api.erfassung.fortsetzen() : window.api.erfassung.pause()
+        })
       }
     }
     window.addEventListener('keydown', taste)

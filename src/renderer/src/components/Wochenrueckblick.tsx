@@ -141,6 +141,7 @@ export function Wochenrueckblick(): ReactElement | null {
         start,
         produktiv: tage.reduce((a, b) => a + b, 0),
         unproduktiv: 1.4 * 3600,
+        pausen: 0.5 * 3600,
         ungeklaert: 0,
         inaktiv: 3 * 3600,
         jeTaetigkeit: new Map(),
@@ -205,12 +206,19 @@ export function Wochenrueckblick(): ReactElement | null {
 
   const kacheln: Array<{ titel: string; wert: string; zusatz: string; farbe?: string }> = [
     { titel: 'Produktiv', wert: `${stundenText(stat.produktiv)} h`, zusatz: `Ziel ${stundenText(daten.gesamtziel * 3600)} h`, farbe: '#00C076' },
-    {
-      titel: 'Fokus-Quote',
-      wert: `${Math.round(fokusQuote(stat) * 100)} %`,
-      zusatz: `${stundenText(stat.unproduktiv)} h unproduktiv${stat.ungeklaert > 0 ? `, ${stundenText(stat.ungeklaert)} h ungeklärt` : ''}`,
-      farbe: fokusQuote(stat) >= FOKUS_QUOTE_ZIEL ? '#00C076' : '#FF4D4D'
-    },
+    stat.unproduktiv + stat.ungeklaert > 0
+      ? {
+          titel: 'Fokus-Quote',
+          wert: `${Math.round(fokusQuote(stat) * 100)} %`,
+          zusatz: `${stundenText(stat.unproduktiv)} h unproduktiv${stat.ungeklaert > 0 ? `, ${stundenText(stat.ungeklaert)} h ungeklärt` : ''}`,
+          farbe: fokusQuote(stat) >= FOKUS_QUOTE_ZIEL ? '#00C076' : '#FF4D4D'
+        }
+      : {
+          titel: 'Pausen im Fokus',
+          wert: `${stundenText(stat.pausen)} h`,
+          zusatz: 'Zeit ohne Eingabe, zählt nicht',
+          farbe: stat.pausen <= 2 * 3600 ? '#00C076' : '#38BDF8'
+        },
     { titel: 'Bester Tag', wert: WOCHENTAGE[besterTag], zusatz: `${stundenText(stat.tage[besterTag])} h produktiv` }
   ]
   if (daten.liga) {

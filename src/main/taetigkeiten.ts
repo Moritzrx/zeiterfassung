@@ -1,5 +1,6 @@
 import type { Block, SymbolInfo } from '@shared/typen'
 import { taetigkeitSchluessel } from '@shared/regeln'
+import type { Speicher } from './speicher'
 import { supabase, supabaseKonfiguriert } from './supabase'
 
 interface Eintrag {
@@ -132,6 +133,39 @@ export class Taetigkeiten {
       .from('taetigkeit')
       .upsert({ name: eintrag.name, schluessel, unterwegs: an, erstellt_von: this.userId }, { onConflict: 'schluessel' })
     if (error) throw new Error('Einordnung konnte nicht gespeichert werden: ' + error.message)
+  }
+
+  /**
+   * Tätigkeit im ganzen Team umbenennen bzw. mit einer vorhandenen zusammenlegen (Datenbankfunktion
+   * taetigkeit_umbenennen, Skript 19: Blöcke, Regeln, Wochenziele und die Tabelle taetigkeit). Die eigenen lokalen
+   * Blöcke werden sofort mitgezogen, Regeln und Ziele lädt index.ts danach neu. Liefert die Zahl der Blöcke in der Datenbank.
+   */
+  async umbenennen(speicher: Speicher, alt: string, neu: string): Promise<number> {
+    const neuBereinigt = neu.trim().replace(/\s+/g, ' ').slice(0, 40)
+    if (!neuBereinigt) throw new Error('Bitte einen Namen angeben.')
+    const altSchluessel = taetigkeitSchluessel(alt)
+    const neuSchluessel = taetigkeitSchluessel(neuBereinigt)
+    if (!supabaseKonfiguriert()) throw new Error('Keine Datenbank konfiguriert.')
+    const { data, error } = await supabase().rpc('taetigkeit_umbenennen', { alt_schluessel: altSchluessel, neuer_name: neuBereinigt })
+    if (error) {
+      if (/taetigkeit_umbenennen/.test(error.message)) throw new Error('Dafür muss in Supabase einmal das Skript 19 (19_taetigkeit_umbenennen.sql) ausgeführt werden.')
+      throw new Error('Umbenennen hat nicht geklappt: ' + error.message)
+    }
+    for (const b of speicher.alle()) {
+      if (b.taetigkeit && !b.geloeschtAm && taetigkeitSchluessel(b.taetigkeit) === altSchluessel) {
+        b.taetigkeit = neuBereinigt
+        speicher.aktualisieren(b)
+      }
+    }
+    const alter = this.bekannt.get(altSchluessel)
+    const ziel = this.bekannt.get(neuSchluessel)
+    this.bekannt.delete(altSchluessel)
+    this.bekannt.set(neuSchluessel, {
+      name: neuBereinigt,
+      symbol: ziel?.symbol ?? alter?.symbol ?? { ...STANDARD_SYMBOL },
+      unterwegs: ziel?.unterwegs ?? alter?.unterwegs ?? false
+    })
+    return Number(data ?? 0)
   }
 
   private async hochladen(name: string, schluessel: string): Promise<void> {

@@ -892,7 +892,8 @@ export class Erfassung extends EventEmitter {
       fenstertitel,
       taetigkeit: zuordnung?.taetigkeit ?? null,
       kunde: null,
-      bewertung: ruhe ? 'unproduktiv' : (zuordnung?.bewertung ?? 'ungeklaert'),
+      // Nur im Fokus (15. September 2026): Zeit ohne Eingabe ist eine neutrale "Pause" (inaktiv), nicht mehr rot.
+      bewertung: ruhe ? (this.nurFokus ? 'inaktiv' : 'unproduktiv') : (zuordnung?.bewertung ?? 'ungeklaert'),
       notiz: null,
       manuellGeprueft: false,
       geraet: this.geraet,

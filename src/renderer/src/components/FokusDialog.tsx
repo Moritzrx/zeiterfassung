@@ -41,6 +41,37 @@ const BEGINN_WAHL: { minuten: number | null; text: string }[] = [
 const FELD =
   'w-full rounded-chip bg-panel-2 px-3 py-2 text-sm text-ink outline-none placeholder:text-dim focus:ring-1 focus:ring-dim'
 
+const ZULETZT_SCHLUESSEL = 'fokus.zuletzt'
+const ZULETZT_ANZAHL = 3
+
+interface Zuletzt {
+  taetigkeit: string
+  kunde: string | null
+}
+
+/** Die zuletzt gestarteten Kombinationen aus Tätigkeit und Kunde (localStorage, dieser Rechner). */
+function zuletztLesen(): Zuletzt[] {
+  try {
+    const roh: unknown = JSON.parse(localStorage.getItem(ZULETZT_SCHLUESSEL) ?? '[]')
+    if (!Array.isArray(roh)) return []
+    return roh
+      .filter((e): e is Zuletzt => !!e && typeof e === 'object' && typeof (e as Zuletzt).taetigkeit === 'string')
+      .map((e) => ({ taetigkeit: e.taetigkeit, kunde: typeof e.kunde === 'string' && e.kunde ? e.kunde : null }))
+      .slice(0, ZULETZT_ANZAHL)
+  } catch {
+    return []
+  }
+}
+
+function zuletztMerken(neu: Zuletzt): void {
+  const liste = [neu, ...zuletztLesen().filter((e) => !(e.taetigkeit === neu.taetigkeit && e.kunde === neu.kunde))].slice(0, ZULETZT_ANZAHL)
+  try {
+    localStorage.setItem(ZULETZT_SCHLUESSEL, JSON.stringify(liste))
+  } catch {
+    // Merken ist optional
+  }
+}
+
 /**
  * Der Dialog zum Starten eines Fokus: eine Tätigkeit wählen, den Beginn wählen (jetzt oder rückwirkend),
  * fertig. Ab dann zählt alles als produktiv mit dieser Tätigkeit, egal welches Programm vorne ist.
@@ -50,6 +81,8 @@ function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactEleme
   const { amRechner: taetigkeiten, eingeordnet } = useTaetigkeitenNachOrt()
   const kunden = useKunden()
   const nurFokus = useErfassung().nurFokus
+  // Die letzten drei Kombinationen aus Tätigkeit und Kunde als Schnellstart (15. September 2026).
+  const [zuletzt] = useState<Zuletzt[]>(zuletztLesen)
   const [name, setName] = useState('')
   const [kunde, setKunde] = useState('')
   const [minuten, setMinuten] = useState<number | null>(0)
@@ -89,12 +122,19 @@ function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactEleme
       setFehler('Die Uhrzeit liegt in der Zukunft.')
       return
     }
-    if (!window.api) return
+    await absenden(n, kunde.trim() || null, b)
+  }
+
+  /** Fokus wirklich starten (aus dem Formular oder per Schnellstart-Chip), merkt die Kombination für "Zuletzt". */
+  async function absenden(n: string, k: string | null, b: Date): Promise<void> {
+    if (!window.api || laeuft) return
     setLaeuft(true)
     try {
-      await window.api.fokus.starten(n, b.toISOString(), kunde.trim() || null)
+      await window.api.fokus.starten(n, b.toISOString(), k)
+      zuletztMerken({ taetigkeit: n, kunde: k })
       tonSpielen('erfolg')
-      hinweisZeigen(`Fokus „${n}“${kunde.trim() ? ` für ${kunde.trim()}` : ''} läuft${minuten === 0 ? '' : ` seit ${uhrzeit(b.toISOString())}`}. Alles zählt jetzt dazu.`)
+      const rueckwirkend = Date.now() - b.getTime() > 60_000
+      hinweisZeigen(`Fokus „${n}“${k ? ` für ${k}` : ''} läuft${rueckwirkend ? ` seit ${uhrzeit(b.toISOString())}` : ''}. Alles zählt jetzt dazu.`)
       onSchliessen()
     } catch (e) {
       setFehler(fehlerText(e))
@@ -124,6 +164,27 @@ function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactEleme
               <X size={18} strokeWidth={1.5} />
             </button>
           </div>
+
+          {zuletzt.length > 0 && (
+            <div className="mt-5">
+              <p className="text-xs tracking-wide text-mute uppercase">Zuletzt, ein Klick startet sofort</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {zuletzt.map((z) => (
+                  <button
+                    key={`${z.taetigkeit}|${z.kunde ?? ''}`}
+                    type="button"
+                    disabled={laeuft}
+                    onClick={() => void absenden(z.taetigkeit, z.kunde, new Date())}
+                    className="knopf-primaer flex items-center gap-1.5 rounded-chip px-3 py-2 text-sm disabled:opacity-60"
+                  >
+                    <TaetigkeitSymbol name={z.taetigkeit} groesse={14} />
+                    {z.taetigkeit}
+                    {z.kunde ? <span className="opacity-70">· {z.kunde}</span> : null}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-5">
             <p className="text-xs tracking-wide text-mute uppercase">Tätigkeit</p>

@@ -10,6 +10,7 @@ import { MonatsVerlauf, type Monatswert } from '../components/MonatsVerlauf'
 import { TrendBalken, type Trendwert } from '../components/TrendBalken'
 import { VerteilungsRing } from '../components/VerteilungsRing'
 import { KundenTabelle } from '../components/KundenTabelle'
+import { Kundenbericht } from '../components/Kundenbericht'
 import { useKunden } from '../kunden'
 import { datumText, kurzDatum, stundenText } from '../format'
 
@@ -189,6 +190,8 @@ export function AuswertungScreen(): ReactElement {
           {tage > LOKALE_WOCHEN * 7 && <p className="mt-2 text-xs text-dim">Nach Kunden nur für die letzten {LOKALE_WOCHEN} Wochen, weiter zurück liegen die Blöcke nicht mehr auf diesem Rechner.</p>}
         </Karte>
       )}
+
+      <Kundenbericht />
 
       <h2 className="mt-2 text-lg font-light">Hochrechnung</h2>
       <HochrechnungKarte

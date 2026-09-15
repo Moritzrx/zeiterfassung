@@ -124,6 +124,8 @@ export interface Api {
     unterwegs: () => Promise<Record<string, boolean>>
     /** Einordnung "unterwegs" für das ganze Team setzen; braucht das Skript 16 in Supabase. */
     unterwegsSetzen: (name: string, an: boolean) => Promise<void>
+    /** Tätigkeit im ganzen Team umbenennen; heißt eine schon so, werden beide zusammengelegt. Liefert die Zahl geänderter Blöcke. Braucht Skript 19. */
+    umbenennen: (alt: string, neu: string) => Promise<number>
     /** Alle bekannten Tätigkeitsnamen des Teams, alphabetisch. */
     liste: () => Promise<string[]>
     /** Symbol je Vergleichsschlüssel (siehe taetigkeitSchluessel). */
@@ -189,6 +191,10 @@ export interface Api {
     taetigkeiten: (von: string, bis: string) => Promise<TeamTaetigkeit[]>
     /** Der jüngste Block je Person aus den letzten 24 Stunden ("Gerade: …"), eigener live. Braucht Skript 18. */
     aktuell: () => Promise<TeamAktuell[]>
+  }
+  bericht: {
+    /** Textdatei über den Speichern-Dialog ablegen (Kundenbericht als CSV); liefert den Pfad oder null bei Abbruch. */
+    speichern: (dateiname: string, inhalt: string) => Promise<string | null>
   }
   profil: {
     /** Die eigenen Einstellungen. */

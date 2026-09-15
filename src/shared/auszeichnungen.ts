@@ -1,4 +1,4 @@
-import { FOKUS_QUOTE_ZIEL, fokusQuote } from './ruhe'
+import { istPause } from './ruhe'
 /**
  * Wochenstatistik und die Auszeichnungen. Einmal freigeschaltet, werden
  * sie nie zurückgenommen, auch wenn jemand die Woche später korrigiert.
@@ -60,7 +60,7 @@ export const AUSZEICHNUNGEN: Record<AuszeichnungTyp, { titel: string; text: stri
 
   alle_lernziele: { titel: 'Alle Lernziele', text: 'Alle Lernziele einer Woche erreicht.', farbe: '#00C076', gruppe: 'lernen' },
   lernmeister: { titel: 'Lernmeister', text: 'Vier Wochen in Folge alle Lernziele erreicht.', farbe: '#34D399', gruppe: 'lernen' },
-  fokus_woche: { titel: 'Fokus-Woche', text: `Eine abgeschlossene Woche auf Rang ${RANG_ZIEL} oder höher mit einer Fokus-Quote von mindestens ${Math.round(FOKUS_QUOTE_ZIEL * 100)} Prozent: von allem, was die App gezählt hat, war so viel produktiv.`, farbe: '#FF4D4D', gruppe: 'lernen' },
+  fokus_woche: { titel: 'Fokus-Woche', text: `Eine abgeschlossene Woche auf Rang ${RANG_ZIEL} oder höher mit höchstens 2 Stunden Pausen im Fokus und nichts Unproduktivem.`, farbe: '#FF4D4D', gruppe: 'lernen' },
   aufgeraeumt: { titel: 'Aufgeräumt', text: 'Eine abgeschlossene Woche mit mindestens 40 produktiven Stunden, höchstens 2 Stunden unproduktiv und keinem ungeklärten Block.', farbe: '#C9CDD6', gruppe: 'lernen' },
   blitzsauber: { titel: 'Blitzsauber', text: 'Vier abgeschlossene Wochen in Folge: je mindestens 40 produktive Stunden, höchstens 2 Stunden unproduktiv, nichts Ungeklärtes.', farbe: '#E2E8F0', gruppe: 'lernen' },
 
@@ -81,6 +81,8 @@ export interface Wochenstatistik {
   unproduktiv: number
   ungeklaert: number
   inaktiv: number
+  /** davon kurze Pausen im Fokus (Zeit ohne Eingabe unter 90 Minuten, neutral gespeichert) */
+  pausen: number
   /** produktive Sekunden je Tätigkeitsschlüssel */
   jeTaetigkeit: Map<string, { name: string; sekunden: number }>
   /** produktive Sekunden je Wochentag, Index 0 = Montag */
@@ -116,6 +118,7 @@ export function wochenstatistik(bloecke: Block[], start: string): Wochenstatisti
     unproduktiv: 0,
     ungeklaert: 0,
     inaktiv: 0,
+    pausen: 0,
     jeTaetigkeit: new Map(),
     tage: [0, 0, 0, 0, 0, 0, 0],
     frueh: 0,
@@ -133,6 +136,7 @@ export function wochenstatistik(bloecke: Block[], start: string): Wochenstatisti
     stat.leer = false
     if (b.testdaten) stat.testdaten = true
     stat[b.bewertung] += a
+    if (istPause(b)) stat.pausen += a
     if (b.bewertung !== 'produktiv') continue
     if (b.taetigkeit) {
       const s = taetigkeitSchluessel(b.taetigkeit)
@@ -350,7 +354,8 @@ export function auszeichnungenPruefen(
     melden('alle_lernziele', erste(alleZiele))
     meldenFolge('lernmeister', 4, alleZiele)
   }
-  melden('fokus_woche', erste((w) => abgeschlossen(w) && !w.leer && fokusQuote(w) >= FOKUS_QUOTE_ZIEL && aufZiel(w)))
+  // Seit 15. September 2026 ohne Quote: Zeit ohne Eingabe im Fokus ist neutral, darum zählen Pausen im Fokus plus Rotes.
+  melden('fokus_woche', erste((w) => abgeschlossen(w) && !w.leer && aufZiel(w) && w.unproduktiv + w.pausen <= 2 * STUNDE))
   // Seit "nur im Fokus" (12. September 2026) gibt es kaum noch Ungeklärtes, darum zählt zusätzlich: höchstens 2 h unproduktiv.
   const sauber = (w: Wochenstatistik): boolean => abgeschlossen(w) && !w.leer && w.produktiv >= 40 * STUNDE && w.ungeklaert === 0 && w.unproduktiv <= 2 * STUNDE
   melden('aufgeraeumt', erste(sauber))

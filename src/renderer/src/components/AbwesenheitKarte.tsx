@@ -115,9 +115,9 @@ function Eintrag({ abwesenheit: a, taetigkeiten }: { abwesenheit: Abwesenheit; t
         <button
           type="button"
           disabled={laeuft}
-          onClick={() => void ausfuehren(() => window.api.abwesenheit.privat(a.id), 'Bleibt unproduktiv.', 'schliessen')}
+          onClick={() => void ausfuehren(() => window.api.abwesenheit.privat(a.id), 'Als privat vermerkt.', 'schliessen')}
           className={`${CHIP} text-mute`}
-          title="Handy, Sofa, privat: bleibt unproduktiv (rot)"
+          title="Handy, Sofa, privat: bleibt wie es ist (Pause zählt nicht) und gilt als geklärt"
         >
           <Smartphone size={14} strokeWidth={1.75} />
           Privat

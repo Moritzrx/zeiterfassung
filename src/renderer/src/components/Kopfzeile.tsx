@@ -57,6 +57,9 @@ export function Kopfzeile(): ReactElement {
   } else if (status.zustand === 'laeuft') {
     punkt = 'bg-produktiv'
     text = fokus ? 'Fokus läuft' : 'Erfassung läuft'
+  } else if (status.zustand === 'inaktiv' && status.nurFokus) {
+    punkt = 'bg-abwesend'
+    text = status.inaktivSeit ? `Pause seit ${uhrzeit(status.inaktivSeit)}, zählt nicht` : 'Pause'
   } else if (status.zustand === 'inaktiv') {
     punkt = 'bg-unproduktiv'
     text = status.inaktivSeit ? `Nicht am Rechner seit ${uhrzeit(status.inaktivSeit)}, zählt als unproduktiv` : 'Nicht am Rechner'
@@ -133,15 +136,18 @@ export function Kopfzeile(): ReactElement {
             Fokus
           </button>
         )}
-        <button
-          type="button"
-          disabled={(!aktiv && !pausiert) || !!weg}
-          onClick={umschalten}
-          className={`${KNOPF} ${pausiert ? 'bg-ink text-ground' : 'text-ink hover:bg-panel-2'}`}
-        >
-          {pausiert ? <Play size={16} strokeWidth={1.75} /> : <Pause size={16} strokeWidth={1.75} />}
-          {pausiert ? 'Fortsetzen' : 'Pause'}
-        </button>
+        {/* Im Fokus-Modus ist "Fokus beenden" die Pause; der Knopf bleibt nur für die alte durchgehende Aufzeichnung. */}
+        {(!status.nurFokus || pausiert) && (
+          <button
+            type="button"
+            disabled={(!aktiv && !pausiert) || !!weg}
+            onClick={umschalten}
+            className={`${KNOPF} ${pausiert ? 'bg-ink text-ground' : 'text-ink hover:bg-panel-2'}`}
+          >
+            {pausiert ? <Play size={16} strokeWidth={1.75} /> : <Pause size={16} strokeWidth={1.75} />}
+            {pausiert ? 'Fortsetzen' : 'Pause'}
+          </button>
+        )}
       </div>
     </header>
   )

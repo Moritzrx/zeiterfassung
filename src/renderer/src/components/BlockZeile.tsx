@@ -2,7 +2,7 @@ import { memo, type ReactElement } from 'react'
 import { Check } from 'lucide-react'
 import type { Block } from '@shared/typen'
 import { anzeigeName } from '@shared/fenster'
-import { ABWESEND_NAME, RUHE_NAME, istRuhe } from '@shared/ruhe'
+import { istRuhe, ruheName } from '@shared/ruhe'
 import { dauerText, uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
 
@@ -48,11 +48,11 @@ function BlockZeileInnen({
   const fenster = anzeigeName(block.programm, block.fenstertitel)
   const hauptzeile =
     block.bewertung === 'inaktiv'
-      ? ABWESEND_NAME
+      ? ruheName(block)
       : block.quelle === 'manuell'
         ? (block.taetigkeit ?? 'Von Hand eingetragen')
         : istRuhe(block)
-          ? RUHE_NAME
+          ? ruheName(block)
           : fenster.haupt
   const klickbar = !!onClick && !laeuft
 
@@ -111,7 +111,7 @@ function BlockZeileInnen({
       <div className="w-20 shrink-0 text-right text-sm text-mute">{dauerText(sekunden)}</div>
       <div className="flex w-24 shrink-0 items-center justify-end gap-2 text-xs text-mute">
         <span className={`inline-block h-2 w-2 rounded-full ${PUNKT[block.bewertung]}`} />
-        {BEWERTUNG[block.bewertung]}
+        {block.bewertung === 'inaktiv' ? ruheName(block).toLowerCase() : BEWERTUNG[block.bewertung]}
       </div>
     </div>
   )
