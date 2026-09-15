@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Notification, powerMonitor, shell } from 'electron'
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, net, Notification, powerMonitor, shell } from 'electron'
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -43,7 +43,7 @@ import { Auszeichnungen } from './auszeichnungen'
 import { blockAendern, eintragAnlegen } from './bearbeiten'
 import { alleNeuBewerten } from './bewertung'
 import { Erfassung, bildschirmrecht, bildschirmrechtAnfragen } from './erfassung'
-import { protokollEinrichten, protokollZeilen } from './protokoll'
+import { protokollDateiFestlegen, protokollEinrichten, protokollNotiz, protokollPfad, protokollZeilen } from './protokoll'
 import { release } from 'os'
 import { Feier } from './feier'
 import { Profil } from './profil'
@@ -52,7 +52,7 @@ import { istFehlblock } from './programme'
 import { Regelwerk } from './regelwerk'
 import { Speicher } from './speicher'
 import { supabase, supabaseKonfiguriert } from './supabase'
-import { Sync } from './sync'
+import { Sync, vonZeile, type Zeile as DbZeile } from './sync'
 import { Taetigkeiten } from './taetigkeiten'
 import { Kunden } from './kunden'
 import { TrayLeiste } from './tray'
@@ -81,13 +81,25 @@ interface Sitzung {
   regelTimer: NodeJS.Timeout
   auszeichnungTimer: NodeJS.Timeout
   minutenTimer: NodeJS.Timeout
+  wachhundTimer: NodeJS.Timeout
   pruefungAusstehend: NodeJS.Timeout | null
+  gestartetMs: number
 }
 
 let fenster: BrowserWindow | null = null
 let tray: TrayLeiste | null = null
 let sitzung: Sitzung | null = null
 let beendet = false
+/** Rechner schläft oder ist gesperrt: der Wachhund schlägt dann nicht an. */
+let schlaeft = false
+/** Aktuelle Meldung des Wachhunds (steht im Status), sonst null. */
+let wachhundWarnung: string | null = null
+let wachhundGemeldetMs = 0
+const WACHHUND_TAKT_MS = 60_000
+const WACHHUND_ERFASSUNG_MS = 3 * 60_000
+const WACHHUND_SPEICHER_MS = 3 * 60_000
+const WACHHUND_ABGLEICH_MS = 15 * 60_000
+const WACHHUND_MELDUNG_ABSTAND_MS = 30 * 60_000
 
 // Nur eine laufende App pro Rechner. Ein zweiter Start zeigt nur das Fenster.
 if (!app.requestSingleInstanceLock()) {
@@ -186,7 +198,8 @@ function statusBerechnen(): ErfassungsStatus {
       neuerRang: null,
       unsynchronisiert: 0,
       letzterSync: null,
-      syncFehler: null
+      syncFehler: null,
+      warnung: null
     }
   }
   const jetzt = new Date()
@@ -212,8 +225,73 @@ function statusBerechnen(): ErfassungsStatus {
     neuerRang: aktuellerRang >= 1 && aktuellerRang > gefeiert ? aktuellerRang : null,
     unsynchronisiert: speicher.anzahlAusstehend(),
     letzterSync: sync.letzterSync?.toISOString() ?? null,
-    syncFehler: sync.fehler
+    syncFehler: sync.fehler,
+    warnung: wachhundWarnung
   }
+}
+
+/**
+ * Wachhund (15. September 2026, nach dem stillen Hänger vom 14. September: die App lud hoch, schrieb aber keine
+ * Dateien mehr). Prüft jede Minute drei Dinge und meldet Abweichungen im Status (rote Leiste "App neu starten"),
+ * im Protokoll und höchstens alle 30 Minuten als Systemmeldung: (1) der Erfassungstakt läuft (letzter Takt unter
+ * 3 Minuten her), (2) Änderungen an den Blöcken kommen auf die Platte (kein Schreibfehler, Datei nicht älter als
+ * die letzte Änderung plus 3 Minuten), (3) wartende Blöcke kommen in die Datenbank (letzter Abgleich unter
+ * 15 Minuten her, solange der Rechner online ist). Im Ruhezustand und am Sperrbildschirm wird nicht geprüft.
+ */
+function wachhundPruefen(s: Sitzung): void {
+  if (schlaeft || sitzung !== s) return
+  const jetzt = Date.now()
+  const probleme: string[] = []
+  const minuten = (ms: number): number => Math.max(1, Math.round(ms / 60_000))
+
+  const e = s.erfassung.status()
+  if (e.zustand !== 'gestoppt' && s.erfassung.taktZuletztMs && jetzt - s.erfassung.taktZuletztMs > WACHHUND_ERFASSUNG_MS) {
+    probleme.push(`Die Erfassung hat seit ${minuten(jetzt - s.erfassung.taktZuletztMs)} Minuten keinen Takt mehr gemacht.`)
+  }
+
+  if (s.erfassung.ablageFehler) {
+    probleme.push(`Der laufende Fokus kann nicht gesichert werden (${s.erfassung.ablageFehler}).`)
+  }
+  if (s.speicher.letzterSchreibfehler) {
+    probleme.push(`Blöcke können nicht gespeichert werden (${s.speicher.letzterSchreibfehler}).`)
+  } else if (s.speicher.letzteAenderungMs && s.speicher.letzteAenderungMs > s.speicher.letzteSchreibzeitMs + WACHHUND_SPEICHER_MS) {
+    probleme.push(`Änderungen werden seit ${minuten(jetzt - s.speicher.letzteSchreibzeitMs)} Minuten nicht mehr gespeichert.`)
+  } else if (s.speicher.letzteSchreibzeitMs) {
+    const datei = s.speicher.dateiZeitMs()
+    if (datei === null || s.speicher.letzteSchreibzeitMs - datei > WACHHUND_SPEICHER_MS) {
+      probleme.push('Die Blockdatei im Datenordner wird nicht mehr geschrieben.')
+    }
+  }
+
+  if (supabaseKonfiguriert() && s.speicher.anzahlAusstehend() > 0 && net.isOnline()) {
+    const bezug = s.sync.letzterSync?.getTime() ?? s.gestartetMs
+    if (jetzt - bezug > WACHHUND_ABGLEICH_MS) {
+      probleme.push(`Der Abgleich mit der Datenbank hängt seit ${minuten(jetzt - bezug)} Minuten${s.sync.fehler ? ` (${s.sync.fehler})` : ''}.`)
+    }
+  }
+
+  const neu = probleme.length ? probleme.join(' ') : null
+  if (neu !== wachhundWarnung) {
+    wachhundWarnung = neu
+    if (neu) console.warn('Wachhund:', neu)
+    else protokollNotiz('Wachhund: wieder in Ordnung')
+    statusVerteilen()
+  }
+  if (!neu || jetzt - wachhundGemeldetMs < WACHHUND_MELDUNG_ABSTAND_MS) return
+  wachhundGemeldetMs = jetzt
+  if (fenster && !fenster.isDestroyed() && fenster.isVisible() && fenster.isFocused()) return
+  if (!Notification.isSupported()) return
+  const meldung = new Notification({ title: 'wessamedia Zeit hakt', body: `${neu} Klicken und die App neu starten.` })
+  meldung.on('click', fensterZeigen)
+  meldung.show()
+}
+
+/** Die App komplett neu starten (Wachhund-Leiste, Einstellungen). */
+function appNeustarten(): void {
+  protokollNotiz('Neustart auf Wunsch')
+  beendet = true
+  app.relaunch()
+  app.quit()
 }
 
 function statusVerteilen(): void {
@@ -419,9 +497,13 @@ function sitzungStarten(userId: string): void {
     regelTimer: setInterval(() => void regelnAktualisieren(s), REGELN_TAKT_MS),
     auszeichnungTimer: setInterval(() => void auszeichnungenPruefen(s), 10 * 60_000),
     minutenTimer: setInterval(() => sonntagsMeldung(s), 60_000),
-    pruefungAusstehend: null
+    wachhundTimer: setInterval(() => wachhundPruefen(s), WACHHUND_TAKT_MS),
+    pruefungAusstehend: null,
+    gestartetMs: Date.now()
   }
   sitzung = s
+  wachhundWarnung = null
+  protokollNotiz(`Sitzung gestartet für ${userId.slice(0, 8)}…, ${speicher.alle().length} Blöcke lokal`)
   profilAnwenden(s)
   erfassung.on('status', statusVerteilen)
   erfassung.on('abwesenheit', (a: Abwesenheit) => abwesenheitMelden(a))
@@ -438,7 +520,13 @@ function sitzungStarten(userId: string): void {
   sync.start()
   // Auszeichnungen erst prüfen, wenn Regeln und der erste Abgleich da sind, sonst zählen veraltete Blöcke mit.
   void Promise.all([regelnAktualisieren(s), sync.erstAbgleich]).then(() => auszeichnungenPruefen(s))
-  void taetigkeiten.laden()
+  // Nach dem Laden bekommen Tätigkeiten mit dem neutralen Etikett einmal ein passendes Symbol (15. September 2026).
+  void taetigkeiten
+    .laden()
+    .then(() => taetigkeiten.symboleErgaenzen())
+    .then((n) => {
+      if (n) bloeckeGeaendert()
+    })
   void kunden.laden()
   statusVerteilen()
 }
@@ -450,10 +538,13 @@ function sitzungBeenden(): void {
   clearInterval(alt.regelTimer)
   clearInterval(alt.auszeichnungTimer)
   clearInterval(alt.minutenTimer)
+  clearInterval(alt.wachhundTimer)
   if (alt.pruefungAusstehend) clearTimeout(alt.pruefungAusstehend)
   alt.erfassung.stop()
   alt.sync.stop()
   alt.speicher.speichern()
+  wachhundWarnung = null
+  protokollNotiz('Sitzung beendet')
   statusVerteilen()
 }
 
@@ -604,6 +695,88 @@ function ipcRegistrieren(): void {
     auszeichnungenBaldPruefen(sitzung)
     return block
   })
+  // Papierkorb (15. September 2026): gelöschte Blöcke der letzten 30 Tage, lokal und aus der Datenbank (der
+  // Vollabgleich wirft gelöschte Blöcke lokal weg, darum reicht der Zwischenspeicher allein nicht).
+  ipcMain.handle('bloecke:geloeschte', async (): Promise<Block[]> => {
+    if (!sitzung) return []
+    const s = sitzung
+    const karte = new Map<string, Block>()
+    for (const b of s.speicher.geloeschteListe()) karte.set(b.id, b)
+    if (supabaseKonfiguriert()) {
+      try {
+        const grenze = new Date(Date.now() - 30 * 86_400_000).toISOString()
+        const { data, error } = await supabase()
+          .from('block')
+          .select('*')
+          .eq('user_id', s.userId)
+          .not('geloescht_am', 'is', null)
+          .gte('geloescht_am', grenze)
+          .order('geloescht_am', { ascending: false })
+          .limit(50)
+        if (error) throw new Error(error.message)
+        for (const z of (data ?? []) as DbZeile[]) {
+          const b = vonZeile(z)
+          if (!karte.has(b.id) && Date.parse(b.ende) > Date.parse(b.start)) karte.set(b.id, b)
+        }
+      } catch (e) {
+        console.warn('Papierkorb aus der Datenbank:', e)
+      }
+    }
+    return [...karte.values()].sort((a, b) => (b.geloeschtAm ?? '').localeCompare(a.geloeschtAm ?? '')).slice(0, 50)
+  })
+  ipcMain.handle('bloecke:wiederherstellen', async (_ereignis, id: string): Promise<Block | null> => {
+    if (!sitzung) return null
+    const s = sitzung
+    let block = s.speicher.get(id)
+    if (!block && supabaseKonfiguriert()) {
+      const { data } = await supabase().from('block').select('*').eq('id', id).eq('user_id', s.userId).maybeSingle()
+      if (data) {
+        s.speicher.vomServerUebernehmen([vonZeile(data as DbZeile)])
+        block = s.speicher.get(id)
+      }
+    }
+    if (!block) return null
+    if (block.geloeschtAm) {
+      block.geloeschtAm = null
+      s.speicher.aktualisieren(block)
+      protokollNotiz(`Block ${id.slice(0, 8)} aus dem Papierkorb wiederhergestellt`)
+      bloeckeGeaendert()
+      statusVerteilen()
+      auszeichnungenBaldPruefen(s)
+    }
+    return block
+  })
+  // Datenexport (15. September 2026): eigene Blöcke im Zeitraum; was älter als der lokale Vorrat ist, kommt aus der Datenbank.
+  ipcMain.handle('bloecke:exportieren', async (_ereignis, von: string, bis: string): Promise<Block[]> => {
+    if (!sitzung) return []
+    const s = sitzung
+    const karte = new Map<string, Block>()
+    for (const b of s.speicher.imZeitraum(new Date(von), new Date(bis))) karte.set(b.id, b)
+    const lokalAb = Date.now() - 13 * 7 * 86_400_000
+    if (Date.parse(von) < lokalAb && supabaseKonfiguriert()) {
+      let ab = 0
+      for (;;) {
+        const { data, error } = await supabase()
+          .from('block')
+          .select('*')
+          .eq('user_id', s.userId)
+          .is('geloescht_am', null)
+          .gte('ende', von)
+          .lt('start', bis)
+          .order('start', { ascending: true })
+          .range(ab, ab + 999)
+        if (error) throw new Error('Export aus der Datenbank: ' + error.message)
+        const zeilen = (data ?? []) as DbZeile[]
+        for (const z of zeilen) {
+          const b = vonZeile(z)
+          if (!karte.has(b.id)) karte.set(b.id, b)
+        }
+        if (zeilen.length < 1000) break
+        ab += 1000
+      }
+    }
+    return [...karte.values()].filter((b) => Date.parse(b.ende) > Date.parse(b.start)).sort((a, b) => a.start.localeCompare(b.start))
+  })
   ipcMain.handle('bloecke:mehrereAendern', (_ereignis, ids: string[], aenderung: BlockAenderung): number => {
     if (!sitzung) return 0
     let n = 0
@@ -751,6 +924,7 @@ function ipcRegistrieren(): void {
     z.push(`Zeit: ${jetzt.toISOString()} (${berlinDatum(jetzt)} ${berlinTeile(jetzt).stunde}:${String(berlinTeile(jetzt).minute).padStart(2, '0')} Berlin)`)
     z.push(`Autostart: ${app.isPackaged ? autostartAn() : 'nur installiert'} · Bildschirmaufnahme: ${bildschirmrecht()}`)
     z.push(`Datenbank konfiguriert: ${supabaseKonfiguriert()}`)
+    z.push(`Protokolldatei: ${protokollPfad() ?? 'keine'}${wachhundWarnung ? ` · Wachhund: ${wachhundWarnung}` : ''}`)
     if (sitzung) {
       const s = sitzung
       const e = s.erfassung.status()
@@ -778,6 +952,13 @@ function ipcRegistrieren(): void {
     }
     return stand
   })
+  ipcMain.handle('system:protokollOeffnen', (): string | null => {
+    const pfad = protokollPfad()
+    if (!pfad || !existsSync(pfad)) return null
+    shell.showItemInFolder(pfad)
+    return pfad
+  })
+  ipcMain.handle('system:neustart', (): void => appNeustarten())
   ipcMain.handle('system:autostartSetzen', (_ereignis, an: boolean): boolean => {
     if (!app.isPackaged) return false
     app.setLoginItemSettings({ openAtLogin: an, args: an ? ['--hidden'] : [] })
@@ -974,6 +1155,8 @@ function autostartEinrichten(): void {
 
 void app.whenReady().then(async () => {
   electronApp.setAppUserModelId(APP_ID)
+  protokollDateiFestlegen(app.getPath('userData'))
+  protokollNotiz(`App gestartet: Version ${app.getVersion()}, ${process.platform}, ${app.isPackaged ? 'installiert' : 'Entwicklung'}`)
 
   // F12 öffnet die Entwicklerwerkzeuge, aber nur in der Entwicklungsversion.
   app.on('browser-window-created', (_, f) => optimizer.watchWindowShortcuts(f))
@@ -1009,10 +1192,22 @@ void app.whenReady().then(async () => {
   statusVerteilen()
 
   // Ruhezustand und Sperren: laufenden Block sofort beenden, nach dem Aufwachen neu beginnen.
-  powerMonitor.on('suspend', () => sitzung?.erfassung.unterbrechen())
-  powerMonitor.on('lock-screen', () => sitzung?.erfassung.unterbrechen())
-  powerMonitor.on('resume', () => sitzung?.erfassung.weiter())
-  powerMonitor.on('unlock-screen', () => sitzung?.erfassung.weiter())
+  powerMonitor.on('suspend', () => {
+    schlaeft = true
+    sitzung?.erfassung.unterbrechen()
+  })
+  powerMonitor.on('lock-screen', () => {
+    schlaeft = true
+    sitzung?.erfassung.unterbrechen()
+  })
+  powerMonitor.on('resume', () => {
+    schlaeft = false
+    sitzung?.erfassung.weiter()
+  })
+  powerMonitor.on('unlock-screen', () => {
+    schlaeft = false
+    sitzung?.erfassung.weiter()
+  })
   powerMonitor.on('shutdown', () => {
     beendet = true
     sitzung?.speicher.speichern()
@@ -1044,4 +1239,5 @@ app.on('before-quit', (ereignis) => {
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   sitzungBeenden()
+  protokollNotiz('App beendet')
 })

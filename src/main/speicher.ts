@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
 import type { Block } from '@shared/typen'
 
@@ -24,6 +24,10 @@ export class Speicher {
   private daten: Datei
   private ausstehend: Set<string>
   private timer: NodeJS.Timeout | null = null
+  /** Wann zuletzt etwas geändert wurde bzw. die Datei zuletzt erfolgreich geschrieben wurde (ms); für den Wachhund. */
+  letzteAenderungMs = 0
+  letzteSchreibzeitMs = 0
+  letzterSchreibfehler: string | null = null
 
   constructor(private readonly userId: string) {
     this.pfad = join(app.getPath('userData'), `bloecke-${userId}.json`)
@@ -46,6 +50,7 @@ export class Speicher {
 
   /** Schreibt gebündelt, spätestens eine Sekunde nach der letzten Änderung. */
   speichernBald(): void {
+    this.letzteAenderungMs = Date.now()
     if (this.timer) return
     this.timer = setTimeout(() => {
       this.timer = null
@@ -59,15 +64,33 @@ export class Speicher {
       this.timer = null
     }
     this.daten.ausstehend = [...this.ausstehend]
-    mkdirSync(dirname(this.pfad), { recursive: true })
-    const hilfsdatei = this.pfad + '.tmp'
-    writeFileSync(hilfsdatei, JSON.stringify(this.daten))
+    // Ein Schreibfehler darf die Erfassung nicht anhalten (15. September 2026, nach dem stillen Hänger am 14. September):
+    // er wird protokolliert, der Wachhund meldet ihn, der nächste speichernBald() versucht es erneut.
     try {
-      if (existsSync(this.pfad)) copyFileSync(this.pfad, this.pfad + '.bak')
-    } catch {
-      // Sicherungskopie ist optional
+      mkdirSync(dirname(this.pfad), { recursive: true })
+      const hilfsdatei = this.pfad + '.tmp'
+      writeFileSync(hilfsdatei, JSON.stringify(this.daten))
+      try {
+        if (existsSync(this.pfad)) copyFileSync(this.pfad, this.pfad + '.bak')
+      } catch {
+        // Sicherungskopie ist optional
+      }
+      renameSync(hilfsdatei, this.pfad)
+      this.letzteSchreibzeitMs = Date.now()
+      this.letzterSchreibfehler = null
+    } catch (fehler) {
+      this.letzterSchreibfehler = fehler instanceof Error ? fehler.message : String(fehler)
+      console.error('Speicher: Schreiben fehlgeschlagen:', fehler)
     }
-    renameSync(hilfsdatei, this.pfad)
+  }
+
+  /** Änderungszeit der Datei auf der Platte (ms), null wenn sie fehlt; unabhängige Prüfung für den Wachhund. */
+  dateiZeitMs(): number | null {
+    try {
+      return statSync(this.pfad).mtimeMs
+    } catch {
+      return null
+    }
   }
 
   get(id: string): Block | undefined {
@@ -77,6 +100,15 @@ export class Speicher {
   /** Alle Blöcke, auch gelöschte. Nur für Neubewertung und Aufräumen. */
   alle(): Block[] {
     return this.daten.bloecke
+  }
+
+  /** Gelöschte Blöcke der letzten Tage, zuletzt gelöschte zuerst (Papierkorb). */
+  geloeschteListe(tage = 30, maximal = 50): Block[] {
+    const grenze = new Date(Date.now() - tage * 86_400_000).toISOString()
+    return this.daten.bloecke
+      .filter((b) => b.geloeschtAm && b.geloeschtAm >= grenze && Date.parse(b.ende) > Date.parse(b.start))
+      .sort((a, b) => (b.geloeschtAm ?? '').localeCompare(a.geloeschtAm ?? ''))
+      .slice(0, maximal)
   }
 
   /** Von Hand eingetragene Blöcke, neueste zuerst. */

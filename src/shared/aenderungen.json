@@ -1,0 +1,64 @@
+[
+  {
+    "version": "1.0.48",
+    "datum": "2026-09-15",
+    "titel": "Sicherheitsnetz, Tagesverlauf, Papierkorb, Datenexport, Symbole, Update-News",
+    "punkte": [
+      "Nach jedem Update erscheint einmal dieses Fenster mit dem, was neu ist. Unter Einstellungen → System → „Was ist neu“ kannst du es jederzeit wieder öffnen.",
+      "Tagesverlauf auf „Heute“: ein Zeitstrahl von 7 bis 20 Uhr zeigt Fokus-Zeit grün und Lücken ohne Aufzeichnung grau. Klick auf eine Lücke öffnet „Nachtragen“.",
+      "Papierkorb: gelöschte Blöcke lassen sich 30 Tage lang zurückholen (Einstellungen → Papierkorb). Direkt nach dem Löschen gibt es unten „Rückgängig“.",
+      "Datenexport: alle Blöcke eines Zeitraums als Excel-Tabelle speichern (Einstellungen → Datenexport), für Sicherung und Buchhaltung.",
+      "Wachhund: die App prüft alle 60 Sekunden, ob Erfassung, Speichern und Abgleich noch laufen. Hakt etwas, erscheint eine rote Leiste mit „App neu starten“.",
+      "Protokolldatei: Fehler und Warnungen landen jetzt in einer Datei im Datenordner (Einstellungen → System → „Protokoll öffnen“), damit Probleme später nachvollziehbar sind.",
+      "Alle Tätigkeiten haben jetzt ein passendes Symbol (Instagram, TikTok, Telefon, Filmklappe, Auto …). Neue Tätigkeiten bekommen automatisch einen Vorschlag, den du unter Einstellungen → Tätigkeiten ändern kannst."
+    ]
+  },
+  {
+    "version": "1.0.47",
+    "datum": "2026-09-15",
+    "titel": "Unproduktiv raus, Lücken nachtragen, Tätigkeiten umbenennen, Schnellstart, Kundenbericht",
+    "punkte": [
+      "Im Fokus zählt Zeit ohne Eingabe als neutrale Pause (blau), nicht mehr als rot. Auf der Woche steht statt der Fokus-Quote die Kachel „Pausen im Fokus“.",
+      "Auf „Heute“ stehen Lücken ohne Aufzeichnung als graue Zeilen mit dem Knopf „Nachtragen“.",
+      "Tätigkeiten lassen sich unter Einstellungen → Tätigkeiten umbenennen und zusammenlegen, für das ganze Team.",
+      "Der Pause-Knopf ist im Fokus-Modus weg. Im Fokus-Fenster stehen die letzten drei Tätigkeiten als grüne Schnellstart-Knöpfe. Strg+Alt+F (Mac: Cmd+Alt+F) öffnet das Fokus-Fenster aus jedem Programm.",
+      "Kundenbericht auf der Auswertung: Stunden je Kunde im Monat, nach Person und Tätigkeit, als Excel-Datei speicherbar."
+    ]
+  },
+  {
+    "version": "1.0.46",
+    "datum": "2026-09-15",
+    "titel": "Was die anderen machen",
+    "punkte": [
+      "Karte „Was die anderen machen“ auf dem Team-Screen: je Person die Tätigkeiten von heute oder dieser Woche und was gerade läuft."
+    ]
+  },
+  {
+    "version": "1.0.45",
+    "datum": "2026-09-14",
+    "titel": "Mac-Update ohne neues Herunterladen",
+    "punkte": [
+      "Auf dem Mac lädt die App neue Versionen selbst und tauscht sich auf Knopfdruck aus, kein Herunterladen und Hineinziehen mehr (ab dieser Version).",
+      "Täglicher Vollabgleich mit der Datenbank, damit Änderungen der anderen auch in Apps ankommen, die tagelang durchlaufen."
+    ]
+  },
+  {
+    "version": "1.0.42",
+    "datum": "2026-09-12",
+    "titel": "Nur im Fokus, Tätigkeiten unterwegs, Fokus-Feinschliff",
+    "punkte": [
+      "Zeit zählt nur noch im Fokus. Ohne Fokus entsteht kein Block, die App erinnert nach 10 Minuten Arbeit ohne Fokus.",
+      "Dreh, Fahrt, Kundentermin und Telefonat gelten als „unterwegs“ und stehen bei „Ich bin weg“ statt im Fokus.",
+      "Was eine Regel als unproduktiv einstuft, bleibt auch im Fokus rot. Nach „Ich bin weg“ öffnet sich direkt der Fokus-Dialog. Alle zwei Stunden fragt die App, ob der Fokus noch stimmt."
+    ]
+  },
+  {
+    "version": "1.0.38",
+    "datum": "2026-09-11",
+    "titel": "Kunden",
+    "punkte": [
+      "Kunde (Projekt) als zweite Dimension neben der Tätigkeit: im Fokus, beim Eintragen, im Block-Dialog.",
+      "Kundenliste auf der Auswertung und Kundenverwaltung in den Einstellungen (umbenennen, zusammenlegen, löschen)."
+    ]
+  }
+]

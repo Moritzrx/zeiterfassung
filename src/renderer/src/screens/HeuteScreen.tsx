@@ -23,6 +23,7 @@ import { tonSpielen } from '../toene'
 import { Karte } from '../components/Karte'
 import { Mehrfachleiste } from '../components/Mehrfachleiste'
 import { TagesRing, type RingAnteile } from '../components/TagesRing'
+import { TagesZeitstrahl } from '../components/TagesZeitstrahl'
 import { UngeklaertPostfach } from '../components/UngeklaertPostfach'
 import { useErfassung, useSekundentakt, useTakt } from '../erfassung'
 import { datumText, dauerText, laufzeitText, stundenText, uhrzeit } from '../format'
@@ -89,15 +90,15 @@ export function HeuteScreen(): ReactElement {
   }, [liste, laufendId, istHeute])
   // Lücken ohne Aufzeichnung (kein Fokus lief) zum Nachtragen, zwischen die Zeilen einsortiert (heute neueste zuerst).
   const [nachtrag, setNachtrag] = useState<Luecke | null>(null)
+  const luecken = useMemo(() => lueckenFinden(liste, datum, istHeute ? jetzt : null), [liste, datum, istHeute, jetzt])
   const eintraege = useMemo(() => {
-    const luecken = lueckenFinden(liste, datum, istHeute ? jetzt : null)
     const alle: Array<{ typ: 'zeile'; zeit: string; zeile: Zeile } | { typ: 'luecke'; zeit: string; luecke: Luecke }> = [
       ...zeilen.map((zeile) => ({ typ: 'zeile' as const, zeit: zeile.block.start, zeile })),
       ...luecken.map((luecke) => ({ typ: 'luecke' as const, zeit: luecke.start, luecke }))
     ]
     alle.sort((a, b) => (istHeute ? b.zeit.localeCompare(a.zeit) : a.zeit.localeCompare(b.zeit)))
     return alle
-  }, [zeilen, liste, datum, istHeute, jetzt])
+  }, [zeilen, luecken, istHeute])
 
   let geradeText = 'Keine Erfassung aktiv'
   if (status.zustand === 'ohne-fokus') geradeText = 'Kein Fokus. Ohne Fokus nimmt die App nichts auf, und keine Zeit zählt. Starte einen Fokus mit dem, woran du gerade arbeitest; Programme und Tabs werden dann automatisch darunter mitgeschrieben.'
@@ -369,6 +370,8 @@ export function HeuteScreen(): ReactElement {
             </button>
           )}
         </div>
+        {/* Tagesverlauf (15. September 2026): Zeitstrahl mit Fokus-Zeit und Lücken, Pausen bewusst nicht gezeichnet. */}
+        <TagesZeitstrahl bloecke={liste} luecken={luecken} datum={datum} jetztMs={istHeute ? jetzt : null} onLuecke={setNachtrag} />
         {eintraege.length === 0 ? (
           <p className="mt-2 text-sm text-dim">Keine Blöcke an diesem Tag.</p>
         ) : (

@@ -1,5 +1,6 @@
 import type { Block, SymbolInfo } from '@shared/typen'
 import { taetigkeitSchluessel } from '@shared/regeln'
+import { symbolVorschlag } from '@shared/symbolvorschlag'
 import type { Speicher } from './speicher'
 import { supabase, supabaseKonfiguriert } from './supabase'
 
@@ -39,9 +40,37 @@ export class Taetigkeiten {
     const schluessel = taetigkeitSchluessel(bereinigt)
     const vorhanden = this.bekannt.get(schluessel)
     if (vorhanden) return vorhanden.name
-    this.bekannt.set(schluessel, { name: bereinigt, symbol: { ...STANDARD_SYMBOL }, unterwegs: false })
-    void this.hochladen(bereinigt, schluessel)
+    // Neue Tätigkeit: gleich ein passendes Symbol vorschlagen (15. September 2026), statt des neutralen Etiketts.
+    const symbol = symbolVorschlag(bereinigt) ?? { ...STANDARD_SYMBOL }
+    this.bekannt.set(schluessel, { name: bereinigt, symbol, unterwegs: false })
+    void this.hochladen(bereinigt, schluessel, symbol)
     return bereinigt
+  }
+
+  /**
+   * Tätigkeiten, die noch das neutrale Etikett tragen, bekommen einmal ein passendes Symbol für das ganze Team
+   * (15. September 2026, "gib allen Tätigkeiten passende Icons"). Läuft nach dem Laden; ein von Hand gewähltes
+   * Symbol wird nie angefasst, weil nur das Etikett "tag" ersetzt wird. Liefert die Zahl der geänderten Einträge.
+   */
+  async symboleErgaenzen(): Promise<number> {
+    if (!supabaseKonfiguriert()) return 0
+    const zeilen: Array<{ name: string; schluessel: string; symbol_typ: 'lucide' | 'marke'; symbol_name: string; erstellt_von: string }> = []
+    for (const [schluessel, e] of this.bekannt) {
+      if (e.symbol.typ !== 'lucide' || e.symbol.name !== 'tag') continue
+      const vorschlag = symbolVorschlag(e.name)
+      if (!vorschlag) continue
+      e.symbol = vorschlag
+      zeilen.push({ name: e.name, schluessel, symbol_typ: vorschlag.typ, symbol_name: vorschlag.name, erstellt_von: this.userId })
+    }
+    if (zeilen.length === 0) return 0
+    try {
+      const { error } = await supabase().from('taetigkeit').upsert(zeilen, { onConflict: 'schluessel' })
+      if (error) console.warn('Symbole ergänzen:', error.message)
+      else console.log(`Tätigkeiten: ${zeilen.length} Symbole vorgeschlagen und gespeichert`)
+    } catch (e) {
+      console.warn('Symbole ergänzen:', e)
+    }
+    return zeilen.length
   }
 
   /** Ob dieser Name (in irgendeiner Schreibweise) schon bekannt ist. */
@@ -168,12 +197,12 @@ export class Taetigkeiten {
     return Number(data ?? 0)
   }
 
-  private async hochladen(name: string, schluessel: string): Promise<void> {
+  private async hochladen(name: string, schluessel: string, symbol: SymbolInfo = STANDARD_SYMBOL): Promise<void> {
     if (!supabaseKonfiguriert()) return
     try {
       await supabase()
         .from('taetigkeit')
-        .upsert({ name, schluessel, erstellt_von: this.userId }, { onConflict: 'schluessel', ignoreDuplicates: true })
+        .upsert({ name, schluessel, symbol_typ: symbol.typ, symbol_name: symbol.name, erstellt_von: this.userId }, { onConflict: 'schluessel', ignoreDuplicates: true })
     } catch {
       // Wird beim nächsten Laden nachgeholt, sobald jemand den Namen wieder benutzt.
     }

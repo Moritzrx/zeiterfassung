@@ -6,6 +6,9 @@ import type { Profil, Regel, RegelBewertung, SymbolInfo, SystemInfo, UpdateStatu
 import { hinweisZeigen } from '../components/Hinweis'
 import { Karte } from '../components/Karte'
 import { KundenVerwaltung } from '../components/KundenVerwaltung'
+import { Papierkorb } from '../components/Papierkorb'
+import { Datenexport } from '../components/Datenexport'
+import { neuigkeitenZeigen } from '../components/NeuigkeitenDialog'
 import { SymbolWahl } from '../components/SymbolWahl'
 import { useErfassung } from '../erfassung'
 import { kurzDatum, uhrzeit } from '../format'
@@ -778,6 +781,10 @@ export function EinstellungenScreen(): ReactElement {
 
       <KundenVerwaltung />
 
+      <Papierkorb />
+
+      <Datenexport />
+
       <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">System</p>
         <div className="mt-1 divide-y divide-panel-2">
@@ -827,6 +834,22 @@ export function EinstellungenScreen(): ReactElement {
           </Zeile>
           <Zeile titel="Version" hinweis={system ? `${system.plattform === 'mac' ? 'Mac' : system.plattform === 'windows' ? 'Windows' : 'Linux'} · ${system.gepackt ? 'installierte App' : 'Entwicklungsversion'}` : undefined}>
             <span className="text-sm text-mute">{system?.version ?? ''}</span>
+            <button type="button" onClick={neuigkeitenZeigen} className="rounded-chip bg-panel-2 px-3 py-1.5 text-sm text-ink hover:bg-inaktiv">
+              Was ist neu
+            </button>
+          </Zeile>
+          <Zeile titel="Protokoll" hinweis="Fehler und Warnungen der App landen in einer Datei im Datenordner (höchstens 1 MB). Öffnen zeigt sie im Dateimanager, zum Anhängen im Chat.">
+            <button
+              type="button"
+              onClick={() => {
+                void window.api.system.protokollOeffnen().then((pfad) => {
+                  if (!pfad) hinweisZeigen('Es gibt noch keine Protokolldatei.')
+                })
+              }}
+              className="rounded-chip bg-panel-2 px-3 py-1.5 text-sm text-ink hover:bg-inaktiv"
+            >
+              Protokoll öffnen
+            </button>
           </Zeile>
           <Zeile titel="Diagnose" hinweis="Wenn etwas hakt: kopiert Stand und letzte Fehler als Text. Den Text einfach in den Chat einfügen. Keine Blockinhalte, keine Fenstertitel.">
             <button

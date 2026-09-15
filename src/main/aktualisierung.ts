@@ -43,6 +43,7 @@ let status: UpdateStatus = {
   prozent: null,
   fehler: null,
   zuletztGeprueft: null,
+  neuigkeiten: null,
   selbstInstallierend: !istMac
 }
 
@@ -50,6 +51,35 @@ interface MacVeroeffentlichung {
   version: string
   dmgUrl: string
   groesse: number
+  /** Beschreibung der Veröffentlichung (Änderungsliste), gekürzt */
+  notizen: string | null
+}
+
+/**
+ * Die Beschreibung einer Veröffentlichung als kurzen Klartext für die Update-Leiste (15. September 2026, "die Jungs
+ * sollen sehen, was das Update beinhaltet"): electron-updater liefert sie unter Windows als HTML (GitHub-Atom-Feed),
+ * die GitHub-API auf dem Mac als Markdown. Überschrift weg, Aufzählungszeichen vereinheitlicht, höchstens 8 Zeilen.
+ */
+export function notizenKuerzen(roh: unknown): string | null {
+  let text: string
+  if (typeof roh === 'string') text = roh
+  else if (Array.isArray(roh)) text = roh.map((n) => (n && typeof n === 'object' && 'note' in n ? String((n as { note: unknown }).note ?? '') : '')).join('\n')
+  else return null
+  const zeilen = text
+    .replace(/<br\s*\/?>|<\/p>|<\/li>|<\/h\d>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .split('\n')
+    .map((z) => z.replace(/^\s*(#+\s*|\*\s+|•\s*)/, (t) => (t.trim().startsWith('#') ? '' : '- ')).trim())
+    .filter((z) => z && !/^##?\s*Version/i.test(z) && !/^Version \d/.test(z))
+  if (zeilen.length === 0) return null
+  return zeilen.slice(0, 8).join('\n').slice(0, 900)
 }
 
 /** Die zuletzt gefundene Mac-Veröffentlichung und der Pfad der fertig geladenen .dmg. */
@@ -107,11 +137,11 @@ function macSelbstInstallierend(): boolean {
 async function macVeroeffentlichung(): Promise<MacVeroeffentlichung | null> {
   const antwort = await fetch(RELEASE_API, { headers: { Accept: 'application/vnd.github+json' } })
   if (!antwort.ok) throw new Error(`GitHub antwortet mit ${antwort.status}`)
-  const daten = (await antwort.json()) as { tag_name?: string; assets?: Array<{ name: string; size: number; browser_download_url: string }> }
+  const daten = (await antwort.json()) as { tag_name?: string; body?: string | null; assets?: Array<{ name: string; size: number; browser_download_url: string }> }
   const version = (daten.tag_name ?? '').replace(/^v/, '')
   const dmg = (daten.assets ?? []).find((a) => /-Mac\.dmg$/i.test(a.name))
   if (!version || !dmg) return null
-  return { version, dmgUrl: dmg.browser_download_url, groesse: dmg.size }
+  return { version, dmgUrl: dmg.browser_download_url, groesse: dmg.size, notizen: notizenKuerzen(daten.body) }
 }
 
 /** Mac: die .dmg in den Temp-Ordner laden (mit Fortschritt); eine schon vollständige Datei wird wiederverwendet. */
@@ -208,7 +238,7 @@ async function macPruefen(): Promise<void> {
     }
     macNeu = v
     const selbst = macSelbstInstallierend()
-    melden({ zustand: 'verfuegbar', neueVersion: v.version, zuletztGeprueft: jetzt, selbstInstallierend: selbst, prozent: null })
+    melden({ zustand: 'verfuegbar', neueVersion: v.version, zuletztGeprueft: jetzt, selbstInstallierend: selbst, prozent: null, neuigkeiten: v.notizen })
     if (!selbst) return
     melden({ zustand: 'laedt', prozent: 0 })
     macDmg = await macLaden(v)
@@ -272,10 +302,14 @@ export function aktualisierungStarten(hauptfenster: BrowserWindow, beenden: () =
     autoUpdater.autoInstallOnAppQuit = true
     autoUpdater.allowPrerelease = false
     autoUpdater.on('checking-for-update', () => melden({ zustand: 'prueft', fehler: null }))
-    autoUpdater.on('update-available', (info) => melden({ zustand: 'laedt', neueVersion: info.version, prozent: 0, zuletztGeprueft: new Date().toISOString() }))
-    autoUpdater.on('update-not-available', () => melden({ zustand: 'aktuell', neueVersion: null, zuletztGeprueft: new Date().toISOString() }))
+    autoUpdater.on('update-available', (info) =>
+      melden({ zustand: 'laedt', neueVersion: info.version, prozent: 0, zuletztGeprueft: new Date().toISOString(), neuigkeiten: notizenKuerzen(info.releaseNotes) })
+    )
+    autoUpdater.on('update-not-available', () => melden({ zustand: 'aktuell', neueVersion: null, neuigkeiten: null, zuletztGeprueft: new Date().toISOString() }))
     autoUpdater.on('download-progress', (p) => melden({ zustand: 'laedt', prozent: Math.round(p.percent) }))
-    autoUpdater.on('update-downloaded', (info) => melden({ zustand: 'bereit', neueVersion: info.version, prozent: 100 }))
+    autoUpdater.on('update-downloaded', (info) =>
+      melden({ zustand: 'bereit', neueVersion: info.version, prozent: 100, neuigkeiten: notizenKuerzen(info.releaseNotes) ?? status.neuigkeiten })
+    )
     autoUpdater.on('error', (e) => melden({ zustand: 'fehler', fehler: fehlerText(e), zuletztGeprueft: new Date().toISOString() }))
   }
 

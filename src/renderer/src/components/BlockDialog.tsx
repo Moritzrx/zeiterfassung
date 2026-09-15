@@ -233,12 +233,21 @@ export function BlockDialog({
       return
     }
     if (!window.api) return
+    // Nach dem Löschen bietet die Meldung "Rückgängig" an (15. September 2026, Papierkorb); später geht es
+    // unter Einstellungen → Papierkorb.
+    const ids = istGruppe ? gruppeIds : [block.id]
+    const zurueck = (): void => {
+      void Promise.all(ids.map((id) => window.api.bloecke.wiederherstellen(id))).then((liste) => {
+        const n = liste.filter(Boolean).length
+        hinweisZeigen(n === 1 ? 'Block wiederhergestellt.' : `${n} Blöcke wiederhergestellt.`)
+      })
+    }
     if (istGruppe) {
       const n = await window.api.bloecke.mehrereAendern(gruppeIds, { loeschen: true })
-      hinweisZeigen(`${n} Blöcke gelöscht.`)
+      hinweisZeigen(`${n} Blöcke gelöscht.`, { text: 'Rückgängig', onClick: zurueck })
     } else {
       await window.api.bloecke.aendern(block.id, { loeschen: true })
-      hinweisZeigen('Block gelöscht.')
+      hinweisZeigen('Block gelöscht.', { text: 'Rückgängig', onClick: zurueck })
     }
     onGespeichert()
   }

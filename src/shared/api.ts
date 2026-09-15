@@ -107,6 +107,12 @@ export interface Api {
     aendern: (id: string, aenderung: BlockAenderung) => Promise<Block | null>
     /** Mehrere Blöcke auf einmal ändern. Liefert die Anzahl. */
     mehrereAendern: (ids: string[], aenderung: BlockAenderung) => Promise<number>
+    /** Papierkorb: die in den letzten 30 Tagen gelöschten Blöcke, zuletzt gelöschte zuerst (lokal und aus der Datenbank). */
+    geloeschte: () => Promise<Block[]>
+    /** Einen gelöschten Block zurückholen. Fenstertitel und Notiz sind beim Löschen entfernt worden und bleiben leer. */
+    wiederherstellen: (id: string) => Promise<Block | null>
+    /** Datenexport: alle eigenen Blöcke zwischen zwei Zeitpunkten (ISO), auch älter als 13 Wochen (dann aus der Datenbank). */
+    exportieren: (von: string, bis: string) => Promise<Block[]>
     /** Wird aufgerufen, wenn sich die Blockliste geändert hat. */
     onAenderung: (rueckruf: () => void) => Abmelden
   }
@@ -150,6 +156,10 @@ export interface Api {
     bildschirmrechtAnfragen: () => Promise<SystemInfo['bildschirmrecht']>
     /** Diagnosetext (App, System, Erfassung, Abgleich, letzte Fehler) zum Einfügen in den Chat. */
     diagnose: () => Promise<string>
+    /** Die Protokolldatei im Dateimanager zeigen; liefert den Pfad oder null, wenn es noch keine gibt. */
+    protokollOeffnen: () => Promise<string | null>
+    /** Die App komplett neu starten (Wachhund-Leiste "App neu starten"). */
+    neustart: () => Promise<void>
   }
   update: {
     status: () => Promise<UpdateStatus>

@@ -17,7 +17,8 @@ const LEER: ErfassungsStatus = {
   neuerRang: null,
   unsynchronisiert: 0,
   letzterSync: null,
-  syncFehler: null
+  syncFehler: null,
+  warnung: null
 }
 
 /** Der aktuelle Stand der Erfassung, alle 5 Sekunden frisch aus dem Hintergrundprozess. */

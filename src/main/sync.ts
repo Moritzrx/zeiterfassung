@@ -8,7 +8,7 @@ const PAKET = 200
 const SEITE = 1000
 const WOCHEN_ZURUECK = 13
 
-interface Zeile {
+export interface Zeile {
   id: string
   user_id: string
   start: string
@@ -55,7 +55,7 @@ function zuZeile(b: Block): Zeile {
   return zeile
 }
 
-function vonZeile(z: Zeile): Block {
+export function vonZeile(z: Zeile): Block {
   return {
     id: z.id,
     userId: z.user_id,

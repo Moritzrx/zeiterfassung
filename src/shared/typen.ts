@@ -136,6 +136,8 @@ export interface UpdateStatus {
   prozent: number | null
   fehler: string | null
   zuletztGeprueft: string | null
+  /** Was die neue Version bringt (aus der GitHub-Veröffentlichung, gekürzt), sonst null */
+  neuigkeiten: string | null
   /**
    * true, wenn die App das Update selbst einspielen kann: Windows immer, Mac wenn sie in einem beschreibbaren
    * Ordner liegt (Programme). Sonst öffnet der Knopf die Download-Seite.
@@ -337,4 +339,6 @@ export interface ErfassungsStatus {
   unsynchronisiert: number
   letzterSync: string | null
   syncFehler: string | null
+  /** Meldung des Wachhunds (Erfassung, Speichern oder Abgleich hakt), sonst null (seit 1.0.48) */
+  warnung: string | null
 }

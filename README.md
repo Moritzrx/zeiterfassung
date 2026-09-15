@@ -80,7 +80,7 @@ Das **rote X** oben im Fenster schließt nur das Fenster, die Erfassung läuft w
 
 ### Die sechs Screens (Navigation unten)
 
-1. **Heute**: Ring mit den vier Anteilen, produktive Stunden groß, der laufende Block, ein Hinweis auf ungeklärte Blöcke mit "Durchgehen" und die Liste aller Blöcke des Tages. Mit den Pfeilen blättert man zu früheren Tagen. Ein Klick auf einen Block öffnet ihn zum Bearbeiten (Bewertung, Tätigkeit, Notiz, Regel anlegen, Löschen).
+1. **Heute**: Ring mit den vier Anteilen, produktive Stunden groß, der laufende Block, ein Hinweis auf ungeklärte Blöcke mit "Durchgehen" und die Liste aller Blöcke des Tages. Mit den Pfeilen blättert man zu früheren Tagen. Ein Klick auf einen Block öffnet ihn zum Bearbeiten (Bewertung, Tätigkeit, Notiz, Regel anlegen, Löschen). Über der Liste liegt seit 1.0.48 der **Tagesverlauf**: ein Zeitstrahl von 7 bis 20 Uhr, grün ist gezählte Zeit, gestrichelt sind Lücken ohne Aufzeichnung; Klick auf eine Lücke öffnet "Nachtragen". Pausen werden dort bewusst nicht gezeichnet.
 2. **Woche**: Rang-Ring, Balken Montag bis Sonntag (grün = produktiv, nur das zählt gegen die Richtwert-Linie; Unproduktives und Ungeklärtes schmal daneben; der Richtwert ist das Ziel geteilt durch die Arbeitstage, einstellbar 5 bis 7 unter Einstellungen → Wochenziele), Tätigkeiten gegen ihre Wochenziele, "Woche durchgehen" für auffällige Blöcke, die Auszeichnungen und ab Sonntagabend die Wochenzusammenfassung. Der Knopf "Alle 15 Ränge ansehen" zeigt die Übersicht.
 3. **Auswertung**: Verlauf, Trend der Wochenränge, Verteilung der Tätigkeiten und Hochrechnung auf Woche, Monat und Jahr. Der Zeitraum ist oben wählbar (7 Tage bis 12 Monate). Dazu der **Kundenbericht** (seit 1.0.47): produktive Stunden je Kunde im Monat, alle drei zusammen, je Person und Tätigkeit, mit "Als Datei speichern" als CSV-Tabelle für Excel und Rechnung.
 4. **Team**: Wochenstunden aller drei, Rang-Abzeichen, dazu die Karte "Was die anderen machen": je Person, woran sie gerade sitzt ("Gerade: Konzept seit 09:12") und welche Tätigkeiten heute oder diese Woche wie viele Stunden bekommen haben, mit Kunde. Man sieht nur Tätigkeiten und Summen, keine Programme oder Fenstertitel. Darunter Verlauf über mehrere Wochen und Rangliste. Die eigene Linie ist grün. Braucht einmalig das Skript 18 in Supabase.
@@ -131,6 +131,8 @@ Bronze 1 bis 3, Silber 4 bis 6, Gold 7 bis 9, Champion 10, Diamant 11 bis 15. Je
 
 Die App sieht kurz nach dem Start und danach alle vier Stunden auf GitHub nach, ob es eine neue Version gibt. Unter Windows wird sie im Hintergrund geladen und beim nächsten Start eingespielt, eine Leiste über der Navigation bietet den Neustart an. Auf dem Mac (seit 1.0.44) lädt die App die neue `.dmg` ebenfalls im Hintergrund; ein Klick auf **Jetzt neu starten** tauscht die App im Ordner Programme aus (die alte Fassung landet im Papierkorb) und startet sie neu, ohne erneute Warnung von macOS. Das geht nur, wenn die App im Ordner Programme liegt; sonst öffnet der Knopf wie früher die Download-Seite. Unter Einstellungen → System → Updates steht der Stand, dort lässt sich auch sofort prüfen.
 
+**Update-News (seit 1.0.48):** Die Leiste zeigt mit "Was ist neu?" schon vor dem Einspielen, was die neue Version bringt. Nach dem Update erscheint beim ersten Start einmal ein Fenster mit allen Änderungen seit der zuletzt gesehenen Version (wer Versionen überspringt, sieht alle dazwischen). Unter Einstellungen → System → **Was ist neu** lässt es sich jederzeit wieder öffnen.
+
 ### Wochenrückblick
 
 Jeden Montag, sobald die App sichtbar ist, erscheint einmal ein Wochenrückblick als Vollbild: erreichter Rang mit Wappen, produktive und unproduktive Stunden, bester Tag, Trophäen der Woche, Platz im Team und die neu freigeschalteten Auszeichnungen. Ein Klick auf „Auf in die neue Woche" schließt ihn. In der Liga-Rangliste auf dem Team-Screen steht bei jeder Person außerdem, wie viele Trophäen die laufende Woche voraussichtlich bringt.
@@ -178,7 +180,7 @@ Sonntags ab 18 Uhr meldet sich die App einmal kurz und zeigt auf dem Wochen-Scre
 
 ## 3. Symbole für Tätigkeiten
 
-Jede Tätigkeit hat ein Symbol, das für das ganze Team gilt. Ändern: **Einstellungen → Tätigkeiten und Symbole** → auf das Symbol neben der Tätigkeit klicken → Marke (Instagram, TikTok, LinkedIn, Adobe, Canva, ChatGPT ...) oder ein allgemeines Symbol wählen.
+Jede Tätigkeit hat ein Symbol, das für das ganze Team gilt. Ändern: **Einstellungen → Tätigkeiten und Symbole** → auf das Symbol neben der Tätigkeit klicken → Marke (Instagram, TikTok, LinkedIn, Adobe, Canva, ChatGPT ...) oder ein allgemeines Symbol wählen. Seit 1.0.48 bekommt jede neue Tätigkeit automatisch einen passenden Vorschlag aus ihrem Namen (Telefon bei "Call", Filmklappe bei "Dreh", Instagram-Logo bei "Instagram Learning" ...); alle vorhandenen Tätigkeiten ohne Symbol wurden einmal so belegt. Der Vorschlag lässt sich wie jedes Symbol ändern.
 
 ---
 
@@ -190,6 +192,9 @@ Jede Tätigkeit hat ein Symbol, das für das ganze Team gilt. Ändern: **Einstel
 - **Der Schreibtisch oder Systemfenster tauchen als Programm auf**: Das sollte nicht passieren; falls doch, bitte Moritz sagen, dann kommt der Name auf die Ausnahmeliste.
 - **Die App startet nicht mehr mit dem Rechner**: Einstellungen → Erfassung → Autostart einschalten.
 - **Zwei Personen am selben Rechner**: In den Einstellungen abmelden, dann meldet sich die andere Person an. Die lokalen Daten sind je Konto getrennt.
+- **Eine rote Leiste "Die App hakt" erscheint** (seit 1.0.48): Der Wachhund prüft jede Minute, ob die Erfassung noch tickt, ob Änderungen gespeichert werden und ob wartende Blöcke in die Datenbank kommen. Hakt etwas, sagt die Leiste, was, und **App neu starten** behebt es meistens. Bleibt es danach rot: Einstellungen → System → **Protokoll öffnen** zeigt die Datei `protokoll.log` mit den Fehlern; die kann man in den Chat hängen.
+- **Ein Block wurde versehentlich gelöscht**: Direkt nach dem Löschen erscheint unten "Rückgängig". Später: Einstellungen → **Papierkorb** listet alles, was in den letzten 30 Tagen gelöscht wurde, mit "Wiederherstellen" (der Fenstertitel wurde beim Löschen entfernt und bleibt leer).
+- **Daten sichern oder an die Buchhaltung geben**: Einstellungen → **Datenexport** speichert alle Blöcke eines Zeitraums (Monat, Jahr, alles) als Excel-Tabelle (CSV) mit Datum, Zeiten, Dauer, Tätigkeit, Kunde, Bewertung, Programm, Fenstertitel und Notiz.
 
 ---
 
@@ -271,7 +276,7 @@ Für eine nummerierte Version kann Moritz zusätzlich eine Marke setzen (`git ta
 
 ### Neue Version verteilen
 
-Versionsnummer in `package.json` erhöhen, committen, Tag `vX.Y.Z` pushen; GitHub baut beide Installer und hängt sie an die Veröffentlichung. Die installierten Apps holen sich die neue Version dann selbst (Windows beim nächsten Start, Mac nach Klick auf "Jetzt neu starten"). Von Hand geht es weiterhin: unter Windows die neue `.exe` über die alte installieren, auf dem Mac die neue App in den Ordner Programme ziehen und "Ersetzen" wählen.
+Versionsnummer in `package.json` erhöhen, in `src/shared/aenderungen.json` oben einen Eintrag mit Titel und Punkten für die Version ergänzen (daraus entstehen die Beschreibung der Veröffentlichung und das "Neu in Version"-Fenster in der App), committen, Tag `vX.Y.Z` pushen; GitHub baut beide Installer und hängt sie an die Veröffentlichung. Die installierten Apps holen sich die neue Version dann selbst (Windows beim nächsten Start, Mac nach Klick auf "Jetzt neu starten"). Von Hand geht es weiterhin: unter Windows die neue `.exe` über die alte installieren, auf dem Mac die neue App in den Ordner Programme ziehen und "Ersetzen" wählen.
 
 ---
 

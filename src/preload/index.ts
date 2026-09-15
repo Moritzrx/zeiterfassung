@@ -56,6 +56,9 @@ const api: Api = {
     ungeklaerteListe: () => ipcRenderer.invoke('bloecke:ungeklaerteListe'),
     aendern: (id, aenderung) => ipcRenderer.invoke('bloecke:aendern', id, aenderung),
     mehrereAendern: (ids, aenderung) => ipcRenderer.invoke('bloecke:mehrereAendern', ids, aenderung),
+    geloeschte: () => ipcRenderer.invoke('bloecke:geloeschte'),
+    wiederherstellen: (id) => ipcRenderer.invoke('bloecke:wiederherstellen', id),
+    exportieren: (von, bis) => ipcRenderer.invoke('bloecke:exportieren', von, bis),
     onAenderung: (rueckruf) => {
       const handler = (): void => rueckruf()
       ipcRenderer.on('bloecke:aenderung', handler)
@@ -86,7 +89,9 @@ const api: Api = {
     info: () => ipcRenderer.invoke('system:info'),
     autostartSetzen: (an) => ipcRenderer.invoke('system:autostartSetzen', an),
     bildschirmrechtAnfragen: () => ipcRenderer.invoke('system:bildschirmrechtAnfragen'),
-    diagnose: () => ipcRenderer.invoke('system:diagnose')
+    diagnose: () => ipcRenderer.invoke('system:diagnose'),
+    protokollOeffnen: () => ipcRenderer.invoke('system:protokollOeffnen'),
+    neustart: () => ipcRenderer.invoke('system:neustart')
   },
   update: {
     status: () => ipcRenderer.invoke('update:status'),

@@ -134,6 +134,10 @@ export class Erfassung extends EventEmitter {
   private zeitgrenze = 0
   private timer: NodeJS.Timeout | null = null
   private taktLaeuft = false
+  /** Wann der letzte Takt durchgelaufen ist (ms), für den Wachhund; 0 vor dem ersten Takt. */
+  taktZuletztMs = 0
+  /** Letzter Fehler beim Schreiben der Ablage (Fokus, Weg, Einstellung), sonst null; für den Wachhund. */
+  ablageFehler: string | null = null
   private readonly geraet = hostname()
 
   constructor(
@@ -386,7 +390,10 @@ export class Erfassung extends EventEmitter {
     }
     try {
       writeFileSync(this.ablagePfad, JSON.stringify(daten))
+      this.ablageFehler = null
     } catch (fehler) {
+      // Nicht verloren geben: der nächste Takt versucht es erneut, der Wachhund meldet es (15. September 2026).
+      this.ablageFehler = fehler instanceof Error ? fehler.message : String(fehler)
       console.error('Abwesenheits-Ablage:', fehler)
     }
   }
@@ -651,6 +658,9 @@ export class Erfassung extends EventEmitter {
       console.error('Erfassung:', fehler)
     } finally {
       this.taktLaeuft = false
+      this.taktZuletztMs = Date.now()
+      // Eine fehlgeschlagene Ablage (Fokus wäre nach einem Neustart weg) jeden Takt erneut versuchen.
+      if (this.ablageFehler) this.ablageSpeichern()
     }
   }
 
