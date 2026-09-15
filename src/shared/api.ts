@@ -16,7 +16,9 @@ import type {
   SystemInfo,
   UpdateStatus,
   Tagessumme,
+  TeamAktuell,
   TeamMitglied,
+  TeamTaetigkeit,
   TeamWoche,
   Ziel
 } from './typen'
@@ -183,6 +185,10 @@ export interface Api {
     stand: () => Promise<TeamMitglied[]>
     /** Produktive Sekunden je Person und Woche zwischen zwei Kalendertagen ("JJJJ-MM-TT"). */
     wochen: (vonDatum: string, bisDatum: string) => Promise<TeamWoche[]>
+    /** Produktive Sekunden je Person, Tätigkeit und Kunde im Zeitraum (ISO), eigene aus den lokalen Blöcken. Braucht Skript 18. */
+    taetigkeiten: (von: string, bis: string) => Promise<TeamTaetigkeit[]>
+    /** Der jüngste Block je Person aus den letzten 24 Stunden ("Gerade: …"), eigener live. Braucht Skript 18. */
+    aktuell: () => Promise<TeamAktuell[]>
   }
   profil: {
     /** Die eigenen Einstellungen. */

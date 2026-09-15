@@ -160,6 +160,26 @@ export interface TeamMitglied {
   istIch: boolean
 }
 
+/** Produktive Sekunden einer Person je Tätigkeit und Kunde in einem Zeitraum (Datenbankfunktion team_taetigkeiten, Skript 18). */
+export interface TeamTaetigkeit {
+  userId: string
+  name: string
+  taetigkeit: string | null
+  kunde: string | null
+  produktiveSekunden: number
+}
+
+/** Der jüngste Block einer Person aus den letzten 24 Stunden (Datenbankfunktion team_aktuell), ohne Programm und Fenstertitel. */
+export interface TeamAktuell {
+  userId: string
+  name: string
+  taetigkeit: string | null
+  kunde: string | null
+  start: string
+  ende: string
+  bewertung: Bewertung
+}
+
 /** Der Ligastand einer Person aus der Datenbankfunktion liga_stand. */
 export interface LigaStand {
   userId: string

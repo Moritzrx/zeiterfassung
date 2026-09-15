@@ -18,7 +18,10 @@ import type {
   SymbolInfo,
   SystemInfo,
   Tagessumme,
+  Bewertung,
+  TeamAktuell,
   TeamMitglied,
+  TeamTaetigkeit,
   TeamWoche,
   Ziel,
   Abwesenheit
@@ -839,6 +842,63 @@ function ipcRegistrieren(): void {
     await urlaubLoeschen(id)
   })
 
+  // Tätigkeiten der anderen (15. September 2026): Summen je Person, Tätigkeit und Kunde aus team_taetigkeiten (Skript 18);
+  // die eigenen kommen live aus den lokalen Blöcken. Keine Programme, keine Fenstertitel.
+  ipcMain.handle('team:taetigkeiten', async (_ereignis, vonIso: string, bisIso: string): Promise<TeamTaetigkeit[]> => {
+    if (!sitzung) return []
+    if (!supabaseKonfiguriert()) throw new Error('Keine Datenbank konfiguriert.')
+    const von = new Date(vonIso)
+    const bis = new Date(bisIso)
+    const { data, error } = await supabase().rpc('team_taetigkeiten', { von: von.toISOString(), bis: bis.toISOString() })
+    if (error) {
+      if (/team_taetigkeiten/.test(error.message)) throw new Error('Dafür muss in Supabase einmal das Skript 18 (18_team_taetigkeiten.sql) ausgeführt werden.')
+      throw new Error('Datenbank nicht erreichbar: ' + error.message)
+    }
+    const eigeneId = sitzung.userId
+    const eigenerName = sitzung.profil.daten?.name ?? 'Ich'
+    const fremde = ((data ?? []) as Array<{ user_id: string; name: string; taetigkeit: string | null; kunde: string | null; produktive_sekunden: number | string }>)
+      .filter((z) => z.user_id !== eigeneId)
+      .map((z) => ({ userId: z.user_id, name: z.name, taetigkeit: z.taetigkeit, kunde: z.kunde, produktiveSekunden: Number(z.produktive_sekunden) }))
+    const eigene = new Map<string, TeamTaetigkeit>()
+    for (const b of sitzung.speicher.imZeitraum(von, bis)) {
+      if (b.bewertung !== 'produktiv' || b.geloeschtAm) continue
+      const s = Math.max(Date.parse(b.start), von.getTime())
+      const e = Math.min(Date.parse(b.ende), bis.getTime())
+      if (e <= s) continue
+      const schluessel = `${b.taetigkeit ?? ''}|${b.kunde ?? ''}`
+      const z = eigene.get(schluessel) ?? { userId: eigeneId, name: eigenerName, taetigkeit: b.taetigkeit, kunde: b.kunde, produktiveSekunden: 0 }
+      z.produktiveSekunden += (e - s) / 1000
+      eigene.set(schluessel, z)
+    }
+    return [...fremde, ...eigene.values()]
+  })
+  ipcMain.handle('team:aktuell', async (): Promise<TeamAktuell[]> => {
+    if (!sitzung) return []
+    if (!supabaseKonfiguriert()) throw new Error('Keine Datenbank konfiguriert.')
+    const { data, error } = await supabase().rpc('team_aktuell')
+    if (error) {
+      if (/team_aktuell/.test(error.message)) throw new Error('Dafür muss in Supabase einmal das Skript 18 (18_team_taetigkeiten.sql) ausgeführt werden.')
+      throw new Error('Datenbank nicht erreichbar: ' + error.message)
+    }
+    const eigeneId = sitzung.userId
+    const liste = ((data ?? []) as Array<{ user_id: string; name: string; taetigkeit: string | null; kunde: string | null; start: string; ende: string; bewertung: Bewertung }>)
+      .filter((z) => z.user_id !== eigeneId)
+      .map((z) => ({ userId: z.user_id, name: z.name, taetigkeit: z.taetigkeit, kunde: z.kunde, start: new Date(z.start).toISOString(), ende: new Date(z.ende).toISOString(), bewertung: z.bewertung }))
+    // Eigener Stand live: der laufende Block, sonst der jüngste lokale Block der letzten 24 Stunden.
+    const e = sitzung.erfassung.status()
+    const jetzt = new Date()
+    const eigenerName = sitzung.profil.daten?.name ?? 'Ich'
+    if (e.laufenderBlock) {
+      liste.push({ userId: eigeneId, name: eigenerName, taetigkeit: e.laufenderBlock.taetigkeit, kunde: e.fokus?.kunde ?? null, start: e.laufenderBlock.start, ende: jetzt.toISOString(), bewertung: e.laufenderBlock.bewertung })
+    } else {
+      const letzter = sitzung.speicher
+        .imZeitraum(new Date(jetzt.getTime() - 86_400_000), jetzt)
+        .filter((b) => !b.geloeschtAm)
+        .sort((a, b) => b.ende.localeCompare(a.ende))[0]
+      if (letzter) liste.push({ userId: eigeneId, name: eigenerName, taetigkeit: letzter.taetigkeit, kunde: letzter.kunde, start: letzter.start, ende: letzter.ende, bewertung: letzter.bewertung })
+    }
+    return liste
+  })
   ipcMain.handle('team:wochen', async (_ereignis, vonDatum: string, bisDatum: string): Promise<TeamWoche[]> => {
     if (!sitzung) return []
     if (!supabaseKonfiguriert()) throw new Error('Keine Datenbank konfiguriert.')

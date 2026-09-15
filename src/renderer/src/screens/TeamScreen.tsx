@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { STANDARD_GESAMTZIEL, rang, rangName, zielRang } from '@shared/rang'
-import type { TeamMitglied, TeamWoche, Ziel } from '@shared/typen'
-import { berlinDatum, datumVerschieben, datumZuTagesanfang, kalenderwoche, wochenanfang } from '@shared/zeit'
+import type { TeamAktuell, TeamMitglied, TeamTaetigkeit, TeamWoche, Ziel } from '@shared/typen'
+import { berlinDatum, datumVerschieben, datumZuTagesanfang, kalenderwoche, tagesanfang, wochenanfang } from '@shared/zeit'
 import { Karte } from '../components/Karte'
+import { TeamTaetigkeiten } from '../components/TeamTaetigkeiten'
 import { LigaRangliste } from '../components/LigaRangliste'
 import { RangAbzeichen } from '../components/RangAbzeichen'
 import { RangUebersicht } from '../components/RangUebersicht'
@@ -51,6 +52,10 @@ export function TeamScreen(): ReactElement {
   const [teamWochen, setTeamWochen] = useState<TeamWoche[]>([])
   const [verlaufFehler, setVerlaufFehler] = useState<string | null>(null)
   const [uebersichtOffen, setUebersichtOffen] = useState(false)
+  const [taetigkeitenHeute, setTaetigkeitenHeute] = useState<TeamTaetigkeit[]>([])
+  const [taetigkeitenWoche, setTaetigkeitenWoche] = useState<TeamTaetigkeit[]>([])
+  const [aktuell, setAktuell] = useState<TeamAktuell[]>([])
+  const [taetigkeitenFehler, setTaetigkeitenFehler] = useState<string | null>(null)
 
   const laden = useCallback(async () => {
     if (!window.api) return
@@ -62,6 +67,21 @@ export function TeamScreen(): ReactElement {
       setStand(new Date().toISOString())
     } catch (e) {
       setFehler(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : String(e))
+    }
+    // Tätigkeiten der anderen (heute und diese Woche) und der aktuelle Stand je Person.
+    try {
+      const jetzt = new Date()
+      const [heute, woche, stand] = await Promise.all([
+        window.api.team.taetigkeiten(tagesanfang(jetzt).toISOString(), jetzt.toISOString()),
+        window.api.team.taetigkeiten(wochenanfang(jetzt).toISOString(), jetzt.toISOString()),
+        window.api.team.aktuell()
+      ])
+      setTaetigkeitenHeute(heute)
+      setTaetigkeitenWoche(woche)
+      setAktuell(stand)
+      setTaetigkeitenFehler(null)
+    } catch (e) {
+      setTaetigkeitenFehler(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : String(e))
     }
   }, [])
 
@@ -215,6 +235,16 @@ export function TeamScreen(): ReactElement {
           )
         })}
       </div>
+
+      {zeilen.length > 0 && (
+        <TeamTaetigkeiten
+          personen={zeilen.map((z) => ({ userId: z.userId, name: z.name, istIch: z.istIch }))}
+          heute={taetigkeitenHeute}
+          woche={taetigkeitenWoche}
+          aktuell={aktuell}
+          fehler={taetigkeitenFehler}
+        />
+      )}
 
       {zeilen.length > 0 && (
         <Karte>
