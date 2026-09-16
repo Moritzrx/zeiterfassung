@@ -7,6 +7,7 @@ Der vollständige Auftrag steht in `docs/auftrag.md`. Diese Datei hält Entschei
 - Der Auftraggeber (Moritz) ist kein Entwickler. Alles auf Deutsch, jeden Schritt in einfachen Worten erklären, genau sagen, was er wo klicken muss. Nach jedem Schritt eine Testanleitung.
 - Nutzungslimit: Das Claude-Konto wird von drei Personen geteilt. Keine Agenten-Schwärme, keine großen Workflows. Arbeit im Hauptkontext erledigen.
 - Regelmäßig committen, deutsche Commit-Nachrichten. Alle Texte in der App auf Deutsch, Anrede "du".
+- FREIGABE VOR VERÖFFENTLICHUNG (16. September 2026, Auftraggeber: "erst eine Übersicht, was alles verändert wurde, dann ergänze ich noch, und erst wenn ich das Go gebe, gibst du das für Filipo und Leon frei; nicht zehn Updates hintereinander"): Kein Tag `vX.Y.Z`, kein Mac-Bau, keine GitHub-Veröffentlichung ohne ausdrückliches Go. Ablauf: bauen und in der Entwicklungsversion prüfen, bei Bedarf lokal auf dem Windows-PC des Auftraggebers vorab installieren (electron-updater geht nie auf eine ältere Version zurück, das ist ungefährlich), dann eine Übersicht aller Änderungen (Grundlage: der Eintrag in `src/shared/aenderungen.json`) und nach Ergänzungen fragen; Wünsche einarbeiten; erst auf "Go" den Tag pushen. Commits auf `main` pushen ist jederzeit erlaubt, der Ablauf reagiert nur auf Tags.
 - Große Bash-Befehle mit vielen Heredocs scheitern in dieser Umgebung. Dateien mit dem Write-Tool schreiben.
 
 ## Technik (fest vorgegeben)
