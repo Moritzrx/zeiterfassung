@@ -11,6 +11,7 @@ import { TrendBalken, type Trendwert } from '../components/TrendBalken'
 import { VerteilungsRing } from '../components/VerteilungsRing'
 import { KundenTabelle } from '../components/KundenTabelle'
 import { Kundenbericht } from '../components/Kundenbericht'
+import { Stundenprofil } from '../components/Stundenprofil'
 import { useKunden } from '../kunden'
 import { datumText, kurzDatum, stundenText } from '../format'
 
@@ -168,6 +169,12 @@ export function AuswertungScreen(): ReactElement {
           <MonatsVerlauf werte={verlauf} />
         </div>
         <p className="mt-2 text-xs text-dim">Grüne Fläche: je Tag. Graue Linie: Schnitt der letzten 7 Kalendertage, Wochenende eingerechnet.</p>
+      </Karte>
+
+      <Karte>
+        <p className="text-xs tracking-wide text-mute uppercase">Wann du arbeitest, letzte {zeitraumLabel}</p>
+        <Stundenprofil bloecke={bloecke} vonMs={datumZuTagesanfang(verlaufVon).getTime()} bisMs={naechsterTagesanfang(datumZuTagesanfang(heute)).getTime()} />
+        {tage > LOKALE_WOCHEN * 7 && <p className="mt-2 text-xs text-dim">Gerechnet über die letzten {LOKALE_WOCHEN} Wochen, weiter zurück liegen die Blöcke nicht mehr auf diesem Rechner.</p>}
       </Karte>
 
       <Karte>

@@ -129,6 +129,12 @@ const api: Api = {
     taetigkeiten: (von, bis) => ipcRenderer.invoke('team:taetigkeiten', von, bis),
     aktuell: () => ipcRenderer.invoke('team:aktuell')
   },
+  ki: {
+    status: () => ipcRenderer.invoke('ki:status'),
+    schluesselSetzen: (text) => ipcRenderer.invoke('ki:schluesselSetzen', text),
+    schluesselEntfernen: () => ipcRenderer.invoke('ki:schluesselEntfernen'),
+    fragen: (verlauf) => ipcRenderer.invoke('ki:fragen', verlauf)
+  },
   bericht: {
     speichern: (dateiname, inhalt) => ipcRenderer.invoke('bericht:speichern', dateiname, inhalt)
   },

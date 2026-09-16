@@ -7,6 +7,7 @@ import { hinweisZeigen } from '../components/Hinweis'
 import { Karte } from '../components/Karte'
 import { KundenVerwaltung } from '../components/KundenVerwaltung'
 import { Papierkorb } from '../components/Papierkorb'
+import { AssistentEinstellungen } from '../components/AssistentEinstellungen'
 import { Datenexport } from '../components/Datenexport'
 import { neuigkeitenZeigen } from '../components/NeuigkeitenDialog'
 import { SymbolWahl } from '../components/SymbolWahl'
@@ -780,6 +781,8 @@ export function EinstellungenScreen(): ReactElement {
       </Karte>
 
       <KundenVerwaltung />
+
+      <AssistentEinstellungen />
 
       <Papierkorb />
 

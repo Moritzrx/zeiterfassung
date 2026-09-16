@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
-import { Crosshair, DoorOpen, LogIn, Pause, Play, Square } from 'lucide-react'
+import { Crosshair, DoorOpen, LogIn, Pause, Play, Sparkles, Square } from 'lucide-react'
+import { assistentOeffnen } from './AssistentDialog'
 import { useErfassung } from '../erfassung'
 import { uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
@@ -102,6 +103,11 @@ export function Kopfzeile(): ReactElement {
         )}
       </div>
       <div className="flex items-center gap-1">
+        {/* KI-Assistent (16. September 2026): Fragen zur App, Antworten aus der Anleitung und dem aktuellen Stand. */}
+        <button type="button" onClick={assistentOeffnen} className={`${KNOPF} text-ink hover:bg-panel-2`} title="Fragen zur App: der Assistent kennt die ganze Anleitung">
+          <Sparkles size={16} strokeWidth={1.75} />
+          Fragen
+        </button>
         {weg ? (
           <button type="button" onClick={() => void wegBeenden()} className={`${KNOPF} bg-produktiv/15 text-produktiv hover:bg-produktiv/25`} title="Rückkehr melden (sonst beendet die erste Eingabe die Abwesenheit)">
             <LogIn size={16} strokeWidth={1.75} />

@@ -37,7 +37,7 @@ export interface AuthErgebnis {
   fehler: string | null
 }
 
-import type { LigaStand, Urlaub } from './typen'
+import type { KiNachricht, KiStatus, LigaStand, Urlaub } from './typen'
 
 /** Abmelden einer Ereignis-Anmeldung. */
 export type Abmelden = () => void
@@ -205,6 +205,15 @@ export interface Api {
   bericht: {
     /** Textdatei über den Speichern-Dialog ablegen (Kundenbericht als CSV); liefert den Pfad oder null bei Abbruch. */
     speichern: (dateiname: string, inhalt: string) => Promise<string | null>
+  }
+  ki: {
+    /** Ob ein Anthropic-Schlüssel hinterlegt ist und welches Modell antwortet. */
+    status: () => Promise<KiStatus>
+    /** Schlüssel hinterlegen (verschlüsselt im Datenordner); wirft bei offensichtlich falschem Format. */
+    schluesselSetzen: (text: string) => Promise<KiStatus>
+    schluesselEntfernen: () => Promise<KiStatus>
+    /** Den Verlauf (letzte Nachricht vom Nutzer) beantworten; wirft mit verständlicher Meldung bei Fehlern. */
+    fragen: (verlauf: KiNachricht[]) => Promise<string>
   }
   profil: {
     /** Die eigenen Einstellungen. */

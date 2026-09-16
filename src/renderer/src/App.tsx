@@ -7,6 +7,7 @@ import { Hinweise, hinweisZeigen } from './components/Hinweis'
 import { UpdateHinweis } from './components/UpdateHinweis'
 import { WarnungHinweis } from './components/WarnungHinweis'
 import { NeuigkeitenHalter } from './components/NeuigkeitenDialog'
+import { AssistentHalter } from './components/AssistentDialog'
 import { Wochenrueckblick } from './components/Wochenrueckblick'
 import { Hintergrund } from './components/Hintergrund'
 import { Kopfzeile } from './components/Kopfzeile'
@@ -193,6 +194,9 @@ function Oberflaeche(): ReactElement {
       <Hinweise />
       <Fehlerschutz bereich="Neuigkeiten">
         <NeuigkeitenHalter />
+      </Fehlerschutz>
+      <Fehlerschutz bereich="Assistent">
+        <AssistentHalter />
       </Fehlerschutz>
       <Fehlerschutz bereich="Aufstieg">
         <RangAufstieg />
