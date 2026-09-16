@@ -354,3 +354,11 @@ export interface KiStatus {
   eingerichtet: boolean
   modell: string
 }
+
+/** Ein Wissenseintrag für den KI-Assistenten (Tabelle wissen, Skript 20): gemeinsam für das Team. */
+export interface Wissen {
+  schluessel: string
+  titel: string
+  inhalt: string
+  geaendertAm: string
+}

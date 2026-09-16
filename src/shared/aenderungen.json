@@ -4,7 +4,8 @@
     "datum": "2026-09-16",
     "titel": "KI-Assistent, Wann du arbeitest, Wachhund ohne Fehlalarm nach dem Schlafen",
     "punkte": [
-      "KI-Assistent: oben rechts „Fragen“ öffnet einen Chat, der die ganze Anleitung kennt und deinen aktuellen Stand sieht (Fokus, Stunden, Einstellungen). Einmalig einen Anthropic-Schlüssel unter Einstellungen → KI-Assistent einfügen.",
+      "KI-Assistent: oben rechts „Fragen“ öffnet einen Chat, der die ganze Anleitung, alle Spielregeln (Ränge, Liga, Medaillen) und deinen aktuellen Stand kennt (Fokus, Stunden, Einstellungen). Einmalig einen Anthropic-Schlüssel unter Einstellungen → KI-Assistent einfügen.",
+      "Wissen über wessamedia: unter Einstellungen → KI-Assistent stehen zwei Textfelder („Über wessamedia“, „Kunden und Projekte“). Was dort steht, weiß der Assistent bei allen dreien; Fragen zur Firma oder zu Kunden beantwortet er nur daraus.",
       "Auswertung: neue Karte „Wann du arbeitest“ mit dem Schnitt je Stunde des Tages, einem Raster Wochentag mal Stunde und drei Sätzen dazu (produktivste Phase, schwächste Stunde, stärkster Wochentag), für 7 Tage bis 12 Wochen.",
       "Wachhund: nach dem Aufwachen des Rechners und nach dem Start gilt eine Schonfrist von fünf Minuten, und keine Prüfung misst mehr über einen Schlaf hinweg. Die Meldung „hakt seit 500 Minuten“ nach einer Nacht gibt es nicht mehr."
     ]

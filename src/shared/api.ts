@@ -37,7 +37,7 @@ export interface AuthErgebnis {
   fehler: string | null
 }
 
-import type { KiNachricht, KiStatus, LigaStand, Urlaub } from './typen'
+import type { KiNachricht, KiStatus, LigaStand, Urlaub, Wissen } from './typen'
 
 /** Abmelden einer Ereignis-Anmeldung. */
 export type Abmelden = () => void
@@ -214,6 +214,10 @@ export interface Api {
     schluesselEntfernen: () => Promise<KiStatus>
     /** Den Verlauf (letzte Nachricht vom Nutzer) beantworten; wirft mit verständlicher Meldung bei Fehlern. */
     fragen: (verlauf: KiNachricht[]) => Promise<string>
+    /** Gemeinsames Wissen über wessamedia (Tabelle wissen, Skript 20), alle Einträge. */
+    wissen: () => Promise<Wissen[]>
+    /** Einen Wissenseintrag für das ganze Team speichern; liefert alle Einträge danach. */
+    wissenSetzen: (schluessel: string, titel: string, inhalt: string) => Promise<Wissen[]>
   }
   profil: {
     /** Die eigenen Einstellungen. */

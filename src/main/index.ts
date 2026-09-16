@@ -4,6 +4,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { aktualisierungStarten } from './aktualisierung'
 import { KI_MODELL, eingerichtet as kiEingerichtet, fragen as kiFragen, schluesselEntfernen as kiSchluesselEntfernen, schluesselSetzen as kiSchluesselSetzen } from './assistent'
+import { wissenLaden, wissenSetzen } from './wissen'
 import type {
   Auszeichnung,
   Block,
@@ -22,6 +23,7 @@ import type {
   Bewertung,
   KiNachricht,
   KiStatus,
+  Wissen,
   TeamAktuell,
   TeamMitglied,
   TeamTaetigkeit,
@@ -1044,6 +1046,13 @@ function ipcRegistrieren(): void {
       ? verlauf.filter((n) => n && (n.rolle === 'nutzer' || n.rolle === 'assistent') && typeof n.text === 'string').map((n) => ({ rolle: n.rolle, text: n.text.slice(0, 4000) }))
       : []
     return kiFragen(sauber, kiKontext())
+  })
+  ipcMain.handle('ki:wissen', async (): Promise<Wissen[]> => wissenLaden(true))
+  ipcMain.handle('ki:wissenSetzen', async (_ereignis, schluessel: string, titel: string, inhalt: string): Promise<Wissen[]> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    const liste = await wissenSetzen(sitzung.userId, String(schluessel ?? ''), String(titel ?? ''), String(inhalt ?? ''))
+    protokollNotiz(`KI-Assistent: Wissen „${schluessel}“ gespeichert (${String(inhalt ?? '').length} Zeichen)`)
+    return liste
   })
   ipcMain.handle('system:protokollOeffnen', (): string | null => {
     const pfad = protokollPfad()

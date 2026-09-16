@@ -133,7 +133,9 @@ const api: Api = {
     status: () => ipcRenderer.invoke('ki:status'),
     schluesselSetzen: (text) => ipcRenderer.invoke('ki:schluesselSetzen', text),
     schluesselEntfernen: () => ipcRenderer.invoke('ki:schluesselEntfernen'),
-    fragen: (verlauf) => ipcRenderer.invoke('ki:fragen', verlauf)
+    fragen: (verlauf) => ipcRenderer.invoke('ki:fragen', verlauf),
+    wissen: () => ipcRenderer.invoke('ki:wissen'),
+    wissenSetzen: (schluessel, titel, inhalt) => ipcRenderer.invoke('ki:wissenSetzen', schluessel, titel, inhalt)
   },
   bericht: {
     speichern: (dateiname, inhalt) => ipcRenderer.invoke('bericht:speichern', dateiname, inhalt)
