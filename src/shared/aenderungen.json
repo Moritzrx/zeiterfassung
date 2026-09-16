@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.0.50",
+    "datum": "2026-09-16",
+    "titel": "Fokus ohne Löcher, alles außer Grün ist rot",
+    "punkte": [
+      "Im Fokus zählt jede Minute, in der du am Rechner arbeitest. Bisher blieb ein Loch, wenn gerade kein Fenster erkannt wurde (Schreibtisch, Startmenü, Fensterwechsel) oder wenn du länger als zwei Minuten in wessamedia Zeit selbst warst. Jetzt läuft der Block weiter oder es entsteht ein Block „Ohne Fenster“ bzw. „wessamedia Zeit“, produktiv mit deiner Fokus-Tätigkeit.",
+      "Tagesverlauf auf „Heute“: Grün ist nur produktive Zeit, alles andere bis jetzt ist rot. Gestrichelt heißt keine Aufzeichnung, glatt heißt Pause oder ein Block, der nicht zählt. Grau bleibt nur die Zukunft. Klick auf Rot trägt die Zeit nach, dann wird sie grün.",
+      "Der laufende Block wird im Tagesverlauf in seiner aktuellen Länge gezeichnet, damit am grünen Ende kein rotes Stück flackert.",
+      "Schlägt die Fensterabfrage fehl (zum Beispiel auf dem Mac), steht das jetzt im Protokoll (Einstellungen → System → Protokoll öffnen)."
+    ]
+  },
+  {
     "version": "1.0.49",
     "datum": "2026-09-16",
     "titel": "Wann du arbeitest, Rot statt Grau, Medaillen mit Bedeutung, Ich bin weg entfernt, Wachhund ohne Fehlalarm",

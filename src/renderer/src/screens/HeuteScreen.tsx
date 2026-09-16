@@ -84,6 +84,13 @@ export function HeuteScreen(): ReactElement {
   const laufendName = anzeigeName(laufend?.programm, laufend?.fenstertitel)
   const liste = useMemo(() => [...bloecke].sort((a, b) => a.start.localeCompare(b.start)), [bloecke])
   const laufendId = laufend?.id ?? null
+  // Für den Zeitstrahl läuft der laufende Block bis jetzt: seine gespeicherte Länge hinkt bis zur nächsten Blockänderung nach,
+  // sonst stünde am Ende des grünen Balkens ein rotes Stück "ohne Aufzeichnung".
+  const strahlBloecke = useMemo(() => {
+    if (!laufendId || !istHeute) return liste
+    const jetztIso = new Date(jetzt).toISOString()
+    return liste.map((b) => (b.id === laufendId && b.ende < jetztIso ? { ...b, ende: jetztIso } : b))
+  }, [liste, laufendId, istHeute, jetzt])
   const zeilen = useMemo(() => {
     const z = zeilenBilden(liste, laufendId)
     return istHeute ? z.reverse() : z
@@ -108,6 +115,7 @@ export function HeuteScreen(): ReactElement {
   else if (status.zustand === 'weg' && status.weg)
     geradeText = `Du bist weg: „${status.weg.taetigkeit}“ seit ${uhrzeit(status.weg.seit)}. Die Zeit zählt als produktiv. Die erste Eingabe am Rechner beendet es, oder oben „Zurück“.`
   else if (status.zustand === 'pausiert') geradeText = 'Pausiert'
+  else if (status.zustand === 'laeuft' && status.eigenesFenster && status.fokus) geradeText = 'Du bist gerade in wessamedia Zeit. Im Fokus zählt auch das mit.'
   else if (status.zustand === 'laeuft' && status.eigenesFenster) geradeText = 'Du bist gerade in wessamedia Zeit. Diese Zeit zählt nicht als Arbeit.'
   else if (status.zustand === 'laeuft' && !laufend) geradeText = 'Kein Fenster im Vordergrund'
 
@@ -337,7 +345,11 @@ export function HeuteScreen(): ReactElement {
           )}
           {laufend && status.eigenesFenster && (
             <p className="mt-2 text-xs text-dim">
-              Kurzer Blick in wessamedia Zeit: {laufendName.haupt} läuft noch bis zu 2 Minuten weiter, danach endet der Block beim Wechsel in die App.
+              {status.fokus
+                ? laufend.programm === 'wessamedia Zeit'
+                  ? 'Du bist in wessamedia Zeit. Im Fokus zählt diese Zeit mit.'
+                  : `Kurzer Blick in wessamedia Zeit: ${laufendName.haupt} läuft noch bis zu 2 Minuten weiter, danach wird die Zeit in der App ein eigener Block (zählt im Fokus mit).`
+                : `Kurzer Blick in wessamedia Zeit: ${laufendName.haupt} läuft noch bis zu 2 Minuten weiter, danach endet der Block beim Wechsel in die App.`}
             </p>
           )}
         </Karte>
@@ -370,8 +382,8 @@ export function HeuteScreen(): ReactElement {
             </button>
           )}
         </div>
-        {/* Tagesverlauf (15. September 2026): Zeitstrahl mit Fokus-Zeit und Lücken, Pausen bewusst nicht gezeichnet. */}
-        <TagesZeitstrahl bloecke={liste} luecken={luecken} datum={datum} jetztMs={istHeute ? jetzt : null} onLuecke={setNachtrag} />
+        {/* Tagesverlauf (15. September 2026, seit 16. September 2026 alles außer Grün rot): mit dem laufenden Block in seiner aktuellen Länge. */}
+        <TagesZeitstrahl bloecke={strahlBloecke} datum={datum} jetztMs={istHeute ? jetzt : null} onLuecke={setNachtrag} />
         {eintraege.length === 0 ? (
           <p className="mt-2 text-sm text-dim">Keine Blöcke an diesem Tag.</p>
         ) : (

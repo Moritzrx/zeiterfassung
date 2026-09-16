@@ -28,6 +28,14 @@ const MAX_INAKTIV_MS = 12 * 3_600_000
 // "sobald der Rechner zugeklappt wird, blau, bis er wieder läuft"). Höchstens so weit zurück.
 const LUECKE_MAX_MS = 7 * 24 * 3_600_000
 const EIGENES_KURZ_MS = 2 * 60_000 // so lange läuft beim Blick in die eigene App der vorherige Block weiter
+/**
+ * Im Fokus zählt jede Sekunde mit Eingaben (16. September 2026, Auftraggeber: "wir arbeiten, aber es wird in den Blöcken
+ * nicht hinterlegt"): Ohne erkennbares Fenster (Schreibtisch, Startmenü, Fensterabfrage fehlgeschlagen) läuft der Block
+ * weiter oder es entsteht einer mit diesem Programmnamen; ein längerer Aufenthalt in der eigenen App wird ein eigener Block.
+ */
+const OHNE_FENSTER = 'Ohne Fenster'
+const EIGENES_NAME = 'wessamedia Zeit'
+const FENSTER_FEHLER_ABSTAND_MS = 3_600_000 // Fehler der Fensterabfrage höchstens einmal je Stunde ins Protokoll
 // "Ich bin weg" (11. September 2026): eine angekündigte Abwesenheit läuft als produktiver Hand-Block. Als wirklich
 // weg gilt man, sobald WEG_ABWESEND_S Sekunden keine Eingabe kam (sonst würde der Klick auf den Knopf selbst als
 // Rückkehr zählen); die nächste Eingabe (letzte Eingabe unter WEG_ZURUECK_S Sekunden her) beendet die Abwesenheit
@@ -111,6 +119,7 @@ export class Erfassung extends EventEmitter {
   private kurz: Block | null = null // fertiger Block unter 60 s, wartet auf den Anschlussblock
   /** Seit wann das eigene App-Fenster ununterbrochen den Fokus hat (ms), sonst null. */
   private eigenesSeit: number | null = null
+  private fensterFehlerGemeldetMs = 0
   /** Laufender Fokus: jeder neue Arbeitsblock bekommt diese Tätigkeit und ist produktiv. */
   private fokus: Fokus | null = null
   /** Laufende angekündigte Abwesenheit ("Ich bin weg") und ihr produktiver Hand-Block. */
@@ -671,11 +680,17 @@ export class Erfassung extends EventEmitter {
     // Zeitpunkt beenden und die Lücke nachtragen (rot unter 90 Minuten, sonst blau).
     if (this.letzterTakt && jetzt.getTime() - this.letzterTakt > LUECKE_MS) {
       const ab = this.letzterTakt
-      this.alleSchliessen(new Date(ab))
-      this.zeitgrenze = jetzt.getTime()
-      // Während "Ich bin weg" gehört die Lücke zum Termin (der Hand-Block wird unten verlängert); ohne Fokus gibt es nichts nachzutragen.
-      if (this.zustand !== 'pausiert' && !this.weg && !this.ohneFokus()) {
-        for (const b of this.lueckeFuellen(ab, jetzt.getTime())) this.abwesenheitMelden(b)
+      const luecke = jetzt.getTime() - ab
+      // Im Fokus ist eine kurze Verzögerung des Takts (unter der Untätigkeits-Schwelle), während der weiter Eingaben
+      // kamen, kein Schlaf: der laufende Block läuft einfach weiter, statt ein Loch zu bekommen (16. September 2026).
+      const weitergearbeitet = !!this.fokus && luecke < this.idleSchwelleSekunden * 1000 && powerMonitor.getSystemIdleTime() * 1000 < luecke
+      if (!weitergearbeitet) {
+        this.alleSchliessen(new Date(ab))
+        this.zeitgrenze = jetzt.getTime()
+        // Während "Ich bin weg" gehört die Lücke zum Termin (der Hand-Block wird unten verlängert); ohne Fokus gibt es nichts nachzutragen.
+        if (this.zustand !== 'pausiert' && !this.weg && !this.ohneFokus()) {
+          for (const b of this.lueckeFuellen(ab, jetzt.getTime())) this.abwesenheitMelden(b)
+        }
       }
     }
     this.letzterTakt = jetzt.getTime()
@@ -757,6 +772,15 @@ export class Erfassung extends EventEmitter {
 
     // Kein Fenster mit Fokus (Schreibtisch, Sperrbildschirm): kein Arbeitsblock.
     if (!programm || istSchreibtisch(programm, fenster?.title)) {
+      // Im Fokus zählt die Zeit trotzdem, es kamen ja Eingaben (16. September 2026): der laufende Block läuft weiter,
+      // ohne laufenden Block entsteht einer "Ohne Fenster" (vorher blieb ein Loch, das später rot war).
+      if (this.fokus) {
+        if (!this.aktuell) this.aktuell = this.neuerBlock(jetzt, 'ungeklaert', OHNE_FENSTER, null, null)
+        this.aktuell.ende = jetzt.toISOString()
+        this.speicher.aktualisieren(this.aktuell)
+        this.melden()
+        return
+      }
       if (this.aktuell) {
         this.schliessen(this.aktuell, jetzt)
         this.aktuell = null
@@ -793,13 +817,24 @@ export class Erfassung extends EventEmitter {
 
   private eigenesVerarbeiten(jetzt: Date): void {
     if (this.eigenesSeit === null) this.eigenesSeit = jetzt.getTime()
-    if (!this.aktuell) return
-    if (jetzt.getTime() - this.eigenesSeit <= EIGENES_KURZ_MS) {
+    const kurz = jetzt.getTime() - this.eigenesSeit <= EIGENES_KURZ_MS
+    // Kurzer Blick: der vorherige Block läuft weiter. Ein schon angelegter Block der eigenen App läuft ebenfalls weiter.
+    if (this.aktuell && (kurz || this.aktuell.programm === EIGENES_NAME)) {
       this.aktuell.ende = jetzt.toISOString()
       this.speicher.aktualisieren(this.aktuell)
-    } else {
+      return
+    }
+    if (this.aktuell) {
       this.schliessen(this.aktuell, new Date(this.eigenesSeit))
       this.aktuell = null
+    }
+    // Im Fokus zählt auch die Zeit in der eigenen App (16. September 2026, weil jede Lücke rot wird und niemand die
+    // Minuten in der App nachtragen soll): ab dem Wechsel in die App ein eigener Block "wessamedia Zeit", produktiv mit
+    // der Fokus-Tätigkeit. Ohne Fokus (Regel-Betrieb) bleibt es dabei, dass die eigene App keinen Block bekommt.
+    if (this.fokus) {
+      this.aktuell = this.neuerBlock(new Date(this.eigenesSeit), 'ungeklaert', EIGENES_NAME, null, null)
+      this.aktuell.ende = jetzt.toISOString()
+      this.speicher.aktualisieren(this.aktuell)
     }
   }
 
@@ -864,7 +899,14 @@ export class Erfassung extends EventEmitter {
       // abgefragt (nur Programmname), sonst wirft get-windows und die Erfassung stünde still; die Anfrage der Berechtigung
       // löst `bildschirmrechtAnfragen` in index.ts einmalig aus. Bedienungshilfen werden weiterhin nicht angefordert.
       return await activeWindow({ screenRecordingPermission: bildschirmrechtErteilt(), accessibilityPermission: false })
-    } catch {
+    } catch (fehler) {
+      // Schlägt die Abfrage dauerhaft fehl (z. B. Mac ohne ausführbares Hilfsprogramm), stünde ohne diese Zeile nichts im
+      // Protokoll; im Fokus zählt die Zeit seit 16. September 2026 trotzdem (Block "Ohne Fenster").
+      const jetzt = Date.now()
+      if (jetzt - this.fensterFehlerGemeldetMs > FENSTER_FEHLER_ABSTAND_MS) {
+        this.fensterFehlerGemeldetMs = jetzt
+        console.warn('Fensterabfrage fehlgeschlagen:', fehler instanceof Error ? fehler.message : fehler)
+      }
       return undefined
     }
   }
