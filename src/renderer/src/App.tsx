@@ -1,8 +1,7 @@
 import { memo, startTransition, useEffect, useRef, useState, type ReactElement } from 'react'
-import { AUSZEICHNUNGEN } from '@shared/auszeichnungen'
 import { Fehlerschutz } from './components/Fehlerschutz'
 import { FokusDialogHalter, fokusDialogOeffnen } from './components/FokusDialog'
-import { Hinweise, hinweisZeigen } from './components/Hinweis'
+import { Hinweise } from './components/Hinweis'
 import { UpdateHinweis } from './components/UpdateHinweis'
 import { WarnungHinweis } from './components/WarnungHinweis'
 import { NeuigkeitenHalter } from './components/NeuigkeitenDialog'
@@ -10,7 +9,7 @@ import { Wochenrueckblick } from './components/Wochenrueckblick'
 import { Hintergrund } from './components/Hintergrund'
 import { Kopfzeile } from './components/Kopfzeile'
 import { Navigation, SCREEN_REIHENFOLGE, type ScreenId } from './components/Navigation'
-import { RangAufstieg } from './components/RangAufstieg'
+import { RangAufstieg, auszeichnungenFeiern } from './components/RangAufstieg'
 import { NutzerProvider, useNutzer } from './nutzer'
 import { SymbolProvider } from './symbole'
 import { klickToeneEinrichten, tonSpielen } from './toene'
@@ -142,14 +141,12 @@ function Oberflaeche(): ReactElement {
     return () => window.clearInterval(timer)
   }, [])
 
-  // Neue Auszeichnungen kurz unten einblenden, egal auf welchem Screen.
+  // Neue Auszeichnungen groß feiern (Bild, Name, Bedingung), egal auf welchem Screen; bei verstecktem Fenster, sobald es wieder sichtbar ist.
   useEffect(() => {
     if (!window.api) return
     return window.api.auszeichnungen.onNeu((neue) => {
       if (!neue.length) return
-      const titel = neue.map((a) => AUSZEICHNUNGEN[a.typ].titel).join(', ')
-      tonSpielen('auszeichnung')
-      hinweisZeigen(`Auszeichnung freigeschaltet: ${titel}`)
+      auszeichnungenFeiern(neue.map((a) => a.typ))
     })
   }, [])
 

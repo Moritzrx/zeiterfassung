@@ -159,7 +159,7 @@ Der Wochenrang fängt jeden Montag bei null an. Die Liga dagegen bleibt, wie die
 
 ### Auszeichnungen
 
-36 Medaillen in acht Gruppen, die man dauerhaft behält (einmal verdient, nie zurückgesetzt). Auf dem Wochen-Screen ganz unten; mit der Maus über eine Medaille fahren zeigt die Bedingung. Sie sind auf eine 50-Stunden-Woche von Montag bis Sonntag ausgelegt.
+36 Medaillen in acht Gruppen, die man dauerhaft behält (einmal verdient, nie zurückgesetzt). Auf dem Wochen-Screen ganz unten; mit der Maus über eine Medaille fahren zeigt die Bedingung. Sie sind auf eine 50-Stunden-Woche von Montag bis Sonntag ausgelegt. Eine neue Medaille erscheint groß über der App (seit 1.0.49): Bild, Name und die Bedingung, die du erfüllt hast; mehrere nacheinander, ein Klick zeigt die nächste. Ist das Fenster gerade zu, kommt eine Systemmeldung mit Namen und Bedingung, ein Klick darauf öffnet die App.
 
 - **Besondere**: Erster Champion (zum ersten Mal Rang 10), Comeback (nach einer Woche unter Rang 5 direkt Rang 10), Eternal (Rang 15).
 - **Serien**: Serie (3 Wochen in Folge Rang 10), Lange Serie (6), Eiserne Serie (12), Dauerbrenner (4 Wochen in Folge mindestens 55 h, also deutlich über dem Ziel).

@@ -2,12 +2,13 @@
   {
     "version": "1.0.49",
     "datum": "2026-09-16",
-    "titel": "Wann du arbeitest, Rot statt Grau, Ich bin weg entfernt, Wachhund ohne Fehlalarm",
+    "titel": "Wann du arbeitest, Rot statt Grau, Medaillen mit Bedeutung, Ich bin weg entfernt, Wachhund ohne Fehlalarm",
     "punkte": [
       "Auswertung: neue Karte „Wann du arbeitest“ mit dem Schnitt je Stunde des Tages, einem Raster Wochentag mal Stunde und drei Sätzen dazu (produktivste Phase, schwächste Stunde, stärkster Wochentag), für 7 Tage bis 12 Wochen.",
       "Wachhund: nach dem Aufwachen des Rechners und nach dem Start gilt eine Schonfrist von fünf Minuten, und keine Prüfung misst mehr über einen Schlaf hinweg. Die Meldung „hakt seit 500 Minuten“ nach einer Nacht gibt es nicht mehr.",
       "Rot statt Grau: Zeit, in der du nicht am Rechner warst, ist auf „Heute“ jetzt rot (im Tagesverlauf gestrichelt ohne Aufzeichnung, glatt bei Pausen im Fokus; in der Liste als Zeile „Nicht am Rechner“). Klick auf Rot trägt die Zeit nach, dann wird sie grün.",
-      "„Ich bin weg“ gibt es nicht mehr. Termine, Drehs und Fahrten trägst du von Hand ein: auf „Heute“ per Klick auf Rot, unter „Eintragen“ oder über die Rückfrage nach einer Pause."
+      "„Ich bin weg“ gibt es nicht mehr. Termine, Drehs und Fahrten trägst du von Hand ein: auf „Heute“ per Klick auf Rot, unter „Eintragen“ oder über die Rückfrage nach einer Pause.",
+      "Medaillen mit Bedeutung: Eine neue Auszeichnung erscheint groß über der App mit Bild, Namen und der Bedingung, die du erfüllt hast (zum Beispiel Sprint: 3 Stunden am Stück produktiv). Ist das Fenster zu, kommt eine Systemmeldung mit dem Text."
     ]
   },
   {

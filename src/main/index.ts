@@ -27,6 +27,7 @@ import type {
   Abwesenheit
 } from '@shared/typen'
 import { rang, rangName } from '@shared/rang'
+import { AUSZEICHNUNGEN } from '@shared/auszeichnungen'
 import { regelnAnwenden } from '@shared/regeln'
 import { tagessummenAusBloecken } from '@shared/summen'
 import {
@@ -419,6 +420,16 @@ async function auszeichnungenPruefen(s: Sitzung): Promise<void> {
   try {
     const neue = await s.auszeichnungen.pruefenUndSpeichern(s.speicher.alle(), s.ziele.eigene(), new Date())
     if (neue.length && fenster && !fenster.isDestroyed()) fenster.webContents.send('auszeichnungen:neu', neue)
+    // Ist das Fenster gerade nicht vorne, sagt eine Systemmeldung, welche Medaille es ist und wofür (16. September 2026).
+    if (neue.length && !(fenster && !fenster.isDestroyed() && fenster.isVisible() && fenster.isFocused()) && Notification.isSupported()) {
+      for (const a of neue.slice(0, 3)) {
+        const info = AUSZEICHNUNGEN[a.typ]
+        protokollNotiz(`Auszeichnung freigeschaltet: ${info.titel}`)
+        const meldung = new Notification({ title: `Auszeichnung freigeschaltet: ${info.titel}`, body: `${info.text} Klicken zum Ansehen.` })
+        meldung.on('click', fensterZeigen)
+        meldung.show()
+      }
+    }
   } catch (fehler) {
     console.error('Auszeichnungen:', fehler)
   }

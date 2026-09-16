@@ -2,21 +2,34 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { Portal } from './Portal'
 import { STUFEN_FARBEN, rangName, rangStufe } from '@shared/rang'
 import { LIGA_FARBEN, liga as ligaVon, type Liga } from '@shared/liga'
+import { AUSZEICHNUNGEN, AUSZEICHNUNG_REIHENFOLGE } from '@shared/auszeichnungen'
+import type { AuszeichnungTyp } from '@shared/typen'
 import { useErfassung } from '../erfassung'
 import { zahlText } from '../format'
 import { tonSpielen } from '../toene'
+import { AuszeichnungBild } from './AuszeichnungBild'
 import { LigaAbzeichen } from './LigaAbzeichen'
 import { RangAbzeichen } from './RangAbzeichen'
 
 const DAUER_MS = 5200
+/** Medaillen bleiben länger stehen, weil man die Bedingung lesen soll. */
+const DAUER_AUSZEICHNUNG_MS = 8000
 const RAUS_MS = 350
 
-/** Was gefeiert wird: ein Wochenrang oder eine neue Liga. */
-type Feier = { art: 'rang'; rang: number } | { art: 'liga'; liga: Liga; trophaeen: number }
+/** Was gefeiert wird: ein Wochenrang, eine neue Liga oder eine neue Auszeichnung (Medaille). */
+type Feier = { art: 'rang'; rang: number } | { art: 'liga'; liga: Liga; trophaeen: number } | { art: 'auszeichnung'; typ: AuszeichnungTyp }
 
 /** Von der Liga-Karte ausgelöst, wenn der Trophäenstand eine neue Liga erreicht hat. */
 export function ligaAufstiegZeigen(trophaeen: number): void {
   window.dispatchEvent(new CustomEvent('liga-aufstieg', { detail: trophaeen }))
+}
+
+/**
+ * Neue Auszeichnungen groß feiern (16. September 2026, Auftraggeber: "wenn ich sehe, Sprint freigeschaltet, sehe ich
+ * gar nicht, was die kann"): jede Medaille erscheint nacheinander mit Bild, Namen und ihrer Bedingung.
+ */
+export function auszeichnungenFeiern(typen: AuszeichnungTyp[]): void {
+  window.dispatchEvent(new CustomEvent('auszeichnung-neu', { detail: typen }))
 }
 
 /** Die Lichtbahnen, wie im Hintergrund von unten links nach oben rechts (Raster 1000 × 600). */
@@ -106,30 +119,63 @@ export function RangAufstieg(): ReactElement | null {
     return () => window.removeEventListener('liga-aufstieg', handler)
   }, [])
 
-  // In der Entwicklungsversion aus der Konsole auslösbar: rangAufstiegTest(7), ligaAufstiegTest(1400)
+  // Auszeichnungen: kommen als Liste, werden nacheinander gezeigt, und erst, wenn das Fenster sichtbar ist.
+  const warteschlange = useRef<AuszeichnungTyp[]>([])
+  const [wartend, setWartend] = useState(0)
+  useEffect(() => {
+    const handler = (e: Event): void => {
+      const typen = (e as CustomEvent<AuszeichnungTyp[]>).detail
+      for (const t of typen) if (AUSZEICHNUNGEN[t] && !warteschlange.current.includes(t)) warteschlange.current.push(t)
+      setWartend(warteschlange.current.length)
+    }
+    window.addEventListener('auszeichnung-neu', handler)
+    return () => window.removeEventListener('auszeichnung-neu', handler)
+  }, [])
+  useEffect(() => {
+    if (gezeigt !== null || warteschlange.current.length === 0) return
+    const naechste = (): void => {
+      if (document.hidden || warteschlange.current.length === 0) return
+      const typ = warteschlange.current.shift()
+      setWartend(warteschlange.current.length)
+      if (typ) setGezeigt({ art: 'auszeichnung', typ })
+    }
+    naechste()
+    document.addEventListener('visibilitychange', naechste)
+    return () => document.removeEventListener('visibilitychange', naechste)
+  }, [gezeigt, wartend])
+
+  // In der Entwicklungsversion aus der Konsole auslösbar: rangAufstiegTest(7), ligaAufstiegTest(1400), auszeichnungTest('sprint')
   useEffect(() => {
     if (!import.meta.env.DEV) return
-    const w = window as unknown as { rangAufstiegTest: (r: number) => void; ligaAufstiegTest: (t: number) => void }
+    const w = window as unknown as { rangAufstiegTest: (r: number) => void; ligaAufstiegTest: (t: number) => void; auszeichnungTest: (typ: AuszeichnungTyp) => void }
     w.rangAufstiegTest = (r) => setGezeigt({ art: 'rang', rang: r })
     w.ligaAufstiegTest = (t) => setGezeigt({ art: 'liga', liga: ligaVon(t), trophaeen: t })
+    w.auszeichnungTest = (typ) => auszeichnungenFeiern([typ])
   }, [])
 
   // Klang beim Erscheinen, nach ein paar Sekunden von selbst schließen.
   useEffect(() => {
     if (gezeigt === null) return
-    tonSpielen('aufstieg')
-    const timer = window.setTimeout(() => schliessen(gezeigt), DAUER_MS)
+    tonSpielen(gezeigt.art === 'auszeichnung' ? 'auszeichnung' : 'aufstieg')
+    const timer = window.setTimeout(() => schliessen(gezeigt), gezeigt.art === 'auszeichnung' ? DAUER_AUSZEICHNUNG_MS : DAUER_MS)
     return () => window.clearTimeout(timer)
   }, [gezeigt, schliessen])
 
-  const alleFunken = useMemo(() => (gezeigt === null ? [] : funken(gezeigt.art === 'rang' ? gezeigt.rang : 100 + gezeigt.liga.index)), [gezeigt])
+  const alleFunken = useMemo(
+    () =>
+      gezeigt === null
+        ? []
+        : funken(gezeigt.art === 'rang' ? gezeigt.rang : gezeigt.art === 'liga' ? 100 + gezeigt.liga.index : 200 + AUSZEICHNUNG_REIHENFOLGE.indexOf(gezeigt.typ)),
+    [gezeigt]
+  )
 
   if (gezeigt === null) return null
 
-  const farbe = gezeigt.art === 'rang' ? STUFEN_FARBEN[rangStufe(gezeigt.rang)] : LIGA_FARBEN[gezeigt.liga.stufe]
-  const ueberschrift = gezeigt.art === 'rang' ? 'Aufstieg' : 'Liga-Aufstieg'
-  const gross = gezeigt.art === 'rang' ? `Rang ${gezeigt.rang}` : gezeigt.liga.name
-  const klein = gezeigt.art === 'rang' ? rangName(gezeigt.rang) : `${zahlText(gezeigt.trophaeen, 0)} Trophäen`
+  const farbe = gezeigt.art === 'rang' ? STUFEN_FARBEN[rangStufe(gezeigt.rang)] : gezeigt.art === 'liga' ? LIGA_FARBEN[gezeigt.liga.stufe] : AUSZEICHNUNGEN[gezeigt.typ].farbe
+  const ueberschrift = gezeigt.art === 'rang' ? 'Aufstieg' : gezeigt.art === 'liga' ? 'Liga-Aufstieg' : 'Auszeichnung freigeschaltet'
+  const gross = gezeigt.art === 'rang' ? `Rang ${gezeigt.rang}` : gezeigt.art === 'liga' ? gezeigt.liga.name : AUSZEICHNUNGEN[gezeigt.typ].titel
+  const klein = gezeigt.art === 'rang' ? rangName(gezeigt.rang) : gezeigt.art === 'liga' ? `${zahlText(gezeigt.trophaeen, 0)} Trophäen` : AUSZEICHNUNGEN[gezeigt.typ].text
+  const nochWartend = gezeigt.art === 'auszeichnung' ? warteschlange.current.length : 0
   const stil = {
     background: `radial-gradient(ellipse 55% 45% at 50% 44%, ${farbe}33, transparent 70%), rgba(6, 6, 8, 0.94)`,
     '--farbe': farbe,
@@ -189,20 +235,29 @@ export function RangAufstieg(): ReactElement | null {
               style={{ inset: -70, background: `radial-gradient(circle, ${farbe}80, ${farbe}22 45%, transparent 68%)` }}
             />
             <div className="aufstieg-wappen relative">
-              {gezeigt.art === 'rang' ? <RangAbzeichen rang={gezeigt.rang} groesse={230} /> : <LigaAbzeichen liga={gezeigt.liga} groesse={230} />}
+              {gezeigt.art === 'rang' ? (
+                <RangAbzeichen rang={gezeigt.rang} groesse={230} />
+              ) : gezeigt.art === 'liga' ? (
+                <LigaAbzeichen liga={gezeigt.liga} groesse={230} />
+              ) : (
+                <AuszeichnungBild typ={gezeigt.typ} erreicht groesse={230} />
+              )}
             </div>
           </div>
           <p className="aufstieg-text mt-8 text-sm tracking-[0.45em] uppercase" style={{ color: farbe, textShadow: `0 0 18px ${farbe}`, animationDelay: '0.5s' }}>
             {ueberschrift}
           </p>
-          <p className="aufstieg-text mt-2 text-[76px] leading-none font-light" style={{ animationDelay: '0.62s', textShadow: '0 0 30px rgba(255,255,255,0.25)' }}>
+          <p
+            className={`aufstieg-text mt-2 leading-none font-light ${gezeigt.art === 'auszeichnung' ? 'text-[56px]' : 'text-[76px]'}`}
+            style={{ animationDelay: '0.62s', textShadow: '0 0 30px rgba(255,255,255,0.25)' }}
+          >
             {gross}
           </p>
-          <p className="aufstieg-text mt-3 text-xl text-mute" style={{ animationDelay: '0.76s' }}>
+          <p className={`aufstieg-text mt-3 text-mute ${gezeigt.art === 'auszeichnung' ? 'max-w-[520px] px-6 text-lg leading-snug' : 'text-xl'}`} style={{ animationDelay: '0.76s' }}>
             {klein}
           </p>
           <p className="aufstieg-text mt-10 text-xs text-dim" style={{ animationDelay: '1.8s' }}>
-            Klicken zum Schließen
+            {nochWartend > 0 ? `Klicken für die nächste (noch ${nochWartend})` : 'Klicken zum Schließen'}
           </p>
         </div>
       </div>
