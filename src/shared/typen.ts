@@ -342,23 +342,3 @@ export interface ErfassungsStatus {
   /** Meldung des Wachhunds (Erfassung, Speichern oder Abgleich hakt), sonst null (seit 1.0.48) */
   warnung: string | null
 }
-
-/** Eine Nachricht im Gespräch mit dem KI-Assistenten (16. September 2026). */
-export interface KiNachricht {
-  rolle: 'nutzer' | 'assistent'
-  text: string
-}
-
-/** Stand des KI-Assistenten: ob ein Schlüssel hinterlegt ist und welches Modell antwortet. */
-export interface KiStatus {
-  eingerichtet: boolean
-  modell: string
-}
-
-/** Ein Wissenseintrag für den KI-Assistenten (Tabelle wissen, Skript 20): gemeinsam für das Team. */
-export interface Wissen {
-  schluessel: string
-  titel: string
-  inhalt: string
-  geaendertAm: string
-}

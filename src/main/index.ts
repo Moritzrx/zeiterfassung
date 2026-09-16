@@ -3,8 +3,6 @@ import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { aktualisierungStarten } from './aktualisierung'
-import { KI_MODELL, eingerichtet as kiEingerichtet, fragen as kiFragen, schluesselEntfernen as kiSchluesselEntfernen, schluesselSetzen as kiSchluesselSetzen } from './assistent'
-import { wissenLaden, wissenSetzen } from './wissen'
 import type {
   Auszeichnung,
   Block,
@@ -21,9 +19,6 @@ import type {
   SystemInfo,
   Tagessumme,
   Bewertung,
-  KiNachricht,
-  KiStatus,
-  Wissen,
   TeamAktuell,
   TeamMitglied,
   TeamTaetigkeit,
@@ -306,60 +301,6 @@ function wachhundPruefen(s: Sitzung): void {
   const meldung = new Notification({ title: 'wessamedia Zeit hakt', body: `${neu} Klicken und die App neu starten.` })
   meldung.on('click', fensterZeigen)
   meldung.show()
-}
-
-/**
- * Der aktuelle Stand der App als Klartext für den KI-Assistenten (16. September 2026): Version, Zeit, Erfassung,
- * heutige und wöchentliche Stunden, Rang, die größten Tätigkeiten der Woche, Einstellungen, Abgleich. Keine
- * einzelnen Blöcke, keine Fenstertitel.
- */
-function kiKontext(): string {
-  const jetzt = new Date()
-  const t = berlinTeile(jetzt)
-  const z: string[] = []
-  z.push(`Datum und Uhrzeit: ${berlinDatum(jetzt)} ${String(t.stunde).padStart(2, '0')}:${String(t.minute).padStart(2, '0')} Uhr (Berlin)`)
-  z.push(`App-Version: ${app.getVersion()} auf ${process.platform === 'darwin' ? 'Mac' : 'Windows'}${app.isPackaged ? '' : ' (Entwicklungsversion)'}`)
-  if (!sitzung) {
-    z.push('Niemand ist angemeldet.')
-    return z.join('\n')
-  }
-  const s = sitzung
-  const st = statusBerechnen()
-  const zustand: Record<string, string> = {
-    laeuft: st.fokus ? 'Fokus läuft, Zeit zählt' : 'Erfassung läuft',
-    'ohne-fokus': 'Kein Fokus, Zeit zählt gerade nicht',
-    inaktiv: st.nurFokus ? 'Pause (keine Eingabe seit ein paar Minuten), zählt nicht' : 'Nicht am Rechner, zählt als unproduktiv',
-    abwesend: 'Abwesend (über 90 Minuten ohne Eingabe), zählt nicht',
-    pausiert: 'Erfassung von Hand pausiert',
-    weg: 'Ich bin weg läuft, zählt als produktiv',
-    gestoppt: 'Erfassung gestoppt',
-    'nicht-angemeldet': 'nicht angemeldet'
-  }
-  z.push(`Erfassung: ${zustand[st.zustand] ?? st.zustand}`)
-  if (st.fokus) z.push(`Laufender Fokus: „${st.fokus.taetigkeit}“${st.fokus.kunde ? ` für Kunde ${st.fokus.kunde}` : ''} seit ${berlinTeile(new Date(st.fokus.seit)).stunde}:${String(berlinTeile(new Date(st.fokus.seit)).minute).padStart(2, '0')} Uhr`)
-  if (st.weg) z.push(`Ich bin weg: „${st.weg.taetigkeit}“ seit ${st.weg.seit}`)
-  z.push(`Einstellung „Nur im Fokus aufzeichnen“: ${st.nurFokus ? 'an' : 'aus'} · Untätigkeit ab ${Math.round(s.erfassung.idleSchwelleSekunden / 60)} Minuten`)
-  z.push(`Heute produktiv: ${stundenText(st.heuteProduktivSekunden)} h · Diese Woche produktiv: ${stundenText(st.wocheProduktivSekunden)} h · Rang ${st.rang} (${rangName(st.rang)})`)
-  const gesamtziel = s.ziele.eigene().find((x) => x.taetigkeit === null)?.stundenProWoche
-  if (gesamtziel) z.push(`Wochenziel: ${gesamtziel} h`)
-  // Die größten Tätigkeiten dieser Woche
-  const woche = s.speicher.imZeitraum(wochenanfang(jetzt), jetzt)
-  const summen = new Map<string, number>()
-  for (const b of woche) {
-    if (b.bewertung !== 'produktiv') continue
-    const name = b.taetigkeit ?? 'ohne Tätigkeit'
-    summen.set(name, (summen.get(name) ?? 0) + (Date.parse(b.ende) - Date.parse(b.start)) / 1000)
-  }
-  const top = [...summen.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)
-  if (top.length) z.push(`Tätigkeiten diese Woche: ${top.map(([n, sek]) => `${n} ${stundenText(sek)} h`).join(', ')}`)
-  z.push(`Offene Rückfragen zu Abwesenheiten: ${st.offeneAbwesenheiten.length} · Ungeklärte Blöcke: ${s.speicher.anzahlUngeklaert()}`)
-  z.push(`Abgleich mit der Datenbank: ${st.letzterSync ? 'zuletzt ' + st.letzterSync : 'noch keiner'} · wartende Blöcke: ${st.unsynchronisiert}${st.syncFehler ? ` · Fehler: ${st.syncFehler}` : ''}`)
-  if (st.warnung) z.push(`Wachhund meldet: ${st.warnung}`)
-  z.push(`Bekannte Tätigkeiten des Teams: ${s.taetigkeiten.liste().join(', ')}`)
-  const kunden = s.kunden.liste()
-  if (kunden.length) z.push(`Bekannte Kunden: ${kunden.join(', ')}`)
-  z.push(`Regeln: ${s.regelwerk.liste().length}`)
-  return z.join('\n')
 }
 
 /** Die App komplett neu starten (Wachhund-Leiste, Einstellungen). */
@@ -1027,32 +968,6 @@ function ipcRegistrieren(): void {
       void shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture')
     }
     return stand
-  })
-  // KI-Assistent (16. September 2026): Schlüssel verwalten und Fragen beantworten.
-  const kiStatus = (): KiStatus => ({ eingerichtet: kiEingerichtet(), modell: KI_MODELL })
-  ipcMain.handle('ki:status', (): KiStatus => kiStatus())
-  ipcMain.handle('ki:schluesselSetzen', (_ereignis, text: string): KiStatus => {
-    kiSchluesselSetzen(String(text ?? ''))
-    protokollNotiz('KI-Assistent: Schlüssel hinterlegt')
-    return kiStatus()
-  })
-  ipcMain.handle('ki:schluesselEntfernen', (): KiStatus => {
-    kiSchluesselEntfernen()
-    protokollNotiz('KI-Assistent: Schlüssel entfernt')
-    return kiStatus()
-  })
-  ipcMain.handle('ki:fragen', async (_ereignis, verlauf: KiNachricht[]): Promise<string> => {
-    const sauber = Array.isArray(verlauf)
-      ? verlauf.filter((n) => n && (n.rolle === 'nutzer' || n.rolle === 'assistent') && typeof n.text === 'string').map((n) => ({ rolle: n.rolle, text: n.text.slice(0, 4000) }))
-      : []
-    return kiFragen(sauber, kiKontext())
-  })
-  ipcMain.handle('ki:wissen', async (): Promise<Wissen[]> => wissenLaden(true))
-  ipcMain.handle('ki:wissenSetzen', async (_ereignis, schluessel: string, titel: string, inhalt: string): Promise<Wissen[]> => {
-    if (!sitzung) throw new Error('Nicht angemeldet.')
-    const liste = await wissenSetzen(sitzung.userId, String(schluessel ?? ''), String(titel ?? ''), String(inhalt ?? ''))
-    protokollNotiz(`KI-Assistent: Wissen „${schluessel}“ gespeichert (${String(inhalt ?? '').length} Zeichen)`)
-    return liste
   })
   ipcMain.handle('system:protokollOeffnen', (): string | null => {
     const pfad = protokollPfad()
