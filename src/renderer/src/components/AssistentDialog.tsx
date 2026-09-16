@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { Send, Sparkles, X } from 'lucide-react'
+import { Send, X, Zap } from 'lucide-react'
 import type { KiNachricht, KiStatus } from '@shared/typen'
 import { fehlerText } from '../format'
 import { tonSpielen } from '../toene'
 import { Portal } from './Portal'
 
 const EREIGNIS = 'assistent-dialog'
+
+/** Der Name des KI-Assistenten in der App (16. September 2026, Auftraggeber wollte einen coolen Namen). */
+export const ASSISTENT_NAME = 'Tempo'
 
 /** Öffnet den KI-Assistenten von überall (Kopfzeile "Fragen"). */
 export function assistentOeffnen(): void {
@@ -14,14 +17,14 @@ export function assistentOeffnen(): void {
 
 const VORSCHLAEGE = [
   'Wie trage ich einen Termin nach, den ich vergessen habe?',
-  'Was ist der Unterschied zwischen Fokus und „Ich bin weg“?',
+  'Wie trage ich einen Kundentermin oder Dreh ein?',
   'Wie funktioniert die Liga?',
   'Warum zählt meine Zeit gerade nicht?'
 ]
 
 const BEGRUESSUNG: KiNachricht = {
   rolle: 'assistent',
-  text: 'Hallo, ich kenne die App in- und auswendig. Frag mich, was du wissen willst, zum Beispiel wie etwas funktioniert oder warum etwas so angezeigt wird.'
+  text: 'Hi, ich bin Tempo. Ich kenne die App in- und auswendig und weiß, was ihr über wessamedia eingetragen habt. Frag mich, was du wissen willst.'
 }
 
 /** Hält den Dialog samt Gesprächsverlauf für die laufende Sitzung; sitzt einmal in App.tsx. */
@@ -44,7 +47,7 @@ interface Props {
 }
 
 /**
- * KI-Assistent (16. September 2026): ein Gespräch mit dem Modell, das die Anleitung und den aktuellen Stand der App
+ * Tempo, der KI-Assistent (16. September 2026): ein Gespräch mit dem Modell, das die Anleitung und den aktuellen Stand der App
  * kennt. Antworten kommen aus dem Hintergrundprozess (api.ki.fragen), der Schlüssel liegt dort.
  */
 function AssistentDialog({ verlauf, setVerlauf, onSchliessen }: Props): ReactElement {
@@ -102,10 +105,10 @@ function AssistentDialog({ verlauf, setVerlauf, onSchliessen }: Props): ReactEle
           <div className="flex items-start justify-between gap-4 p-6 pb-3">
             <div>
               <h2 className="flex items-center gap-2 text-xl">
-                <Sparkles size={20} strokeWidth={1.5} />
-                Fragen zur App
+                <Zap size={20} strokeWidth={1.5} className="text-produktiv" />
+                {ASSISTENT_NAME}
               </h2>
-              <p className="mt-1 text-sm text-mute">Der Assistent kennt die ganze Anleitung und sieht deinen aktuellen Stand (Fokus, Stunden, Einstellungen), aber keine einzelnen Blöcke.</p>
+              <p className="mt-1 text-sm text-mute">Dein Assistent für die App und für wessamedia. Kennt die ganze Anleitung, alle Spielregeln, das Team-Wissen und deinen aktuellen Stand, aber keine einzelnen Blöcke.</p>
             </div>
             <button type="button" onClick={onSchliessen} className="rounded-chip p-1 text-mute hover:text-ink" title="Schließen">
               <X size={18} strokeWidth={1.5} />
@@ -115,8 +118,8 @@ function AssistentDialog({ verlauf, setVerlauf, onSchliessen }: Props): ReactEle
           <div className="flex-1 overflow-y-auto overscroll-contain px-6">
             {!eingerichtet && (
               <div className="mb-3 rounded-chip bg-panel-2 p-3 text-sm">
-                <p>Der Assistent braucht einmalig einen Anthropic-Schlüssel.</p>
-                <p className="mt-1 text-xs text-mute">Einstellungen → KI-Assistent: dort steht, wie du ihn bekommst und wo du ihn einfügst. Danach kannst du hier fragen.</p>
+                <p>Tempo braucht einmalig einen Anthropic-Schlüssel.</p>
+                <p className="mt-1 text-xs text-mute">Einstellungen → Tempo: dort steht, wie du ihn bekommst und wo du ihn einfügst. Danach kannst du hier fragen.</p>
               </div>
             )}
             <div className="flex flex-col gap-3">
@@ -164,7 +167,7 @@ function AssistentDialog({ verlauf, setVerlauf, onSchliessen }: Props): ReactEle
                   void senden(eingabe)
                 }
               }}
-              placeholder={eingerichtet ? 'Deine Frage … (Enter sendet, Umschalt+Enter macht eine neue Zeile)' : 'Erst den Schlüssel unter Einstellungen → KI-Assistent einfügen'}
+              placeholder={eingerichtet ? 'Deine Frage … (Enter sendet, Umschalt+Enter macht eine neue Zeile)' : 'Erst den Schlüssel unter Einstellungen → Tempo einfügen'}
               className="min-h-[44px] flex-1 resize-none rounded-chip bg-panel-2 px-3 py-2 text-sm text-ink outline-none placeholder:text-dim focus:ring-1 focus:ring-dim disabled:opacity-60"
             />
             <button

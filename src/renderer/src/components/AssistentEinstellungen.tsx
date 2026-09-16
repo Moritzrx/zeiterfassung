@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactElement } from 'react'
-import { Sparkles } from 'lucide-react'
+import { Zap } from 'lucide-react'
 import type { KiStatus, Wissen } from '@shared/typen'
 import { fehlerText, kurzDatum, uhrzeit } from '../format'
 import { tonSpielen } from '../toene'
-import { assistentOeffnen } from './AssistentDialog'
+import { ASSISTENT_NAME, assistentOeffnen } from './AssistentDialog'
 import { hinweisZeigen } from './Hinweis'
 import { Karte } from './Karte'
 
@@ -80,7 +80,7 @@ export function AssistentEinstellungen(): ReactElement {
       setStatus(s)
       setSchluessel('')
       tonSpielen('erfolg')
-      hinweisZeigen('Schlüssel gespeichert. Oben rechts auf „Fragen“ klicken und loslegen.')
+      hinweisZeigen('Schlüssel gespeichert. Oben rechts auf „Tempo“ klicken und loslegen.')
     } catch (e) {
       hinweisZeigen(fehlerText(e))
     } finally {
@@ -109,7 +109,7 @@ export function AssistentEinstellungen(): ReactElement {
       setWissen(liste)
       setEntwurf(Object.fromEntries(liste.map((w) => [w.schluessel, w.inhalt])))
       tonSpielen('erfolg')
-      hinweisZeigen(`„${titel}“ gespeichert. Der Assistent kennt es ab der nächsten Frage, bei allen dreien.`)
+      hinweisZeigen(`„${titel}“ gespeichert. Tempo kennt es ab der nächsten Frage, bei allen dreien.`)
     } catch (e) {
       hinweisZeigen(fehlerText(e))
     } finally {
@@ -128,11 +128,11 @@ export function AssistentEinstellungen(): ReactElement {
   return (
     <Karte>
       <p className="flex items-center gap-2 text-xs tracking-wide text-mute uppercase">
-        <Sparkles size={14} strokeWidth={1.5} />
-        KI-Assistent
+        <Zap size={14} strokeWidth={1.5} className="text-produktiv" />
+        {ASSISTENT_NAME}, der KI-Assistent
       </p>
       <p className="mt-1 text-xs text-dim">
-        Oben rechts unter „Fragen“ beantwortet ein Claude-Modell alle Fragen zur App und zu wessamedia. Dafür braucht die App einen
+        Oben rechts unter „Tempo“ beantwortet ein Claude-Modell alle Fragen zur App und zu wessamedia. Dafür braucht die App einen
         Anthropic-Schlüssel: auf console.anthropic.com anmelden, unter „API Keys“ einen Schlüssel anlegen, hier einfügen. Die Antworten kosten
         wenige Cent je Frage vom Guthaben dieses Kontos. Der Schlüssel bleibt verschlüsselt auf diesem Rechner.
       </p>
@@ -170,7 +170,7 @@ export function AssistentEinstellungen(): ReactElement {
       <div className="mt-5 border-t border-panel-2 pt-4">
         <p className="text-sm">Wissen über wessamedia</p>
         <p className="mt-0.5 text-xs text-dim">
-          Was hier steht, weiß der Assistent zusätzlich zur Anleitung, bei allen dreien. Einfach als Text hineinschreiben, wie du es einem neuen
+          Was hier steht, weiß Tempo zusätzlich zur Anleitung, bei allen dreien. Einfach als Text hineinschreiben, wie du es einem neuen
           Kollegen erklären würdest. Fragen zur Firma oder zu Kunden beantwortet er nur aus diesen Texten, er erfindet nichts.
         </p>
         {wissenFehler && <p className="mt-2 text-sm text-unproduktiv">{wissenFehler}</p>}

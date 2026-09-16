@@ -59,7 +59,7 @@ export function KundenVerwaltung(): ReactElement {
       <p className="text-xs tracking-wide text-mute uppercase">Kunden</p>
       <p className="mt-1 text-xs text-dim">
         Die Liste gilt für das ganze Team. Umbenennen ändert den Namen in allen Blöcken; ein Name, den es schon gibt, legt beide
-        Kunden zusammen. Neue Kunden legst du direkt im Block-Dialog, im Fokus, bei „Ich bin weg“ oder beim Eintragen an.
+        Kunden zusammen. Neue Kunden legst du direkt im Block-Dialog, im Fokus, beim Nachtragen oder beim Eintragen an.
       </p>
       {kunden.length === 0 ? (
         <p className="mt-3 text-sm text-dim">Noch keine Kunden. Beim nächsten Block unter „Kunde (optional)“ auf „+ Neuer Kunde“.</p>

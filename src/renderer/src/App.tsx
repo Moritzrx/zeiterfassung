@@ -2,7 +2,6 @@ import { memo, startTransition, useEffect, useRef, useState, type ReactElement }
 import { AUSZEICHNUNGEN } from '@shared/auszeichnungen'
 import { Fehlerschutz } from './components/Fehlerschutz'
 import { FokusDialogHalter, fokusDialogOeffnen } from './components/FokusDialog'
-import { WegDialogHalter } from './components/WegDialog'
 import { Hinweise, hinweisZeigen } from './components/Hinweis'
 import { UpdateHinweis } from './components/UpdateHinweis'
 import { WarnungHinweis } from './components/WarnungHinweis'
@@ -206,7 +205,6 @@ function Oberflaeche(): ReactElement {
       </Fehlerschutz>
       <Fehlerschutz bereich="Fokus">
         <FokusDialogHalter />
-        <WegDialogHalter />
       </Fehlerschutz>
     </div>
   )

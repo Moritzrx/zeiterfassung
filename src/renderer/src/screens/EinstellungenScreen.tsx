@@ -148,7 +148,7 @@ export function EinstellungenScreen(): ReactElement {
     try {
       await window.api.taetigkeiten.unterwegsSetzen(name, an)
       tonSpielen('erfolg')
-      hinweisZeigen(an ? `„${name}“ gilt jetzt als unterwegs und steht bei „Ich bin weg“.` : `„${name}“ gilt jetzt als am Rechner und steht im Fokus.`)
+      hinweisZeigen(an ? `„${name}“ gilt jetzt als unterwegs und steht beim Nachtragen und in der Rückfrage zuerst.` : `„${name}“ gilt jetzt als am Rechner und steht im Fokus.`)
     } catch (e) {
       hinweisZeigen(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : String(e))
     }
@@ -611,7 +611,7 @@ export function EinstellungenScreen(): ReactElement {
         <p className="text-xs tracking-wide text-mute uppercase">Tätigkeiten und Symbole</p>
         <p className="mt-1 text-xs text-dim">
           Auf ein Symbol klicken, um es zu ändern; der Stift daneben benennt um oder legt mit einer vorhandenen Tätigkeit zusammen. Rechts steht, wo die Tätigkeit hingehört: „Am Rechner“ erscheint im Fokus, „Unterwegs“
-          (Dreh, Fahrt, Kundentermin) bei „Ich bin weg“ und in der Rückfrage nach einer Abwesenheit. Antippen wechselt. Gilt für alle drei.
+          (Dreh, Fahrt, Kundentermin) nicht im Fokus, sondern beim Nachtragen und in der Rückfrage nach einer Abwesenheit zuerst. Antippen wechselt. Gilt für alle drei.
         </p>
         <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
           {taetigkeiten.map((t) => {
@@ -666,7 +666,7 @@ export function EinstellungenScreen(): ReactElement {
                   className={`flex shrink-0 items-center gap-1 rounded-chip px-2 py-1 text-xs transition-colors ${
                     istUnterwegs ? 'bg-produktiv/15 text-produktiv' : 'bg-panel-2 text-mute hover:text-ink'
                   }`}
-                  title={istUnterwegs ? 'Unterwegs: steht bei „Ich bin weg“. Antippen für „Am Rechner“.' : 'Am Rechner: steht im Fokus. Antippen für „Unterwegs“.'}
+                  title={istUnterwegs ? 'Unterwegs: wird von Hand eingetragen, steht nicht im Fokus. Antippen für „Am Rechner“.' : 'Am Rechner: steht im Fokus. Antippen für „Unterwegs“.'}
                 >
                   {istUnterwegs ? <DoorOpen size={12} strokeWidth={2} /> : <Monitor size={12} strokeWidth={2} />}
                   {istUnterwegs ? 'Unterwegs' : 'Am Rechner'}

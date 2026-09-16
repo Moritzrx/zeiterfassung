@@ -382,7 +382,7 @@ export function HeuteScreen(): ReactElement {
                   <div className="w-24 shrink-0 text-sm text-dim">
                     {uhrzeit(e.luecke.start)} – {uhrzeit(e.luecke.ende)}
                   </div>
-                  <div className="min-w-0 flex-1 text-sm text-dim">Keine Aufzeichnung, kein Fokus lief</div>
+                  <div className="min-w-0 flex-1 text-sm text-unproduktiv/80">Nicht am Rechner, keine Aufzeichnung</div>
                   <div className="w-20 shrink-0 text-right text-sm text-dim">{dauerText((Date.parse(e.luecke.ende) - Date.parse(e.luecke.start)) / 1000)}</div>
                   <div className="flex w-24 shrink-0 justify-end">
                     <button

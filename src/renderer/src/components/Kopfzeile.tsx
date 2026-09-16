@@ -1,20 +1,23 @@
 import type { ReactElement } from 'react'
-import { Crosshair, DoorOpen, LogIn, Pause, Play, Sparkles, Square } from 'lucide-react'
-import { assistentOeffnen } from './AssistentDialog'
+import { Crosshair, LogIn, Pause, Play, Square, Zap } from 'lucide-react'
+import { ASSISTENT_NAME, assistentOeffnen } from './AssistentDialog'
 import { useErfassung } from '../erfassung'
 import { uhrzeit } from '../format'
 import { TaetigkeitSymbol } from '../symbole'
 import { tonSpielen } from '../toene'
 import { fokusDialogOeffnen } from './FokusDialog'
 import { hinweisZeigen } from './Hinweis'
-import { wegDialogOeffnen } from './WegDialog'
 
 const istMac = window.electron?.process?.platform === 'darwin'
 
 const KNOPF =
   'flex items-center gap-2 rounded-chip px-3 py-1.5 text-sm transition-colors [-webkit-app-region:no-drag] disabled:text-dim disabled:hover:bg-transparent'
 
-/** Schmale Leiste ganz oben: Status der Erfassung links, "Ich bin weg", Fokus und Pause rechts. Auf jedem Screen sichtbar. */
+/**
+ * Schmale Leiste ganz oben: Status der Erfassung links, Tempo (KI-Assistent), Fokus und Pause rechts. Auf jedem Screen
+ * sichtbar. "Ich bin weg" gibt es seit 1.0.49 nicht mehr (Auftraggeber: "wir tragen das einfach manuell ein"); läuft aus
+ * einer älteren Version noch eine Abwesenheit, bleibt nur der Knopf "Zurück" zum Beenden.
+ */
 export function Kopfzeile(): ReactElement {
   const status = useErfassung()
   const pausiert = status.zustand === 'pausiert'
@@ -103,26 +106,15 @@ export function Kopfzeile(): ReactElement {
         )}
       </div>
       <div className="flex items-center gap-1">
-        {/* KI-Assistent (16. September 2026): Fragen zur App, Antworten aus der Anleitung und dem aktuellen Stand. */}
-        <button type="button" onClick={assistentOeffnen} className={`${KNOPF} text-ink hover:bg-panel-2`} title="Fragen zur App: der Assistent kennt die ganze Anleitung">
-          <Sparkles size={16} strokeWidth={1.75} />
-          Fragen
+        {/* Tempo, der KI-Assistent (16. September 2026): Fragen zur App und zu wessamedia, Antworten aus Anleitung, Spielregeln, Wissen und aktuellem Stand. */}
+        <button type="button" onClick={assistentOeffnen} className={`${KNOPF} text-ink hover:bg-panel-2`} title={`${ASSISTENT_NAME} fragen: kennt die ganze App und das Wissen über wessamedia`}>
+          <Zap size={16} strokeWidth={1.75} className="text-produktiv" />
+          {ASSISTENT_NAME}
         </button>
-        {weg ? (
+        {weg && (
           <button type="button" onClick={() => void wegBeenden()} className={`${KNOPF} bg-produktiv/15 text-produktiv hover:bg-produktiv/25`} title="Rückkehr melden (sonst beendet die erste Eingabe die Abwesenheit)">
             <LogIn size={16} strokeWidth={1.75} />
             Zurück
-          </button>
-        ) : (
-          <button
-            type="button"
-            disabled={!aktiv && !pausiert}
-            onClick={wegDialogOeffnen}
-            className={`${KNOPF} text-ink hover:bg-panel-2`}
-            title="Ich bin weg: Termin, Dreh oder Telefonat als produktive Zeit buchen, bis du zurück bist"
-          >
-            <DoorOpen size={16} strokeWidth={1.75} />
-            Ich bin weg
           </button>
         )}
         {fokus ? (

@@ -77,7 +77,7 @@ function zuletztMerken(neu: Zuletzt): void {
  * fertig. Ab dann zählt alles als produktiv mit dieser Tätigkeit, egal welches Programm vorne ist.
  */
 function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactElement {
-  // Nur Tätigkeiten am Rechner: Dreh, Fahrt und Kundentermin gehören zu "Ich bin weg" (12. September 2026).
+  // Nur Tätigkeiten am Rechner: Dreh, Fahrt und Kundentermin werden von Hand eingetragen (Eintragen oder Nachtragen), seit 1.0.49 ohne "Ich bin weg".
   const { amRechner: taetigkeiten, eingeordnet } = useTaetigkeitenNachOrt()
   const kunden = useKunden()
   const nurFokus = useErfassung().nurFokus
@@ -215,7 +215,7 @@ function FokusDialog({ onSchliessen }: { onSchliessen: () => void }): ReactEleme
                 if (e.key === 'Enter') void starten()
               }}
             />
-            {eingeordnet && <p className="mt-2 text-xs text-dim">Dreh, Fahrt, Kundentermin und andere Unterwegs-Tätigkeiten findest du unter „Ich bin weg“.</p>}
+            {eingeordnet && <p className="mt-2 text-xs text-dim">Dreh, Fahrt, Kundentermin und andere Unterwegs-Tätigkeiten trägst du unter „Eintragen“ ein oder auf „Heute“ über „Nachtragen“.</p>}
           </div>
 
           <div className="mt-5">

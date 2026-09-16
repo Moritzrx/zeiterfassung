@@ -25,14 +25,15 @@ interface Props {
 }
 
 /**
- * Tagesverlauf (15. September 2026, "Zeitstrahl, aber nur Lücken, Pausen lassen wir weg"): ein Balken über den Tag,
- * auf dem produktive Zeit grün, Unproduktives rot, Ungeklärtes hellgrau und Lücken ohne Aufzeichnung gestrichelt
- * liegen. Pausen und Abwesenheit werden bewusst nicht gezeichnet (Hintergrund). Klick auf eine Lücke öffnet "Nachtragen".
+ * Tagesverlauf (15. September 2026): ein Balken über den Tag, auf dem produktive Zeit grün, Unproduktives rot und
+ * Ungeklärtes hellgrau liegen. Zeit, in der niemand am Rechner war, ist seit 16. September 2026 ROT (Auftraggeber: "wenn
+ * man nicht am Rechner ist, soll das rot sein; nachgetragen wird es grün"): Lücken ohne Aufzeichnung rot gestrichelt,
+ * Pausen im Fokus (inaktive Blöcke) rot halbdurchsichtig. Beides ist klickbar und öffnet "Nachtragen" für den Zeitraum.
  */
 export const TagesZeitstrahl = memo(function TagesZeitstrahl({ bloecke, luecken, datum, jetztMs, onLuecke }: Props): ReactElement | null {
   const [jahr, monat, tag] = datum.split('-').map(Number)
 
-  const { von, bis, abschnitte, stunden } = useMemo(() => {
+  const { von, bis, abschnitte, pausen, stunden } = useMemo(() => {
     let vonStunde = VON_STUNDE
     let bisStunde = BIS_STUNDE
     for (const b of bloecke) {
@@ -64,9 +65,13 @@ export const TagesZeitstrahl = memo(function TagesZeitstrahl({ bloecke, luecken,
         abschnitte.push({ start: s, ende: e, farbe, titel: b.taetigkeit ?? (b.bewertung === 'ungeklaert' ? 'Ungeklärt' : b.bewertung === 'unproduktiv' ? 'Unproduktiv' : 'Produktiv') })
       }
     }
+    // Pausen im Fokus (inaktive Blöcke ohne Programm): nicht am Rechner, deshalb rot; klickbar zum Nachtragen.
+    const pausen: Luecke[] = bloecke
+      .filter((b) => b.bewertung === 'inaktiv' && !b.programm && Date.parse(b.ende) > von && Date.parse(b.start) < bis)
+      .map((b) => ({ start: new Date(Math.max(Date.parse(b.start), von)).toISOString(), ende: new Date(Math.min(Date.parse(b.ende), bis)).toISOString() }))
     const stunden: number[] = []
     for (let h = vonStunde; h <= bisStunde; h++) stunden.push(h)
-    return { von, bis, abschnitte, stunden }
+    return { von, bis, abschnitte, pausen, stunden }
   }, [bloecke, jahr, monat, tag])
 
   if (bloecke.length === 0 && luecken.length === 0) return null
@@ -86,6 +91,21 @@ export const TagesZeitstrahl = memo(function TagesZeitstrahl({ bloecke, luecken,
             style={{ left: `${prozent(a.start)}%`, width: `${Math.max(0.3, prozent(a.ende) - prozent(a.start))}%`, backgroundColor: a.farbe }}
           />
         ))}
+        {pausen.map((l) => {
+          const s = Date.parse(l.start)
+          const e = Date.parse(l.ende)
+          if (e <= s) return null
+          return (
+            <button
+              key={`p${l.start}`}
+              type="button"
+              onClick={() => onLuecke(l)}
+              title={`Nicht am Rechner (Pause im Fokus) ${zeitText(s, e)}. Klicken und nachtragen, falls du gearbeitet hast.`}
+              className="absolute inset-y-0 cursor-pointer transition-opacity hover:opacity-80"
+              style={{ left: `${prozent(s)}%`, width: `${Math.max(0.3, prozent(e) - prozent(s))}%`, backgroundColor: 'rgba(255,77,77,0.45)' }}
+            />
+          )
+        })}
         {luecken.map((l) => {
           const s = Math.max(Date.parse(l.start), von)
           const e = Math.min(Date.parse(l.ende), bis)
@@ -95,12 +115,12 @@ export const TagesZeitstrahl = memo(function TagesZeitstrahl({ bloecke, luecken,
               key={l.start}
               type="button"
               onClick={() => onLuecke(l)}
-              title={`Keine Aufzeichnung ${zeitText(s, e)}. Klicken und nachtragen.`}
+              title={`Nicht am Rechner, keine Aufzeichnung ${zeitText(s, e)}. Klicken und nachtragen.`}
               className="absolute inset-y-0 cursor-pointer transition-opacity hover:opacity-80"
               style={{
                 left: `${prozent(s)}%`,
                 width: `${Math.max(0.3, prozent(e) - prozent(s))}%`,
-                backgroundImage: 'repeating-linear-gradient(135deg, rgba(242,242,243,0.28) 0 3px, rgba(242,242,243,0.08) 3px 7px)'
+                backgroundImage: 'repeating-linear-gradient(135deg, rgba(255,77,77,0.75) 0 3px, rgba(255,77,77,0.3) 3px 7px)'
               }}
             />
           )
@@ -120,8 +140,8 @@ export const TagesZeitstrahl = memo(function TagesZeitstrahl({ bloecke, luecken,
         })}
       </div>
       <p className="mt-1 text-xs text-dim">
-        Grün zählt, gestrichelt fehlt: Klick auf eine gestrichelte Stelle trägt die Zeit nach.
-        {abschnitte.some((a) => a.farbe === '#FF4D4D') ? ' Rot: laut Regel unproduktiv.' : ''}
+        Grün zählt. Rot heißt nicht am Rechner (gestrichelt: keine Aufzeichnung, glatt: Pause im Fokus). Klick auf Rot trägt die Zeit nach, etwa
+        für Kundentermin, Dreh oder Fahrt, dann wird sie grün.
       </p>
     </div>
   )
