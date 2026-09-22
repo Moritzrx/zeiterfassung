@@ -10,7 +10,7 @@ import { Wochenrueckblick } from './components/Wochenrueckblick'
 import { Hintergrund } from './components/Hintergrund'
 import { Kopfzeile } from './components/Kopfzeile'
 import { Navigation, SCREEN_REIHENFOLGE, type ScreenId } from './components/Navigation'
-import { RangAufstieg, auszeichnungenFeiern, bossFeiern, levelFeiern } from './components/RangAufstieg'
+import { RangAufstieg, auszeichnungenFeiern, bossFeiern, duellFeiern, levelFeiern } from './components/RangAufstieg'
 import { hinweisZeigen } from './components/Hinweis'
 import { aktuelleStimmung, stimmungAnwenden, stimmungBeimStart } from './kosmetik'
 import { NutzerProvider, useNutzer } from './nutzer'
@@ -161,6 +161,8 @@ function Oberflaeche(): ReactElement {
         if (e.art === 'boss' && e.boss) bossFeiern(e.boss)
         else if (e.art === 'level' && e.level) levelFeiern(e.level, e.belohnung ?? null)
         else if (e.art === 'duell-anfrage') hinweisZeigen(`Duell: ${e.text} Auf dem Team-Screen annehmen.`)
+        else if (e.art === 'duell-angenommen' && e.duell) duellFeiern('angenommen', e.duell.gegner, e.duell.worum, e.duell.einsatz)
+        else if (e.art === 'duell' && e.duell) duellFeiern('gewonnen', e.duell.gegner, e.duell.worum, e.duell.einsatz)
         else {
           tonSpielen('erfolg')
           hinweisZeigen(e.punkte > 0 ? `+${e.punkte} Season-Punkte · ${e.text}` : e.text)

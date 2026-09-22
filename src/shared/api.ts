@@ -22,7 +22,7 @@ import type {
   TeamWoche,
   Ziel
 } from './typen'
-import type { BossHalleEintrag, BossStand, Duell, DuellArt, Ereignis, EreignisTyp, Kosmetik, SeasonStand, SpielEreignis } from './spiel'
+import type { BossHalleEintrag, BossStand, Duell, Ereignis, EreignisTyp, Kosmetik, NeuesDuell, SeasonStand, SpielEreignis } from './spiel'
 
 export interface AuthStatus {
   /** false, wenn die Supabase-Zugangsdaten beim Bauen gefehlt haben */
@@ -222,7 +222,8 @@ export interface Api {
     /** Alle abgeschlossenen Bosse (Trophäenhalle). */
     bossHalle: () => Promise<BossHalleEintrag[]>
     duelle: () => Promise<Duell[]>
-    duellErstellen: (anUser: string, art: DuellArt, taetigkeit: string | null, bisIso: string, einsatz: string) => Promise<Duell>
+    /** Herausforderung anlegen; bei fruehstart ist `bis` der Kalendertag. Braucht Skript 22 für Kunde, Wettlauf und Beschreibung. */
+    duellErstellen: (neu: NeuesDuell) => Promise<Duell>
     duellAntworten: (id: string, annehmen: boolean) => Promise<void>
     /** Der Einsatz (Kaffee) ist bezahlt. */
     duellEinloesen: (id: string) => Promise<void>

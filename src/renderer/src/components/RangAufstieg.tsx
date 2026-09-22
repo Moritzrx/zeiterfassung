@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react'
 import { Portal } from './Portal'
+import { Swords } from 'lucide-react'
 import { STUFEN_FARBEN, rangName, rangStufe } from '@shared/rang'
 import { LIGA_FARBEN, liga as ligaVon, type Liga } from '@shared/liga'
 import { AUSZEICHNUNGEN, AUSZEICHNUNG_REIHENFOLGE } from '@shared/auszeichnungen'
@@ -26,6 +27,12 @@ type Feier =
   | { art: 'auszeichnung'; typ: AuszeichnungTyp }
   | { art: 'boss'; name: string; schluessel: string; ergebnisSekunden: number; hpSekunden: number }
   | { art: 'season'; level: number; belohnung: Belohnung | null }
+  | { art: 'duell'; stufe: 'angenommen' | 'gewonnen'; gegner: string; worum: string; einsatz: string }
+
+/** Team-Spiel (22. September 2026): ein Duell wurde angenommen oder gewonnen, groß feiern mit Schwertern und Fanfare. */
+export function duellFeiern(stufe: 'angenommen' | 'gewonnen', gegner: string, worum: string, einsatz: string): void {
+  window.dispatchEvent(new CustomEvent('duell-feier', { detail: { stufe, gegner, worum, einsatz } }))
+}
 
 /** Von der Liga-Karte ausgelöst, wenn der Trophäenstand eine neue Liga erreicht hat. */
 export function ligaAufstiegZeigen(trophaeen: number): void {
@@ -147,11 +154,17 @@ export function RangAufstieg(): ReactElement | null {
       const d = (e as CustomEvent<{ level: number; belohnung: Belohnung | null }>).detail
       setGezeigt((alt) => alt ?? { art: 'season', level: d.level, belohnung: d.belohnung })
     }
+    const duell = (e: Event): void => {
+      const d = (e as CustomEvent<{ stufe: 'angenommen' | 'gewonnen'; gegner: string; worum: string; einsatz: string }>).detail
+      setGezeigt((alt) => alt ?? { art: 'duell', ...d })
+    }
     window.addEventListener('boss-besiegt', boss)
     window.addEventListener('season-level', level)
+    window.addEventListener('duell-feier', duell)
     return () => {
       window.removeEventListener('boss-besiegt', boss)
       window.removeEventListener('season-level', level)
+      window.removeEventListener('duell-feier', duell)
     }
   }, [])
 
@@ -192,8 +205,11 @@ export function RangAufstieg(): ReactElement | null {
   // Klang beim Erscheinen, nach ein paar Sekunden von selbst schließen.
   useEffect(() => {
     if (gezeigt === null) return
-    tonSpielen(gezeigt.art === 'auszeichnung' ? 'auszeichnung' : 'aufstieg')
-    const timer = window.setTimeout(() => schliessen(gezeigt), gezeigt.art === 'auszeichnung' || gezeigt.art === 'boss' || gezeigt.art === 'season' ? DAUER_AUSZEICHNUNG_MS : DAUER_MS)
+    tonSpielen(gezeigt.art === 'auszeichnung' ? 'auszeichnung' : gezeigt.art === 'duell' ? 'duell' : 'aufstieg')
+    const timer = window.setTimeout(
+      () => schliessen(gezeigt),
+      gezeigt.art === 'auszeichnung' || gezeigt.art === 'boss' || gezeigt.art === 'season' || gezeigt.art === 'duell' ? DAUER_AUSZEICHNUNG_MS : DAUER_MS
+    )
     return () => window.clearTimeout(timer)
   }, [gezeigt, schliessen])
 
@@ -210,7 +226,9 @@ export function RangAufstieg(): ReactElement | null {
                   ? 200 + AUSZEICHNUNG_REIHENFOLGE.indexOf(gezeigt.typ)
                   : gezeigt.art === 'boss'
                     ? 300 + gezeigt.schluessel.length
-                    : 400 + gezeigt.level
+                    : gezeigt.art === 'season'
+                      ? 400 + gezeigt.level
+                      : 500 + gezeigt.gegner.length
           ),
     [gezeigt]
   )
@@ -238,6 +256,16 @@ export function RangAufstieg(): ReactElement | null {
           ueberschrift: 'Season-Level',
           gross: `Level ${gezeigt.level}`,
           klein: gezeigt.belohnung ? `Freigeschaltet: ${gezeigt.belohnung.name}. ${gezeigt.belohnung.text}` : 'Weiter so, die nächste Belohnung wartet.'
+        }
+      case 'duell':
+        return {
+          farbe: gezeigt.stufe === 'gewonnen' ? '#00C076' : '#FE5303',
+          ueberschrift: gezeigt.stufe === 'gewonnen' ? 'Duell gewonnen' : 'Duell angenommen',
+          gross: gezeigt.stufe === 'gewonnen' ? `Sieg gegen ${gezeigt.gegner}` : `Du gegen ${gezeigt.gegner}`,
+          klein:
+            gezeigt.stufe === 'gewonnen'
+              ? `${gezeigt.worum}. ${gezeigt.gegner} schuldet dir ${gezeigt.einsatz}. 40 Season-Punkte für dich.`
+              : `${gezeigt.worum}. Es geht um ${gezeigt.einsatz}. Möge der Fleißigere gewinnen!`
         }
     }
   })()
@@ -310,6 +338,13 @@ export function RangAufstieg(): ReactElement | null {
                 <AuszeichnungBild typ={gezeigt.typ} erreicht groesse={230} />
               ) : gezeigt.art === 'boss' ? (
                 <img src={bossBild(gezeigt.schluessel)} alt="" draggable={false} style={{ width: 260, height: 260, filter: `drop-shadow(0 0 28px ${farbe}88)` }} />
+              ) : gezeigt.art === 'duell' ? (
+                <div
+                  className="flex items-center justify-center rounded-full"
+                  style={{ width: 230, height: 230, border: `6px solid ${farbe}`, boxShadow: `0 0 40px ${farbe}66, inset 0 0 40px ${farbe}33`, color: farbe }}
+                >
+                  <Swords size={150} strokeWidth={1.4} style={{ filter: `drop-shadow(0 0 16px ${farbe})` }} />
+                </div>
               ) : (
                 <div
                   className="flex items-center justify-center rounded-full text-[96px] font-light"
@@ -324,12 +359,12 @@ export function RangAufstieg(): ReactElement | null {
             {ueberschrift}
           </p>
           <p
-            className={`aufstieg-text mt-2 leading-none font-light ${gezeigt.art === 'auszeichnung' || gezeigt.art === 'boss' ? 'text-[56px]' : 'text-[76px]'}`}
+            className={`aufstieg-text mt-2 leading-none font-light ${gezeigt.art === 'auszeichnung' || gezeigt.art === 'boss' || gezeigt.art === 'duell' ? 'text-[56px]' : 'text-[76px]'}`}
             style={{ animationDelay: '0.62s', textShadow: '0 0 30px rgba(255,255,255,0.25)' }}
           >
             {gross}
           </p>
-          <p className={`aufstieg-text mt-3 text-mute ${gezeigt.art === 'auszeichnung' || gezeigt.art === 'boss' || gezeigt.art === 'season' ? 'max-w-[520px] px-6 text-lg leading-snug' : 'text-xl'}`} style={{ animationDelay: '0.76s' }}>
+          <p className={`aufstieg-text mt-3 text-mute ${gezeigt.art === 'auszeichnung' || gezeigt.art === 'boss' || gezeigt.art === 'season' || gezeigt.art === 'duell' ? 'max-w-[520px] px-6 text-lg leading-snug' : 'text-xl'}`} style={{ animationDelay: '0.76s' }}>
             {klein}
           </p>
           <p className="aufstieg-text mt-10 text-xs text-dim" style={{ animationDelay: '1.8s' }}>

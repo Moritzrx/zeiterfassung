@@ -4,6 +4,7 @@ import { DUELL_ARTEN, type Duell, type SeasonPerson } from '@shared/spiel'
 import { Karte } from './Karte'
 import { DuellDialog } from './DuellDialog'
 import { hinweisZeigen } from './Hinweis'
+import { duellFeiern } from './RangAufstieg'
 import { useDuelle } from '../spiel'
 import { useNutzer } from '../nutzer'
 import { fehlerText, kurzDatum, stundenText, uhrzeit } from '../format'
@@ -30,6 +31,15 @@ function endeText(iso: string): string {
   return tag === heute ? `heute ${uhrzeit(iso)}` : `${kurzDatum(tag)} ${uhrzeit(iso)}`
 }
 
+/** Worum es geht, kurz: Art, Filter, Ziel, Ende, Beschreibung. */
+function worum(d: Duell): string {
+  const filter = [d.taetigkeit ? `in „${d.taetigkeit}“` : '', d.kunde ? `für ${d.kunde}` : ''].filter(Boolean).join(' ')
+  const zusatz = d.beschreibung ? ` · ${d.beschreibung}` : ''
+  if (d.art === 'fruehstart') return `Früher am Start am ${kurzDatum(berlinDatum(new Date(d.von)))}${zusatz}`
+  if (d.art === 'ziel') return `Wettlauf auf ${d.zielStunden ?? '?'} h${filter ? ' ' + filter : ''}, bis spätestens ${endeText(d.bis)}${zusatz}`
+  return `Mehr Stunden${filter ? ' ' + filter : ''} bis ${endeText(d.bis)}${zusatz}`
+}
+
 /**
  * Duelle auf dem Team-Screen (22. September 2026): Herausforderungen annehmen, laufende Duelle live, erledigte mit
  * Sieger und offenem Einsatz ("schuldet einen Kaffee", per Klick eingelöst).
@@ -40,11 +50,13 @@ export function DuellKarte({ team }: Props): ReactElement {
   const ich = status?.userId ?? ''
   const [offen, setOffen] = useState(false)
 
-  async function antworten(id: string, annehmen: boolean): Promise<void> {
+  async function antworten(d: Duell, annehmen: boolean): Promise<void> {
     if (!window.api) return
     try {
-      await window.api.spiel.duellAntworten(id, annehmen)
-      tonSpielen(annehmen ? 'erfolg' : 'schliessen')
+      await window.api.spiel.duellAntworten(d.id, annehmen)
+      // Angenommen: groß feiern mit Schwertern und Fanfare (der Herausforderer bekommt es vom Hauptprozess gemeldet).
+      if (annehmen) duellFeiern('angenommen', d.vonName, worum(d), d.einsatz)
+      else tonSpielen('schliessen')
       await neuLaden()
     } catch (e) {
       hinweisZeigen(fehlerText(e))
@@ -90,14 +102,13 @@ export function DuellKarte({ team }: Props): ReactElement {
           {anfragen.map((d) => (
             <div key={d.id} className="rounded-chip bg-orange/15 p-3">
               <p className="text-sm">
-                <span className="text-orange">{d.vonName}</span> fordert dich heraus: {DUELL_ARTEN[d.art].name}
-                {d.taetigkeit ? ` „${d.taetigkeit}“` : ''}, bis {endeText(d.bis)}. Einsatz: {d.einsatz}.
+                <span className="text-orange">{d.vonName}</span> fordert dich heraus: {worum(d)}. Einsatz: {d.einsatz}.
               </p>
               <div className="mt-2 flex gap-2">
-                <button type="button" onClick={() => void antworten(d.id, true)} className="knopf-primaer rounded-chip px-3 py-1 text-sm">
+                <button type="button" onClick={() => void antworten(d, true)} className="knopf-primaer rounded-chip px-3 py-1 text-sm">
                   Annehmen
                 </button>
-                <button type="button" onClick={() => void antworten(d.id, false)} className="rounded-chip bg-panel-2 px-3 py-1 text-sm text-ink transition-colors hover:bg-inaktiv">
+                <button type="button" onClick={() => void antworten(d, false)} className="rounded-chip bg-panel-2 px-3 py-1 text-sm text-ink transition-colors hover:bg-inaktiv">
                   Ablehnen
                 </button>
               </div>
@@ -116,7 +127,7 @@ export function DuellKarte({ team }: Props): ReactElement {
             return (
               <div key={d.id}>
                 <p className="text-sm">
-                  {d.vonName} gegen {d.anName} <span className="text-mute">· {DUELL_ARTEN[d.art].name}{d.taetigkeit ? ` „${d.taetigkeit}“` : ''} · bis {endeText(d.bis)} · Einsatz {d.einsatz}</span>
+                  {d.vonName} gegen {d.anName} <span className="text-mute">· {worum(d)} · Einsatz {d.einsatz}</span>
                 </p>
                 {[
                   { user: d.vonUser, wert: d.vonWert },
@@ -173,7 +184,7 @@ export function DuellKarte({ team }: Props): ReactElement {
                 ? `${d.anName} hat das Duell von ${d.vonName} abgelehnt.`
                 : d.unentschieden
                   ? `Unentschieden: ${d.vonName} gegen ${d.anName} (${DUELL_ARTEN[d.art].name}).`
-                  : `${d.gewinner ? name(d, d.gewinner) : '?'} hat gegen ${verlierer(d) ? name(d, verlierer(d)!) : '?'} gewonnen (${DUELL_ARTEN[d.art].name}${d.taetigkeit ? ` „${d.taetigkeit}“` : ''}, ${wertText(d, d.vonWert)} zu ${wertText(d, d.anWert)}).`}
+                  : `${d.gewinner ? name(d, d.gewinner) : '?'} hat gegen ${verlierer(d) ? name(d, verlierer(d)!) : '?'} gewonnen (${worum(d)}, ${wertText(d, d.vonWert)} zu ${wertText(d, d.anWert)}).`}
             </p>
           ))}
         </div>

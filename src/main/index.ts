@@ -48,7 +48,7 @@ import { protokollDateiFestlegen, protokollEinrichten, protokollNotiz, protokoll
 import { release } from 'os'
 import { Feier } from './feier'
 import { Spiel } from './spiel'
-import type { BossHalleEintrag, BossStand, Duell, DuellArt, Ereignis, EreignisTyp, Kosmetik, SeasonStand, SpielEreignis } from '@shared/spiel'
+import type { BossHalleEintrag, BossStand, Duell, Ereignis, EreignisTyp, Kosmetik, NeuesDuell, SeasonStand, SpielEreignis } from '@shared/spiel'
 import { Profil } from './profil'
 import { fokusRueckwirkend } from './fokus'
 import { istFehlblock } from './programme'
@@ -983,13 +983,10 @@ function ipcRegistrieren(): void {
   ipcMain.handle('spiel:boss', async (): Promise<BossStand | null> => (sitzung ? sitzung.spiel.boss() : null))
   ipcMain.handle('spiel:bossHalle', async (): Promise<BossHalleEintrag[]> => (sitzung ? sitzung.spiel.bossHalle() : []))
   ipcMain.handle('spiel:duelle', async (): Promise<Duell[]> => (sitzung ? sitzung.spiel.duelle() : []))
-  ipcMain.handle(
-    'spiel:duellErstellen',
-    async (_ereignis, anUser: string, art: DuellArt, taetigkeit: string | null, bisIso: string, einsatz: string): Promise<Duell> => {
-      if (!sitzung) throw new Error('Nicht angemeldet.')
-      return sitzung.spiel.duellErstellen(anUser, art, taetigkeit, bisIso, einsatz)
-    }
-  )
+  ipcMain.handle('spiel:duellErstellen', async (_ereignis, neu: NeuesDuell): Promise<Duell> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    return sitzung.spiel.duellErstellen(neu)
+  })
   ipcMain.handle('spiel:duellAntworten', async (_ereignis, id: string, annehmen: boolean): Promise<void> => {
     if (!sitzung) throw new Error('Nicht angemeldet.')
     await sitzung.spiel.duellAntworten(id, annehmen)

@@ -450,13 +450,32 @@ export interface BossHalleEintrag {
 // Duelle
 // ---------------------------------------------------------------------------------------------------------------------
 
-export type DuellArt = 'stunden' | 'taetigkeit' | 'fruehstart'
+/**
+ * stunden: mehr produktive Stunden bis zum Ende (wahlweise nur eine Tätigkeit und/oder ein Kunde) · ziel: Wettlauf, wer zuerst
+ * N Stunden hat (gleiche Filter; endet sofort, sobald jemand die Marke erreicht, sonst am Ende der Höhere) · fruehstart: wer
+ * am gewählten Tag die erste produktive Minute früher hat · taetigkeit: alte Form bis 22. September 2026 (= stunden mit Tätigkeit).
+ */
+export type DuellArt = 'stunden' | 'taetigkeit' | 'fruehstart' | 'ziel'
 export type DuellStatus = 'offen' | 'angenommen' | 'abgelehnt' | 'beendet'
 
 export const DUELL_ARTEN: Record<DuellArt, { name: string; text: string }> = {
-  stunden: { name: 'Mehr Stunden', text: 'Wer bis zum Ende mehr produktive Stunden hat, gewinnt.' },
-  taetigkeit: { name: 'Mehr in einer Tätigkeit', text: 'Wer bis zum Ende mehr Stunden in der gewählten Tätigkeit hat, gewinnt.' },
-  fruehstart: { name: 'Früher am Start', text: 'Wer am Tag des Duells die erste produktive Minute früher hat, gewinnt.' }
+  stunden: { name: 'Mehr Stunden', text: 'Wer bis zum Ende mehr produktive Stunden hat, gewinnt. Auf Wunsch nur in einer Tätigkeit oder für einen Kunden.' },
+  ziel: { name: 'Wettlauf', text: 'Wer zuerst die gewählte Stundenzahl erreicht, gewinnt sofort. Schafft es bis zum Ende keiner, gewinnt der Höhere.' },
+  fruehstart: { name: 'Früher am Start', text: 'Wer am gewählten Tag die erste produktive Minute früher hat, gewinnt.' },
+  taetigkeit: { name: 'Mehr in einer Tätigkeit', text: 'Wer bis zum Ende mehr Stunden in der gewählten Tätigkeit hat, gewinnt.' }
+}
+
+/** Was das Duell-Fenster zum Anlegen schickt. */
+export interface NeuesDuell {
+  anUser: string
+  art: DuellArt
+  taetigkeit: string | null
+  kunde: string | null
+  /** Ende als ISO; bei fruehstart der Tag (JJJJ-MM-TT) */
+  bis: string
+  einsatz: string
+  zielStunden: number | null
+  beschreibung: string | null
 }
 
 export interface Duell {
@@ -467,6 +486,9 @@ export interface Duell {
   anName: string
   art: DuellArt
   taetigkeit: string | null
+  kunde: string | null
+  zielStunden: number | null
+  beschreibung: string | null
   von: string
   bis: string
   einsatz: string
@@ -552,10 +574,12 @@ export function heuteDatum(jetzt = new Date()): string {
 
 /** Was der Hauptprozess nach einer Prüfung ans Fenster meldet (feiern, Hinweis, Systemmeldung). */
 export interface SpielEreignis {
-  art: 'quest' | 'quest-tag' | 'streak' | 'boss' | 'duell' | 'duell-anfrage' | 'level'
+  art: 'quest' | 'quest-tag' | 'streak' | 'boss' | 'duell' | 'duell-anfrage' | 'duell-angenommen' | 'level'
   text: string
   punkte: number
   level?: number
   belohnung?: Belohnung | null
   boss?: { name: string; schluessel: string; ergebnisSekunden: number; hpSekunden: number }
+  /** Bei duell und duell-angenommen: Gegner und worum es geht, für die große Einblendung */
+  duell?: { gegner: string; worum: string; einsatz: string }
 }

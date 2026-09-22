@@ -26,6 +26,7 @@ import {
   type Ereignis,
   type EreignisTyp,
   type Kosmetik,
+  type NeuesDuell,
   type SeasonPerson,
   type SeasonStand,
   type SpielEreignis
@@ -76,6 +77,9 @@ interface DuellZeile {
   an_user: string
   art: DuellArt
   taetigkeit: string | null
+  kunde?: string | null
+  ziel_stunden?: number | string | null
+  beschreibung?: string | null
   von: string
   bis: string
   einsatz: string
@@ -92,6 +96,8 @@ interface Lokal {
   hintergrund: string | null
   /** Kennungen von Duell-Anfragen, die schon gemeldet wurden */
   gemeldeteDuelle: string[]
+  /** Kennungen eigener Herausforderungen, deren Annahme schon gefeiert wurde */
+  gefeierteAnnahmen?: string[]
 }
 
 export class Spiel {
@@ -427,6 +433,9 @@ export class Spiel {
       anName: this.nameVon(z.an_user),
       art: z.art,
       taetigkeit: z.taetigkeit,
+      kunde: z.kunde ?? null,
+      zielStunden: z.ziel_stunden === null || z.ziel_stunden === undefined ? null : Number(z.ziel_stunden),
+      beschreibung: z.beschreibung ?? null,
       von: new Date(z.von).toISOString(),
       bis: new Date(z.bis).toISOString(),
       einsatz: z.einsatz,
@@ -471,37 +480,54 @@ export class Spiel {
     return m
   }
 
-  async duellErstellen(anUser: string, art: DuellArt, taetigkeit: string | null, bisIso: string, einsatz: string, jetzt = new Date()): Promise<Duell> {
+  async duellErstellen(neu: NeuesDuell, jetzt = new Date()): Promise<Duell> {
     if (!supabaseKonfiguriert()) throw new Error('Keine Datenbank konfiguriert.')
-    if (anUser === this.userId) throw new Error('Gegen dich selbst geht nicht.')
-    const bis = new Date(bisIso)
-    if (!(bis.getTime() > jetzt.getTime())) throw new Error('Das Ende muss in der Zukunft liegen.')
-    // Früher am Start: das Duell gilt für den nächsten Kalendertag (heute wäre schon entschieden).
-    const von = art === 'fruehstart' ? datumZuTagesanfang(datumVerschieben(berlinDatum(jetzt), 1)) : jetzt
-    const bisEcht = art === 'fruehstart' ? datumZuTagesanfang(datumVerschieben(berlinDatum(jetzt), 2)) : bis
-    const { data, error } = await supabase()
-      .from('duell')
-      .insert({
-        von_user: this.userId,
-        an_user: anUser,
-        art,
-        taetigkeit: art === 'taetigkeit' ? taetigkeit : null,
-        von: von.toISOString(),
-        bis: bisEcht.toISOString(),
-        einsatz: einsatz.trim() || 'einen Kaffee'
-      })
-      .select('*')
-      .single()
-    if (error) throw new Error(/does not exist|schema cache/i.test(error.message) ? SKRIPT_HINWEIS : error.message)
+    if (neu.anUser === this.userId) throw new Error('Gegen dich selbst geht nicht.')
+    let von: Date
+    let bis: Date
+    if (neu.art === 'fruehstart') {
+      // Der gewählte Kalendertag (JJJJ-MM-TT), frühestens morgen: heute wäre schon entschieden.
+      const tag = /^\d{4}-\d{2}-\d{2}$/.test(neu.bis) ? neu.bis : datumVerschieben(berlinDatum(jetzt), 1)
+      if (tag <= berlinDatum(jetzt)) throw new Error('Der Tag muss in der Zukunft liegen, frühestens morgen.')
+      von = datumZuTagesanfang(tag)
+      bis = datumZuTagesanfang(datumVerschieben(tag, 1))
+    } else {
+      von = jetzt
+      bis = new Date(neu.bis)
+      if (!(bis.getTime() > jetzt.getTime() + 5 * 60_000)) throw new Error('Das Ende muss mindestens fünf Minuten in der Zukunft liegen.')
+    }
+    if (neu.art === 'ziel' && !(neu.zielStunden && neu.zielStunden > 0)) throw new Error('Bitte eine Stundenzahl für den Wettlauf wählen.')
+    const zeile: Record<string, unknown> = {
+      von_user: this.userId,
+      an_user: neu.anUser,
+      art: neu.art,
+      taetigkeit: neu.art === 'fruehstart' ? null : neu.taetigkeit,
+      von: von.toISOString(),
+      bis: bis.toISOString(),
+      einsatz: neu.einsatz.trim() || 'einen Kaffee'
+    }
+    // Die Spalten aus Skript 22 nur mitschicken, wenn sie gebraucht werden (sonst scheitert es ohne das Skript).
+    if (neu.kunde && neu.art !== 'fruehstart') zeile.kunde = neu.kunde
+    if (neu.art === 'ziel') zeile.ziel_stunden = neu.zielStunden
+    if (neu.beschreibung?.trim()) zeile.beschreibung = neu.beschreibung.trim()
+    const { data, error } = await supabase().from('duell').insert(zeile).select('*').single()
+    if (error) {
+      if (/kunde|ziel_stunden|beschreibung|duell_art_check|schema cache/i.test(error.message)) throw new Error('Dafür muss in Supabase einmal das Skript 22 (22_duell_genauer.sql) ausgeführt werden.')
+      throw new Error(/does not exist/i.test(error.message) ? SKRIPT_HINWEIS : error.message)
+    }
     const d = this.duellVonZeile(data as DuellZeile)
     void this.posten('duell', `${this.eigenerName()} fordert ${d.anName} heraus: ${this.duellText(d)}. Einsatz: ${d.einsatz}.`, `duell:${d.id}:neu`)
     return d
   }
 
-  private duellText(d: Duell): string {
-    if (d.art === 'stunden') return `mehr produktive Stunden bis ${this.zeitText(d.bis)}`
-    if (d.art === 'taetigkeit') return `mehr Stunden in „${d.taetigkeit}“ bis ${this.zeitText(d.bis)}`
-    return `wer am ${this.tagText(d.von)} früher am Start ist`
+  /** "worum es geht" in einem Satzteil, für Feed und Einblendung. */
+  duellText(d: Duell): string {
+    const filter = [d.taetigkeit ? `in „${d.taetigkeit}“` : '', d.kunde ? `für ${d.kunde}` : ''].filter(Boolean).join(' ')
+    const zusatz = d.beschreibung ? ` (${d.beschreibung})` : ''
+    if (d.art === 'fruehstart') return `wer am ${this.tagText(d.von)} früher am Start ist${zusatz}`
+    if (d.art === 'ziel') return `wer zuerst ${d.zielStunden ?? '?'} Stunden ${filter ? filter + ' ' : ''}hat, bis spätestens ${this.zeitText(d.bis)}${zusatz}`
+    if (d.art === 'taetigkeit') return `mehr Stunden in „${d.taetigkeit}“ bis ${this.zeitText(d.bis)}${zusatz}`
+    return `mehr produktive Stunden ${filter ? filter + ' ' : ''}bis ${this.zeitText(d.bis)}${zusatz}`
   }
 
   private zeitText(iso: string): string {
@@ -541,12 +567,40 @@ export class Spiel {
       if (d.status === 'offen' && d.anUser === this.userId && !this.lokal.gemeldeteDuelle.includes(d.id)) {
         this.lokal.gemeldeteDuelle = [...this.lokal.gemeldeteDuelle.slice(-30), d.id]
         this.lokalSpeichern()
-        ereignisse.push({ art: 'duell-anfrage', text: `${d.vonName} fordert dich heraus: ${this.duellText(d)}. Einsatz: ${d.einsatz}.`, punkte: 0 })
+        ereignisse.push({
+          art: 'duell-anfrage',
+          text: `${d.vonName} fordert dich heraus: ${this.duellText(d)}. Einsatz: ${d.einsatz}.`,
+          punkte: 0,
+          duell: { gegner: d.vonName, worum: this.duellText(d), einsatz: d.einsatz }
+        })
         continue
       }
-      if (d.status === 'angenommen' && Date.parse(d.bis) <= jetzt.getTime()) {
+      // Der Herausforderer erfährt hier, dass angenommen wurde (der Angenommene feiert direkt im Fenster).
+      if (d.status === 'angenommen' && d.vonUser === this.userId && !(this.lokal.gefeierteAnnahmen ?? []).includes(d.id)) {
+        this.lokal.gefeierteAnnahmen = [...(this.lokal.gefeierteAnnahmen ?? []).slice(-30), d.id]
+        this.lokalSpeichern()
+        ereignisse.push({
+          art: 'duell-angenommen',
+          text: `${d.anName} nimmt dein Duell an: ${this.duellText(d)}.`,
+          punkte: 0,
+          duell: { gegner: d.anName, worum: this.duellText(d), einsatz: d.einsatz }
+        })
+      }
+      // Wettlauf: sobald jemand die Marke erreicht, ist es entschieden, sonst am Ende.
+      let entscheiden = d.status === 'angenommen' && Date.parse(d.bis) <= jetzt.getTime()
+      let standVorab: Map<string, number | null> | null = null
+      if (d.status === 'angenommen' && d.art === 'ziel' && d.zielStunden && !entscheiden) {
         try {
-          const stand = await this.duellStand(d.id)
+          standVorab = await this.duellStand(d.id)
+          const marke = d.zielStunden * 3600
+          if ((standVorab.get(d.vonUser) ?? 0) >= marke || (standVorab.get(d.anUser) ?? 0) >= marke) entscheiden = true
+        } catch {
+          /* dann eben später */
+        }
+      }
+      if (entscheiden) {
+        try {
+          const stand = standVorab ?? (await this.duellStand(d.id))
           const vonWert = stand.get(d.vonUser) ?? null
           const anWert = stand.get(d.anUser) ?? null
           let gewinner: string | null = null
@@ -582,8 +636,15 @@ export class Spiel {
         }
       }
       if (d.status === 'beendet' && d.gewinner === this.userId) {
-        const neu = await this.vergeben('duell', d.id, PUNKTE.duell, `Duell gegen ${d.gewinner === d.vonUser ? d.anName : d.vonName} gewonnen`, berlinDatum(jetzt))
-        if (neu) ereignisse.push({ art: 'duell', text: `Duell gewonnen! ${d.gewinner === d.vonUser ? d.anName : d.vonName} schuldet dir ${d.einsatz}.`, punkte: PUNKTE.duell })
+        const gegner = d.gewinner === d.vonUser ? d.anName : d.vonName
+        const neu = await this.vergeben('duell', d.id, PUNKTE.duell, `Duell gegen ${gegner} gewonnen`, berlinDatum(jetzt))
+        if (neu)
+          ereignisse.push({
+            art: 'duell',
+            text: `Duell gewonnen! ${gegner} schuldet dir ${d.einsatz}.`,
+            punkte: PUNKTE.duell,
+            duell: { gegner, worum: this.duellText(d), einsatz: d.einsatz }
+          })
       }
     }
     return ereignisse

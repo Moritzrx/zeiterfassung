@@ -6,7 +6,7 @@
  * Ein- und Ausschalten sowie die Lautstärke liegen in localStorage (toene.an, toene.lautstaerke).
  */
 
-export type Ton = 'tick' | 'wischen' | 'oeffnen' | 'schliessen' | 'erfolg' | 'auszeichnung' | 'aufstieg'
+export type Ton = 'tick' | 'wischen' | 'oeffnen' | 'schliessen' | 'erfolg' | 'auszeichnung' | 'aufstieg' | 'duell'
 
 /** Die Klick-Arten zur Auswahl in den Einstellungen; der Auftraggeber hört sie an und wählt (Claude kann nicht hören). */
 export type KlickArt = 'tock' | 'pop' | 'tap' | 'fein' | 'keiner'
@@ -238,6 +238,21 @@ const KLAENGE: Record<Ton, (k: AudioContext) => void> = {
     ;[523, 659, 784, 1047].forEach((f, i) => ton(k, { typ: 'triangle', von: f, start: 0.28 + i * 0.13, dauer: 0.9, pegel: 0.11, hall: true }))
     ;[1047, 1319, 1568].forEach((f) => ton(k, { von: f, start: 0.85, dauer: 1.7, pegel: 0.065, anstieg: 0.03, hall: true }))
     ton(k, { von: 3136, start: 0.95, dauer: 1.3, pegel: 0.025, anstieg: 0.05, hall: true })
+  },
+  // Das Duell (22. September 2026): zwei Schwerthiebe (metallisches Rauschen mit Klingen-Ton), ein Trommelwirbel
+  // aus tiefen Schlägen, dann eine kleine Fanfare aufwärts mit Schlussakkord.
+  duell: (k) => {
+    for (const [start, hoehe] of [
+      [0, 2600],
+      [0.22, 3100]
+    ]) {
+      rauschen(k, { start, dauer: 0.22, pegel: 0.16, filterVon: hoehe, filterBis: 900, guete: 3, anstieg: 0.004 })
+      ton(k, { typ: 'triangle', von: hoehe * 1.4, bis: hoehe * 0.9, start, dauer: 0.3, pegel: 0.05, hall: true })
+    }
+    for (let i = 0; i < 6; i++) ton(k, { von: 110, bis: 60, start: 0.42 + i * 0.07, dauer: 0.12, pegel: 0.16, anstieg: 0.005 })
+    ;[392, 523, 659, 784].forEach((f, i) => ton(k, { typ: 'square', von: f, start: 0.9 + i * 0.14, dauer: 0.5, pegel: 0.04, hall: true }))
+    ;[784, 988, 1175].forEach((f) => ton(k, { typ: 'triangle', von: f, start: 1.5, dauer: 1.4, pegel: 0.07, anstieg: 0.02, hall: true }))
+    ton(k, { von: 196, start: 1.5, dauer: 1.2, pegel: 0.12, anstieg: 0.02 })
   }
 }
 
