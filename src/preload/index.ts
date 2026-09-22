@@ -1,3 +1,4 @@
+import type { SpielEreignis } from '@shared/spiel'
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { Api } from '@shared/api'
@@ -135,6 +136,25 @@ const api: Api = {
   profil: {
     eigenes: () => ipcRenderer.invoke('profil:eigenes'),
     aendern: (aenderung) => ipcRenderer.invoke('profil:aendern', aenderung)
+  },
+  spiel: {
+    stand: () => ipcRenderer.invoke('spiel:stand'),
+    boss: () => ipcRenderer.invoke('spiel:boss'),
+    bossHalle: () => ipcRenderer.invoke('spiel:bossHalle'),
+    duelle: () => ipcRenderer.invoke('spiel:duelle'),
+    duellErstellen: (anUser, art, taetigkeit, bisIso, einsatz) => ipcRenderer.invoke('spiel:duellErstellen', anUser, art, taetigkeit, bisIso, einsatz),
+    duellAntworten: (id, annehmen) => ipcRenderer.invoke('spiel:duellAntworten', id, annehmen),
+    duellEinloesen: (id) => ipcRenderer.invoke('spiel:duellEinloesen', id),
+    feed: () => ipcRenderer.invoke('spiel:feed'),
+    posten: (typ, text, schluessel = null) => ipcRenderer.invoke('spiel:posten', typ, text, schluessel),
+    reagieren: (id, emoji) => ipcRenderer.invoke('spiel:reagieren', id, emoji),
+    kosmetikSetzen: (k) => ipcRenderer.invoke('spiel:kosmetikSetzen', k),
+    pruefen: () => ipcRenderer.invoke('spiel:pruefen'),
+    onEreignis: (rueckruf) => {
+      const handler = (_e: IpcRendererEvent, ereignisse: SpielEreignis[]): void => rueckruf(ereignisse)
+      ipcRenderer.on('spiel:ereignis', handler)
+      return () => ipcRenderer.removeListener('spiel:ereignis', handler)
+    }
   }
 }
 

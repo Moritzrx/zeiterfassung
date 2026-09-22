@@ -9,7 +9,9 @@ import { Wochenrueckblick } from './components/Wochenrueckblick'
 import { Hintergrund } from './components/Hintergrund'
 import { Kopfzeile } from './components/Kopfzeile'
 import { Navigation, SCREEN_REIHENFOLGE, type ScreenId } from './components/Navigation'
-import { RangAufstieg, auszeichnungenFeiern } from './components/RangAufstieg'
+import { RangAufstieg, auszeichnungenFeiern, bossFeiern, levelFeiern } from './components/RangAufstieg'
+import { hinweisZeigen } from './components/Hinweis'
+import { aktuelleStimmung, stimmungAnwenden, stimmungBeimStart } from './kosmetik'
 import { NutzerProvider, useNutzer } from './nutzer'
 import { SymbolProvider } from './symbole'
 import { klickToeneEinrichten, tonSpielen } from './toene'
@@ -150,9 +152,43 @@ function Oberflaeche(): ReactElement {
     })
   }, [])
 
+  // Team-Spiel (22. September 2026): Punkte als Hinweis unten, Boss-Sieg und Season-Level groß, Duell-Anfragen als Hinweis.
+  useEffect(() => {
+    if (!window.api) return
+    return window.api.spiel.onEreignis((ereignisse) => {
+      for (const e of ereignisse) {
+        if (e.art === 'boss' && e.boss) bossFeiern(e.boss)
+        else if (e.art === 'level' && e.level) levelFeiern(e.level, e.belohnung ?? null)
+        else if (e.art === 'duell-anfrage') hinweisZeigen(`Duell: ${e.text} Auf dem Team-Screen annehmen.`)
+        else {
+          tonSpielen('erfolg')
+          hinweisZeigen(e.punkte > 0 ? `+${e.punkte} Season-Punkte · ${e.text}` : e.text)
+        }
+      }
+    })
+  }, [])
+
+  // Hintergrund-Stimmung aus dem Season Pass: beim Start die zuletzt gesehene, dann die gemerkte aus dem Hauptprozess.
+  const [stimmung, setStimmung] = useState(() => {
+    stimmungBeimStart()
+    return aktuelleStimmung()
+  })
+  useEffect(() => {
+    if (!window.api) return
+    void window.api.spiel
+      .stand()
+      .then((s) => {
+        if (s && stimmungAnwenden(s.kosmetik.hintergrund)) setStimmung(aktuelleStimmung())
+      })
+      .catch(() => undefined)
+    const handler = (): void => setStimmung(aktuelleStimmung())
+    window.addEventListener('stimmung-geaendert', handler)
+    return () => window.removeEventListener('stimmung-geaendert', handler)
+  }, [])
+
   return (
     <div className="flex h-full flex-col">
-      <Hintergrund gedimmt={aktiv !== 'heute'} />
+      <Hintergrund key={stimmung} gedimmt={aktiv !== 'heute'} />
       <Kopfzeile />
       <main className="relative flex-1 overflow-hidden">
         {SCREEN_REIHENFOLGE.filter((id) => besucht.includes(id)).map((id) => {

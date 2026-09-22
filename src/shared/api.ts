@@ -22,6 +22,7 @@ import type {
   TeamWoche,
   Ziel
 } from './typen'
+import type { BossHalleEintrag, BossStand, Duell, DuellArt, Ereignis, EreignisTyp, Kosmetik, SeasonStand, SpielEreignis } from './spiel'
 
 export interface AuthStatus {
   /** false, wenn die Supabase-Zugangsdaten beim Bauen gefehlt haben */
@@ -211,5 +212,29 @@ export interface Api {
     eigenes: () => Promise<Profil | null>
     /** Einstellungen ändern; wirkt sofort auf die Erfassung. */
     aendern: (aenderung: Partial<Profil>) => Promise<Profil>
+  }
+  /** Team-Spiel (22. September 2026): Boss-Raid, Season Pass, Duelle, Feed. Braucht Skript 21. */
+  spiel: {
+    /** Season, Level, Quests von heute, Streak, Teamstand, gewählte Kosmetik. */
+    stand: () => Promise<SeasonStand | null>
+    /** Der Boss der laufenden Woche mit Schaden je Person. */
+    boss: () => Promise<BossStand | null>
+    /** Alle abgeschlossenen Bosse (Trophäenhalle). */
+    bossHalle: () => Promise<BossHalleEintrag[]>
+    duelle: () => Promise<Duell[]>
+    duellErstellen: (anUser: string, art: DuellArt, taetigkeit: string | null, bisIso: string, einsatz: string) => Promise<Duell>
+    duellAntworten: (id: string, annehmen: boolean) => Promise<void>
+    /** Der Einsatz (Kaffee) ist bezahlt. */
+    duellEinloesen: (id: string) => Promise<void>
+    feed: () => Promise<Ereignis[]>
+    /** Eigener Eintrag in den Feed (Nachricht ans Team oder ein Ereignis mit Schlüssel gegen Doppelte). */
+    posten: (typ: EreignisTyp, text: string, schluessel?: string | null) => Promise<boolean>
+    /** Reaktion setzen oder wieder wegnehmen. */
+    reagieren: (id: string, emoji: string) => Promise<void>
+    kosmetikSetzen: (k: Partial<Kosmetik>) => Promise<Kosmetik>
+    /** Sofort prüfen (nach eigenen Aktionen). */
+    pruefen: () => Promise<void>
+    /** Neue Punkte, Level, Boss-Siege, Duell-Anfragen. */
+    onEreignis: (rueckruf: (ereignisse: SpielEreignis[]) => void) => Abmelden
   }
 }

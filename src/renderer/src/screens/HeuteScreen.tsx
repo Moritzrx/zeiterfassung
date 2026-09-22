@@ -16,6 +16,7 @@ import { BlockDialog } from '../components/BlockDialog'
 import { BlockZeile } from '../components/BlockZeile'
 import { fokusDialogOeffnen } from '../components/FokusDialog'
 import { AbwesenheitKarte } from '../components/AbwesenheitKarte'
+import { QuestsKarte } from '../components/QuestsKarte'
 import { wortmarkeLage } from '../components/wortmarke'
 import { useHintergrundArt } from '../hintergrundart'
 import { hinweisZeigen } from '../components/Hinweis'
@@ -361,6 +362,8 @@ export function HeuteScreen(): ReactElement {
       )}
 
       {istHeute && <AbwesenheitKarte liste={status.offeneAbwesenheiten} />}
+      {/* Team-Spiel (22. September 2026): drei Daily Quests, Streak und der Weg zum Season Pass. */}
+      {istHeute && <QuestsKarte />}
 
       <UngeklaertPostfach
         anzahl={ungeklaert}

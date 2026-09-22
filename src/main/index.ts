@@ -47,6 +47,8 @@ import { Erfassung, bildschirmrecht, bildschirmrechtAnfragen } from './erfassung
 import { protokollDateiFestlegen, protokollEinrichten, protokollNotiz, protokollPfad, protokollZeilen } from './protokoll'
 import { release } from 'os'
 import { Feier } from './feier'
+import { Spiel } from './spiel'
+import type { BossHalleEintrag, BossStand, Duell, DuellArt, Ereignis, EreignisTyp, Kosmetik, SeasonStand, SpielEreignis } from '@shared/spiel'
 import { Profil } from './profil'
 import { fokusRueckwirkend } from './fokus'
 import { istFehlblock } from './programme'
@@ -63,6 +65,8 @@ import { Ziele } from './ziele'
 const APP_ID = 'com.wessamedia.zeit'
 const HINTERGRUND = '#0B0B0C'
 const REGELN_TAKT_MS = 5 * 60_000
+/** Team-Spiel: Quests, Streak, Boss und Duelle alle fünf Minuten prüfen (zusätzlich nach Blockänderungen). */
+const SPIEL_TAKT_MS = 5 * 60_000
 
 // Fehler und Warnungen des Hauptprozesses für die Diagnose mitschreiben (so früh wie möglich).
 protokollEinrichten()
@@ -79,10 +83,12 @@ interface Sitzung {
   profil: Profil
   auszeichnungen: Auszeichnungen
   feier: Feier
+  spiel: Spiel
   regelTimer: NodeJS.Timeout
   auszeichnungTimer: NodeJS.Timeout
   minutenTimer: NodeJS.Timeout
   wachhundTimer: NodeJS.Timeout
+  spielTimer: NodeJS.Timeout
   pruefungAusstehend: NodeJS.Timeout | null
   gestartetMs: number
 }
@@ -420,6 +426,13 @@ async function auszeichnungenPruefen(s: Sitzung): Promise<void> {
   try {
     const neue = await s.auszeichnungen.pruefenUndSpeichern(s.speicher.alle(), s.ziele.eigene(), new Date())
     if (neue.length && fenster && !fenster.isDestroyed()) fenster.webContents.send('auszeichnungen:neu', neue)
+    // Team-Spiel: jede neue Medaille bringt Season-Punkte und steht im Feed.
+    for (const a of neue) {
+      const info = AUSZEICHNUNGEN[a.typ]
+      void s.spiel.auszeichnungMelden(a.typ, info.titel, info.text, a.wocheStart)
+    }
+    // Quests, Streak, Boss und Duelle gleich mit prüfen (alle 10 Minuten und 30 s nach Blockänderungen).
+    void s.spiel.pruefen()
     // Ist das Fenster gerade nicht vorne, sagt eine Systemmeldung, welche Medaille es ist und wofür (16. September 2026).
     if (neue.length && !(fenster && !fenster.isDestroyed() && fenster.isVisible() && fenster.isFocused()) && Notification.isSupported()) {
       for (const a of neue.slice(0, 3)) {
@@ -482,6 +495,24 @@ async function regelnAktualisieren(s: Sitzung): Promise<number> {
   return geaendert
 }
 
+/**
+ * Team-Spiel (22. September 2026): neue Punkte, Level, Boss-Siege und Duell-Anfragen gehen ans Fenster (feiern) und, wenn
+ * das Fenster nicht vorne ist, als Systemmeldung.
+ */
+function spielMelden(ereignisse: SpielEreignis[]): void {
+  if (fenster && !fenster.isDestroyed()) fenster.webContents.send('spiel:ereignis', ereignisse)
+  const vorne = fenster && !fenster.isDestroyed() && fenster.isVisible() && fenster.isFocused()
+  if (vorne || !Notification.isSupported()) return
+  for (const e of ereignisse) {
+    if (e.art !== 'duell-anfrage' && e.art !== 'boss' && e.art !== 'level' && e.art !== 'duell') continue
+    const titel = e.art === 'duell-anfrage' ? 'Duell-Herausforderung' : e.art === 'boss' ? 'Boss besiegt!' : e.art === 'duell' ? 'Duell gewonnen!' : 'Season-Level erreicht'
+    protokollNotiz(`Spiel: ${titel}: ${e.text}`)
+    const meldung = new Notification({ title: titel, body: `${e.text} Klicken zum Ansehen.` })
+    meldung.on('click', fensterZeigen)
+    meldung.show()
+  }
+}
+
 function sitzungStarten(userId: string): void {
   if (sitzung?.userId === userId) return
   sitzungBeenden()
@@ -494,6 +525,7 @@ function sitzungStarten(userId: string): void {
   const profil = new Profil(userId)
   const auszeichnungen = new Auszeichnungen(userId)
   const feier = new Feier(userId)
+  const spiel = new Spiel(userId, speicher, ziele, spielMelden)
   taetigkeiten.ausBloecken(speicher.alle())
   kunden.ausBloecken(speicher.alle())
   const erfassung = new Erfassung(speicher, userId, (programm, titel) =>
@@ -522,10 +554,12 @@ function sitzungStarten(userId: string): void {
     profil,
     auszeichnungen,
     feier,
+    spiel,
     regelTimer: setInterval(() => void regelnAktualisieren(s), REGELN_TAKT_MS),
     auszeichnungTimer: setInterval(() => void auszeichnungenPruefen(s), 10 * 60_000),
     minutenTimer: setInterval(() => sonntagsMeldung(s), 60_000),
     wachhundTimer: setInterval(() => wachhundPruefen(s), WACHHUND_TAKT_MS),
+    spielTimer: setInterval(() => void s.spiel.pruefen(), SPIEL_TAKT_MS),
     pruefungAusstehend: null,
     gestartetMs: Date.now()
   }
@@ -547,7 +581,11 @@ function sitzungStarten(userId: string): void {
   erfassung.start()
   sync.start()
   // Auszeichnungen erst prüfen, wenn Regeln und der erste Abgleich da sind, sonst zählen veraltete Blöcke mit.
-  void Promise.all([regelnAktualisieren(s), sync.erstAbgleich]).then(() => auszeichnungenPruefen(s))
+  void Promise.all([regelnAktualisieren(s), sync.erstAbgleich])
+    .then(() => auszeichnungenPruefen(s))
+    // Das Team-Spiel braucht die Profile und die eigenen Punkte, danach die erste Prüfung (Quests, Streak, Boss, Duelle).
+    .then(() => spiel.laden())
+    .then(() => spiel.pruefen())
   // Nach dem Laden bekommen Tätigkeiten mit dem neutralen Etikett einmal ein passendes Symbol (15. September 2026).
   void taetigkeiten
     .laden()
@@ -567,6 +605,7 @@ function sitzungBeenden(): void {
   clearInterval(alt.auszeichnungTimer)
   clearInterval(alt.minutenTimer)
   clearInterval(alt.wachhundTimer)
+  clearInterval(alt.spielTimer)
   if (alt.pruefungAusstehend) clearTimeout(alt.pruefungAusstehend)
   alt.erfassung.stop()
   alt.sync.stop()
@@ -931,9 +970,48 @@ function ipcRegistrieren(): void {
     return sitzung.auszeichnungen.liste
   })
   ipcMain.handle('rang:gefeiert', (_ereignis, r: number): void => {
-    sitzung?.feier.feiern(berlinDatum(wochenanfang(new Date())), r)
+    const wocheStart = berlinDatum(wochenanfang(new Date()))
+    sitzung?.feier.feiern(wocheStart, r)
+    // Team-Feed: Rang 5, 10, 15 und 20 sind eine Meldung wert.
+    void sitzung?.spiel.rangMelden(r, rangName(r), wocheStart)
     statusVerteilen()
   })
+
+  // Team-Spiel (22. September 2026): Boss der Woche, Season Pass, Duelle, Feed. Tabellen aus Skript 21.
+  ipcMain.handle('spiel:stand', async (): Promise<SeasonStand | null> => (sitzung ? sitzung.spiel.stand() : null))
+  ipcMain.handle('spiel:boss', async (): Promise<BossStand | null> => (sitzung ? sitzung.spiel.boss() : null))
+  ipcMain.handle('spiel:bossHalle', async (): Promise<BossHalleEintrag[]> => (sitzung ? sitzung.spiel.bossHalle() : []))
+  ipcMain.handle('spiel:duelle', async (): Promise<Duell[]> => (sitzung ? sitzung.spiel.duelle() : []))
+  ipcMain.handle(
+    'spiel:duellErstellen',
+    async (_ereignis, anUser: string, art: DuellArt, taetigkeit: string | null, bisIso: string, einsatz: string): Promise<Duell> => {
+      if (!sitzung) throw new Error('Nicht angemeldet.')
+      return sitzung.spiel.duellErstellen(anUser, art, taetigkeit, bisIso, einsatz)
+    }
+  )
+  ipcMain.handle('spiel:duellAntworten', async (_ereignis, id: string, annehmen: boolean): Promise<void> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    await sitzung.spiel.duellAntworten(id, annehmen)
+  })
+  ipcMain.handle('spiel:duellEinloesen', async (_ereignis, id: string): Promise<void> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    await sitzung.spiel.duellEinloesen(id)
+  })
+  ipcMain.handle('spiel:feed', async (): Promise<Ereignis[]> => (sitzung ? sitzung.spiel.feed() : []))
+  ipcMain.handle('spiel:posten', async (_ereignis, typ: EreignisTyp, text: string, schluessel: string | null): Promise<boolean> =>
+    sitzung ? sitzung.spiel.posten(typ, text, schluessel) : false
+  )
+  ipcMain.handle('spiel:reagieren', async (_ereignis, id: string, emoji: string): Promise<void> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    await sitzung.spiel.reagieren(id, emoji)
+  })
+  ipcMain.handle('spiel:kosmetikSetzen', async (_ereignis, k: Partial<Kosmetik>): Promise<Kosmetik> => {
+    if (!sitzung) throw new Error('Nicht angemeldet.')
+    const neu = await sitzung.spiel.kosmetikSetzen(k)
+    statusVerteilen()
+    return neu
+  })
+  ipcMain.handle('spiel:pruefen', async (): Promise<void> => sitzung?.spiel.pruefen())
 
   ipcMain.handle('system:info', (): SystemInfo => ({
     version: app.getVersion(),

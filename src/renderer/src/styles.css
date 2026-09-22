@@ -82,9 +82,10 @@ body::before {
   inset: -12%;
   z-index: 0;
   pointer-events: none;
+  /* Lichtfarben aus der Season-Kosmetik (kosmetik.ts setzt --licht-a/--licht-b), Standard Orange und Grün. */
   background:
-    radial-gradient(1100px 640px at 12% -8%, rgba(254, 83, 3, 0.34), transparent 62%),
-    radial-gradient(900px 600px at 92% -2%, rgba(0, 192, 118, 0.22), transparent 60%),
+    radial-gradient(1100px 640px at 12% -8%, rgba(var(--licht-a, 254, 83, 3), 0.34), transparent 62%),
+    radial-gradient(900px 600px at 92% -2%, rgba(var(--licht-b, 0, 192, 118), 0.22), transparent 60%),
     radial-gradient(520px 520px at 50% 28%, rgba(255, 255, 255, 0.045), transparent 65%),
     radial-gradient(1500px 760px at 50% 118%, rgba(255, 255, 255, 0.07), transparent 60%);
   animation: hintergrund-atmen 26s ease-in-out infinite alternate;

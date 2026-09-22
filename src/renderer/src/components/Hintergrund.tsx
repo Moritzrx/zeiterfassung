@@ -1,3 +1,4 @@
+import { lichtRgbA, lichtRgbB } from '../kosmetik'
 import { useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { useHintergrundArt } from '../hintergrundart'
 import { WORTMARKE, WORTMARKE_BAHN_OBEN, WORTMARKE_BAHN_UNTEN } from './wortmarke'
@@ -45,8 +46,9 @@ function zufall(saat: number): () => number {
 }
 
 const ORANGE = '#FE5303'
-const FARBEN = ['rgba(0, 192, 118, 0.75)', 'rgba(254, 83, 3, 0.6)', 'rgba(255, 255, 255, 0.4)', 'rgba(0, 192, 118, 0.5)']
-const FARBEN_LOGO = ['rgba(254, 83, 3, 0.6)', 'rgba(255, 255, 255, 0.35)', 'rgba(254, 83, 3, 0.45)']
+// Lichtfarben je nach Season-Stimmung (kosmetik.ts): Standard Orange (a) und Grün (b).
+const farbenKlassisch = (): string[] => [`rgba(${lichtRgbB()}, 0.75)`, `rgba(${lichtRgbA()}, 0.6)`, 'rgba(255, 255, 255, 0.4)', `rgba(${lichtRgbB()}, 0.5)`]
+const farbenLogo = (): string[] => [`rgba(${lichtRgbA()}, 0.6)`, 'rgba(255, 255, 255, 0.35)', `rgba(${lichtRgbA()}, 0.45)`]
 
 const RASTER =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cpath d='M56 0H0V56' fill='none' stroke='white' stroke-opacity='0.16' stroke-width='1'/%3E%3Ccircle cx='0' cy='0' r='1' fill='white' fill-opacity='0.35'/%3E%3C/svg%3E\")"
@@ -435,7 +437,7 @@ function bewegungReduziert(): boolean {
 
 /** Die klassische Fassung: Raster, Zifferblätter, geschwungene Lichtbahnen, Lichtpunkte. */
 function HintergrundKlassisch(): ReactElement {
-  const partikel = useMemo(() => partikelErzeugen(44, FARBEN, 7), [])
+  const partikel = useMemo(() => partikelErzeugen(44, farbenKlassisch(), 7), [])
   const behaelter = useRef<HTMLDivElement>(null)
   const skalierer = useRef<HTMLDivElement>(null)
   const glieder = useRef<Array<Array<HTMLDivElement | null>>>(BAHNEN.map(() => []))
@@ -719,7 +721,7 @@ function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => voi
             const ziel = stufe * staerke
             const deckkraft = 1 - (1 - ziel) / (1 - bisher)
             bisher = ziel
-            ctx.strokeStyle = `rgba(254, 83, 3, ${deckkraft.toFixed(3)})`
+            ctx.strokeStyle = `rgba(${lichtRgbA()}, ${deckkraft.toFixed(3)})`
             ctx.beginPath()
             let offen = false
             let gezeichnet = false
@@ -763,7 +765,7 @@ function lichterZeichnen(canvas: HTMLCanvasElement, lichter: Licht[]): () => voi
 /** Die Logo-Fassung: Linienmuster hinten, Wortmarke als Wasserzeichen vorn, orangene Lichter auf beidem (Leinwand). */
 function HintergrundLogo({ gedimmt }: { gedimmt: boolean }): ReactElement {
   // Etwas mehr und etwas größere Punkte als klassisch ("minimal auffälliger, aber nicht viel"), sie funkeln per CSS.
-  const partikel = useMemo(() => partikelErzeugen(36, FARBEN_LOGO, 11, 1.5), [])
+  const partikel = useMemo(() => partikelErzeugen(36, farbenLogo(), 11, 1.5), [])
   const hinten = useRef<HTMLDivElement>(null)
   const leinwand = useRef<HTMLCanvasElement>(null)
   const wortmarkeSvg = useRef<SVGSVGElement>(null)

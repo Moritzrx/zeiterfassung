@@ -30,6 +30,7 @@ import { BlockDialog } from '../components/BlockDialog'
 import { hinweisZeigen } from '../components/Hinweis'
 import { Karte } from '../components/Karte'
 import { LigaKarte } from '../components/LigaKarte'
+import { SeasonKarte } from '../components/SeasonKarte'
 import { RangAbzeichen } from '../components/RangAbzeichen'
 import { RangRing } from '../components/RangRing'
 import { RangUebersicht } from '../components/RangUebersicht'
@@ -318,6 +319,9 @@ export function WocheScreen(): ReactElement {
       {uebersichtOffen && <RangUebersicht aktuellerRang={aktuellerRang} onSchliessen={() => setUebersichtOffen(false)} />}
 
       <LigaKarte produktivSekunden={aktuelleWoche ? produktiv : status.wocheProduktivSekunden} gesamtziel={gesamtziel} />
+
+      {/* Team-Spiel (22. September 2026): Season Pass mit Level, Punkten und Belohnungen. */}
+      <SeasonKarte />
 
       <Karte>
         <p className="text-xs tracking-wide text-mute uppercase">Montag bis Sonntag</p>

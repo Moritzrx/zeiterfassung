@@ -9,6 +9,11 @@ import { RangAbzeichen } from '../components/RangAbzeichen'
 import { RangUebersicht } from '../components/RangUebersicht'
 import { TeamBalken, type Teamwert } from '../components/TeamBalken'
 import { TeamVerlauf, type Verlaufsperson, type Verlaufswoche } from '../components/TeamVerlauf'
+import { BossKarte } from '../components/BossKarte'
+import { DuellKarte } from '../components/DuellKarte'
+import { TeamFeed } from '../components/TeamFeed'
+import { TITEL } from '@shared/spiel'
+import { useSeason } from '../spiel'
 import { useErfassung } from '../erfassung'
 import { kurzDatum, stundenText, uhrzeit } from '../format'
 
@@ -44,6 +49,8 @@ function gespeicherterZeitraum(): number {
 /** Screen 4: Team. Stand der laufenden Woche mit Rang-Abzeichen, dazu Verlauf und Rangliste über einen wählbaren Zeitraum. */
 export function TeamScreen(): ReactElement {
   const status = useErfassung()
+  // Team-Spiel: Titel und Wappenrahmen der anderen kommen mit dem Season-Stand.
+  const season = useSeason()
   const [mitglieder, setMitglieder] = useState<TeamMitglied[]>([])
   const [ziele, setZiele] = useState<Ziel[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
@@ -197,12 +204,15 @@ export function TeamScreen(): ReactElement {
         <RangUebersicht aktuellerRang={rang(status.wocheProduktivSekunden)} onSchliessen={() => setUebersichtOffen(false)} />
       )}
 
+      <BossKarte />
+
       <LigaRangliste />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {zeilen.map((z) => {
           const anteil = Math.min(1, z.sekunden / (z.gesamtziel * 3600))
           const geschafft = z.sekunden >= z.gesamtziel * 3600
+          const person = season.stand?.team.find((p) => p.userId === z.userId)
           return (
             <Karte key={z.userId} className="flex flex-col items-center text-center">
               <div
@@ -213,8 +223,9 @@ export function TeamScreen(): ReactElement {
                 {initialen(z.name)}
               </div>
               <p className="mt-2 text-base">{z.name}</p>
+              {person?.titel && TITEL[person.titel] && <p className="text-xs text-orange">{TITEL[person.titel]}</p>}
               <div className="mt-3">
-                <RangAbzeichen rang={z.rang} groesse={64} />
+                <RangAbzeichen rang={z.rang} groesse={64} rahmen={person?.rahmen ?? null} />
               </div>
               <p className="mt-2 text-sm">
                 Rang {z.rang} <span className="text-mute">· {rangName(z.rang)}</span>
@@ -245,6 +256,10 @@ export function TeamScreen(): ReactElement {
           fehler={taetigkeitenFehler}
         />
       )}
+
+      <DuellKarte team={season.stand?.team ?? []} />
+
+      <TeamFeed />
 
       {zeilen.length > 0 && (
         <Karte>

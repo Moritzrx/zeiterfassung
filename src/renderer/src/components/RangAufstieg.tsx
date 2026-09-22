@@ -10,6 +10,9 @@ import { tonSpielen } from '../toene'
 import { AuszeichnungBild } from './AuszeichnungBild'
 import { LigaAbzeichen } from './LigaAbzeichen'
 import { RangAbzeichen } from './RangAbzeichen'
+import { bossBild, bossFarbe } from './bossBilder'
+import type { Belohnung } from '@shared/spiel'
+import { stundenText } from '../format'
 
 const DAUER_MS = 5200
 /** Medaillen bleiben länger stehen, weil man die Bedingung lesen soll. */
@@ -17,11 +20,26 @@ const DAUER_AUSZEICHNUNG_MS = 8000
 const RAUS_MS = 350
 
 /** Was gefeiert wird: ein Wochenrang, eine neue Liga oder eine neue Auszeichnung (Medaille). */
-type Feier = { art: 'rang'; rang: number } | { art: 'liga'; liga: Liga; trophaeen: number } | { art: 'auszeichnung'; typ: AuszeichnungTyp }
+type Feier =
+  | { art: 'rang'; rang: number }
+  | { art: 'liga'; liga: Liga; trophaeen: number }
+  | { art: 'auszeichnung'; typ: AuszeichnungTyp }
+  | { art: 'boss'; name: string; schluessel: string; ergebnisSekunden: number; hpSekunden: number }
+  | { art: 'season'; level: number; belohnung: Belohnung | null }
 
 /** Von der Liga-Karte ausgelöst, wenn der Trophäenstand eine neue Liga erreicht hat. */
 export function ligaAufstiegZeigen(trophaeen: number): void {
   window.dispatchEvent(new CustomEvent('liga-aufstieg', { detail: trophaeen }))
+}
+
+/** Team-Spiel (22. September 2026): der Wochen-Boss ist gefallen. */
+export function bossFeiern(boss: { name: string; schluessel: string; ergebnisSekunden: number; hpSekunden: number }): void {
+  window.dispatchEvent(new CustomEvent('boss-besiegt', { detail: boss }))
+}
+
+/** Team-Spiel: ein neues Season-Level, mit der Belohnung, die es freischaltet. */
+export function levelFeiern(level: number, belohnung: Belohnung | null): void {
+  window.dispatchEvent(new CustomEvent('season-level', { detail: { level, belohnung } }))
 }
 
 /**
@@ -119,6 +137,24 @@ export function RangAufstieg(): ReactElement | null {
     return () => window.removeEventListener('liga-aufstieg', handler)
   }, [])
 
+  // Team-Spiel: Boss gefallen oder neues Season-Level (nur, wenn gerade nichts anderes gefeiert wird).
+  useEffect(() => {
+    const boss = (e: Event): void => {
+      const b = (e as CustomEvent<{ name: string; schluessel: string; ergebnisSekunden: number; hpSekunden: number }>).detail
+      setGezeigt((alt) => alt ?? { art: 'boss', ...b })
+    }
+    const level = (e: Event): void => {
+      const d = (e as CustomEvent<{ level: number; belohnung: Belohnung | null }>).detail
+      setGezeigt((alt) => alt ?? { art: 'season', level: d.level, belohnung: d.belohnung })
+    }
+    window.addEventListener('boss-besiegt', boss)
+    window.addEventListener('season-level', level)
+    return () => {
+      window.removeEventListener('boss-besiegt', boss)
+      window.removeEventListener('season-level', level)
+    }
+  }, [])
+
   // Auszeichnungen: kommen als Liste, werden nacheinander gezeigt, und erst, wenn das Fenster sichtbar ist.
   const warteschlange = useRef<AuszeichnungTyp[]>([])
   const [wartend, setWartend] = useState(0)
@@ -157,7 +193,7 @@ export function RangAufstieg(): ReactElement | null {
   useEffect(() => {
     if (gezeigt === null) return
     tonSpielen(gezeigt.art === 'auszeichnung' ? 'auszeichnung' : 'aufstieg')
-    const timer = window.setTimeout(() => schliessen(gezeigt), gezeigt.art === 'auszeichnung' ? DAUER_AUSZEICHNUNG_MS : DAUER_MS)
+    const timer = window.setTimeout(() => schliessen(gezeigt), gezeigt.art === 'auszeichnung' || gezeigt.art === 'boss' || gezeigt.art === 'season' ? DAUER_AUSZEICHNUNG_MS : DAUER_MS)
     return () => window.clearTimeout(timer)
   }, [gezeigt, schliessen])
 
@@ -165,16 +201,47 @@ export function RangAufstieg(): ReactElement | null {
     () =>
       gezeigt === null
         ? []
-        : funken(gezeigt.art === 'rang' ? gezeigt.rang : gezeigt.art === 'liga' ? 100 + gezeigt.liga.index : 200 + AUSZEICHNUNG_REIHENFOLGE.indexOf(gezeigt.typ)),
+        : funken(
+            gezeigt.art === 'rang'
+              ? gezeigt.rang
+              : gezeigt.art === 'liga'
+                ? 100 + gezeigt.liga.index
+                : gezeigt.art === 'auszeichnung'
+                  ? 200 + AUSZEICHNUNG_REIHENFOLGE.indexOf(gezeigt.typ)
+                  : gezeigt.art === 'boss'
+                    ? 300 + gezeigt.schluessel.length
+                    : 400 + gezeigt.level
+          ),
     [gezeigt]
   )
 
   if (gezeigt === null) return null
 
-  const farbe = gezeigt.art === 'rang' ? STUFEN_FARBEN[rangStufe(gezeigt.rang)] : gezeigt.art === 'liga' ? LIGA_FARBEN[gezeigt.liga.stufe] : AUSZEICHNUNGEN[gezeigt.typ].farbe
-  const ueberschrift = gezeigt.art === 'rang' ? 'Aufstieg' : gezeigt.art === 'liga' ? 'Liga-Aufstieg' : 'Auszeichnung freigeschaltet'
-  const gross = gezeigt.art === 'rang' ? `Rang ${gezeigt.rang}` : gezeigt.art === 'liga' ? gezeigt.liga.name : AUSZEICHNUNGEN[gezeigt.typ].titel
-  const klein = gezeigt.art === 'rang' ? rangName(gezeigt.rang) : gezeigt.art === 'liga' ? `${zahlText(gezeigt.trophaeen, 0)} Trophäen` : AUSZEICHNUNGEN[gezeigt.typ].text
+  const texte = ((): { farbe: string; ueberschrift: string; gross: string; klein: string } => {
+    switch (gezeigt.art) {
+      case 'rang':
+        return { farbe: STUFEN_FARBEN[rangStufe(gezeigt.rang)], ueberschrift: 'Aufstieg', gross: `Rang ${gezeigt.rang}`, klein: rangName(gezeigt.rang) }
+      case 'liga':
+        return { farbe: LIGA_FARBEN[gezeigt.liga.stufe], ueberschrift: 'Liga-Aufstieg', gross: gezeigt.liga.name, klein: `${zahlText(gezeigt.trophaeen, 0)} Trophäen` }
+      case 'auszeichnung':
+        return { farbe: AUSZEICHNUNGEN[gezeigt.typ].farbe, ueberschrift: 'Auszeichnung freigeschaltet', gross: AUSZEICHNUNGEN[gezeigt.typ].titel, klein: AUSZEICHNUNGEN[gezeigt.typ].text }
+      case 'boss':
+        return {
+          farbe: bossFarbe(gezeigt.schluessel),
+          ueberschrift: 'Boss besiegt',
+          gross: gezeigt.name,
+          klein: `Das Team hat ${stundenText(gezeigt.ergebnisSekunden)} von ${stundenText(gezeigt.hpSekunden)} Stunden Schaden gemacht. Jeder bekommt 60 Season-Punkte.`
+        }
+      case 'season':
+        return {
+          farbe: '#E8B923',
+          ueberschrift: 'Season-Level',
+          gross: `Level ${gezeigt.level}`,
+          klein: gezeigt.belohnung ? `Freigeschaltet: ${gezeigt.belohnung.name}. ${gezeigt.belohnung.text}` : 'Weiter so, die nächste Belohnung wartet.'
+        }
+    }
+  })()
+  const { farbe, ueberschrift, gross, klein } = texte
   const nochWartend = gezeigt.art === 'auszeichnung' ? warteschlange.current.length : 0
   const stil = {
     background: `radial-gradient(ellipse 55% 45% at 50% 44%, ${farbe}33, transparent 70%), rgba(6, 6, 8, 0.94)`,
@@ -239,8 +306,17 @@ export function RangAufstieg(): ReactElement | null {
                 <RangAbzeichen rang={gezeigt.rang} groesse={230} />
               ) : gezeigt.art === 'liga' ? (
                 <LigaAbzeichen liga={gezeigt.liga} groesse={230} />
-              ) : (
+              ) : gezeigt.art === 'auszeichnung' ? (
                 <AuszeichnungBild typ={gezeigt.typ} erreicht groesse={230} />
+              ) : gezeigt.art === 'boss' ? (
+                <img src={bossBild(gezeigt.schluessel)} alt="" draggable={false} style={{ width: 260, height: 260, filter: `drop-shadow(0 0 28px ${farbe}88)` }} />
+              ) : (
+                <div
+                  className="flex items-center justify-center rounded-full text-[96px] font-light"
+                  style={{ width: 230, height: 230, border: `6px solid ${farbe}`, boxShadow: `0 0 40px ${farbe}66, inset 0 0 40px ${farbe}33`, color: '#F2F2F3' }}
+                >
+                  {gezeigt.level}
+                </div>
               )}
             </div>
           </div>
@@ -248,12 +324,12 @@ export function RangAufstieg(): ReactElement | null {
             {ueberschrift}
           </p>
           <p
-            className={`aufstieg-text mt-2 leading-none font-light ${gezeigt.art === 'auszeichnung' ? 'text-[56px]' : 'text-[76px]'}`}
+            className={`aufstieg-text mt-2 leading-none font-light ${gezeigt.art === 'auszeichnung' || gezeigt.art === 'boss' ? 'text-[56px]' : 'text-[76px]'}`}
             style={{ animationDelay: '0.62s', textShadow: '0 0 30px rgba(255,255,255,0.25)' }}
           >
             {gross}
           </p>
-          <p className={`aufstieg-text mt-3 text-mute ${gezeigt.art === 'auszeichnung' ? 'max-w-[520px] px-6 text-lg leading-snug' : 'text-xl'}`} style={{ animationDelay: '0.76s' }}>
+          <p className={`aufstieg-text mt-3 text-mute ${gezeigt.art === 'auszeichnung' || gezeigt.art === 'boss' || gezeigt.art === 'season' ? 'max-w-[520px] px-6 text-lg leading-snug' : 'text-xl'}`} style={{ animationDelay: '0.76s' }}>
             {klein}
           </p>
           <p className="aufstieg-text mt-10 text-xs text-dim" style={{ animationDelay: '1.8s' }}>

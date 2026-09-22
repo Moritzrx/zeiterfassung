@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { STUFEN_FARBEN, rangName, rangStufe, type RangStufe } from '@shared/rang'
+import { RAHMEN } from '@shared/spiel'
 import bronze from '../assets/wappen/rang-bronze.png'
 import silber from '../assets/wappen/rang-silber.png'
 import gold from '../assets/wappen/rang-gold.png'
@@ -21,6 +22,56 @@ const STERN_GELB = '#FFD166'
 interface Props {
   rang: number
   groesse?: number
+  /** Wappenrahmen aus dem Season Pass (22. September 2026): lorbeer, fluegel, krone, halo */
+  rahmen?: string | null
+}
+
+/** Der Rahmen um das Wappen: Lorbeer (Bronze), Flügel (Silber), Krone (Gold) oder Halo (Astral), alles im Raster 100 × 100. */
+function Rahmen({ art }: { art: string }): ReactElement | null {
+  const farbe = RAHMEN[art]?.farbe
+  if (!farbe) return null
+  if (art === 'halo') {
+    return (
+      <g>
+        <circle cx={50} cy={50} r={54} fill="none" stroke={farbe} strokeWidth={2.2} strokeOpacity={0.9} style={{ filter: `drop-shadow(0 0 6px ${farbe})` }} />
+        <circle cx={50} cy={50} r={60} fill="none" stroke={farbe} strokeWidth={0.8} strokeOpacity={0.5} />
+      </g>
+    )
+  }
+  if (art === 'krone') {
+    return (
+      <g style={{ filter: `drop-shadow(0 0 4px ${farbe}99)` }}>
+        <polygon points="32,-2 38,-16 50,-6 62,-16 68,-2" fill={farbe} stroke={dunkel(farbe, 0.55)} strokeWidth={1.4} strokeLinejoin="round" />
+        <rect x={32} y={-3} width={36} height={6} rx={2} fill={dunkel(farbe, 0.85)} stroke={dunkel(farbe, 0.55)} strokeWidth={1.2} />
+        <circle cx={38} cy={-16} r={2.2} fill="#FFFFFF" />
+        <circle cx={50} cy={-6} r={2.2} fill="#FFFFFF" />
+        <circle cx={62} cy={-16} r={2.2} fill="#FFFFFF" />
+      </g>
+    )
+  }
+  if (art === 'fluegel') {
+    const fluegel = 'M0 50 C -14 30, -16 12, -4 -2 C -2 14, 4 24, 10 30 C 2 34, -4 42, 0 50 Z'
+    return (
+      <g style={{ filter: `drop-shadow(0 0 4px ${farbe}88)` }}>
+        <path d={fluegel} fill={farbe} stroke={dunkel(farbe, 0.6)} strokeWidth={1.2} transform="translate(-4 8)" />
+        <path d={fluegel} fill={farbe} stroke={dunkel(farbe, 0.6)} strokeWidth={1.2} transform="translate(104 8) scale(-1 1)" />
+      </g>
+    )
+  }
+  // Lorbeer: Blätter entlang eines Bogens unten links und rechts.
+  const blaetter: ReactElement[] = []
+  for (let i = 0; i < 7; i++) {
+    const winkel = 110 + i * 11
+    const rad = (winkel * Math.PI) / 180
+    for (const seite of [1, -1]) {
+      const x = 50 + seite * Math.cos(rad) * 52
+      const y = 50 + Math.sin(rad) * 52
+      blaetter.push(
+        <ellipse key={`${i}-${seite}`} cx={x} cy={y} rx={3.2} ry={6.5} fill={farbe} stroke={dunkel(farbe, 0.6)} strokeWidth={0.9} transform={`rotate(${seite * (winkel - 90)} ${x} ${y})`} />
+      )
+    }
+  }
+  return <g style={{ filter: `drop-shadow(0 0 3px ${farbe}77)` }}>{blaetter}</g>
 }
 
 function Sterne({ anzahl, y }: { anzahl: number; y: number }): ReactElement {
@@ -49,7 +100,7 @@ function Diamanten({ anzahl, farbe, y }: { anzahl: number; farbe: string; y: num
   )
 }
 
-export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
+export function RangAbzeichen({ rang, groesse = 56, rahmen = null }: Props): ReactElement {
   const stufe = rangStufe(rang)
   const farbe = STUFEN_FARBEN[stufe]
   const bild = BILDER[stufe]
@@ -79,6 +130,7 @@ export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
         {sterne > 0 && <Sterne anzahl={sterne} y={78} />}
         {diamanten > 0 && <Diamanten anzahl={diamanten} farbe={farbe} y={78} />}
         {bild && <Band id={id} farbe={farbe} text={name} y={86} />}
+        {rahmen && bild && <Rahmen art={rahmen} />}
       </svg>
     </div>
   )
