@@ -20,9 +20,9 @@ interface Props {
   onSchliessen: () => void
 }
 
-const STUFEN: RangStufe[] = ['bronze', 'silber', 'gold', 'champion', 'diamant']
+const STUFEN: RangStufe[] = ['bronze', 'silber', 'gold', 'champion', 'diamant', 'astral']
 
-/** Alle 15 Ränge auf einen Blick: Abzeichen, Name, Stufe und die Stunden, ab denen man ihn hat. */
+/** Alle 20 Ränge auf einen Blick: Abzeichen, Name, Stufe und die Stunden, ab denen man ihn hat. */
 export function RangUebersicht({ aktuellerRang, onSchliessen }: Props): ReactElement {
   useEffect(() => {
     const taste = (e: KeyboardEvent): void => {
@@ -45,7 +45,7 @@ export function RangUebersicht({ aktuellerRang, onSchliessen }: Props): ReactEle
           <div>
             <h2 className="text-xl">Alle {MAX_RANG} Ränge</h2>
             <p className="mt-1 text-sm text-mute">
-              Bis Rang {RANG_ZIEL} bringt jede fünfte produktive Stunde der Woche einen Rang. Ab Rang {RANG_ZIEL} jede zweite.
+              Bis Rang {RANG_ZIEL} bringt jede fünfte produktive Stunde der Woche einen Rang. Ab Rang {RANG_ZIEL} jede zweite, bis Rang {MAX_RANG} bei 70 Stunden.
               Montag beginnt jeder wieder bei null.
             </p>
           </div>

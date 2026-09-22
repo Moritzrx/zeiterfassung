@@ -7,7 +7,7 @@ import { BlockZeile } from '../components/BlockZeile'
 import { hinweisZeigen } from '../components/Hinweis'
 import { tonSpielen } from '../toene'
 import { Karte } from '../components/Karte'
-import { useErfassung } from '../erfassung'
+import { useErfassung, useTakt } from '../erfassung'
 import { dauerText } from '../format'
 import { useTaetigkeiten } from '../taetigkeiten'
 import { useKunden } from '../kunden'
@@ -41,6 +41,13 @@ export function EintragenScreen(): ReactElement {
   const status = useErfassung()
   const taetigkeiten = useTaetigkeiten()
   const [datum, setDatum] = useState(() => berlinDatum(new Date()))
+  // Tageswechsel (22. September 2026): das Datumsfeld springt mit jedem neuen Kalendertag auf heute, sonst bleibt es
+  // tagelang auf dem Tag stehen, an dem der Screen zuerst aufgebaut wurde.
+  const jetzt = useTakt(60_000)
+  const heute = berlinDatum(new Date(jetzt))
+  useEffect(() => {
+    setDatum(heute)
+  }, [heute])
   const [von, setVon] = useState('09:00')
   const [bis, setBis] = useState('10:00')
   const [taetigkeit, setTaetigkeit] = useState('')

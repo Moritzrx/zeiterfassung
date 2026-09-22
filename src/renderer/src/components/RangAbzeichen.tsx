@@ -5,6 +5,7 @@ import silber from '../assets/wappen/rang-silber.png'
 import gold from '../assets/wappen/rang-gold.png'
 import champion from '../assets/wappen/rang-champion.png'
 import diamant from '../assets/wappen/rang-diamant.png'
+import astral from '../assets/wappen/rang-astral.png'
 import { Band, Definitionen, Metallschrift, SCHILD, dunkel, stern } from './wappen'
 
 /*
@@ -14,7 +15,7 @@ import { Band, Definitionen, Metallschrift, SCHILD, dunkel, stern } from './wapp
  * kleinen Brillanten der Unterstufe und das Namensband. Rang 0 bleibt ein graues Schild.
  */
 
-const BILDER: Record<RangStufe, string | null> = { keine: null, bronze, silber, gold, champion, diamant }
+const BILDER: Record<RangStufe, string | null> = { keine: null, bronze, silber, gold, champion, diamant, astral }
 const STERN_GELB = '#FFD166'
 
 interface Props {
@@ -54,7 +55,8 @@ export function RangAbzeichen({ rang, groesse = 56 }: Props): ReactElement {
   const bild = BILDER[stufe]
   const id = `rang-${stufe}`
   const sterne = stufe === 'bronze' || stufe === 'silber' || stufe === 'gold' ? ((rang - 1) % 3) + 1 : 0
-  const diamanten = stufe === 'diamant' ? rang - 10 : 0
+  // Diamant: 1 bis 5 Brillanten (Rang 11 bis 15), Astral: 1 bis 5 in Violett (Rang 16 bis 20).
+  const diamanten = stufe === 'diamant' ? rang - 10 : stufe === 'astral' ? rang - 15 : 0
   const name = rangName(rang)
 
   return (

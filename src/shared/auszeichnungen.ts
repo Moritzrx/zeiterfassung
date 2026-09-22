@@ -5,7 +5,7 @@ import { istPause } from './ruhe'
  * Sie gelten für immer, deshalb gibt es viele davon, in Gruppen von leicht bis sehr lang.
  */
 import { LIGEN, type LigaStufe } from './liga'
-import { MAX_RANG, RANG_ZIEL, STANDARD_GESAMTZIEL, rang, zielRang } from './rang'
+import { RANG_ETERNAL, RANG_ZIEL, STANDARD_GESAMTZIEL, rang, zielRang } from './rang'
 import { taetigkeitSchluessel } from './regeln'
 import type { Auszeichnung, AuszeichnungTyp, Block, TeamWoche, Ziel } from './typen'
 import { berlinDatum, datumVerschieben, datumZuTagesanfang, wochenanfang } from './zeit'
@@ -26,7 +26,7 @@ export const AUSZEICHNUNG_GRUPPEN: Array<{ id: AuszeichnungGruppe; titel: string
 export const AUSZEICHNUNGEN: Record<AuszeichnungTyp, { titel: string; text: string; farbe: string; gruppe: AuszeichnungGruppe }> = {
   erste_woche_level10: { titel: 'Erster Champion', text: `Zum ersten Mal Rang ${RANG_ZIEL} in einer Woche erreicht.`, farbe: '#FE5303', gruppe: 'besondere' },
   comeback: { titel: 'Comeback', text: `Direkt nach einer Woche unter Rang 5 eine Woche auf Rang ${RANG_ZIEL} oder höher.`, farbe: '#FB7185', gruppe: 'besondere' },
-  eternal: { titel: 'Eternal', text: `Rang ${MAX_RANG} in einer Woche erreicht, höher geht es nicht.`, farbe: '#7DD3FC', gruppe: 'besondere' },
+  eternal: { titel: 'Eternal', text: `Rang ${RANG_ETERNAL} (Eternal) in einer Woche erreicht, 60 produktive Stunden.`, farbe: '#7DD3FC', gruppe: 'besondere' },
 
   drei_wochen_level10: { titel: 'Serie', text: `Drei Wochen in Folge auf Rang ${RANG_ZIEL} oder höher.`, farbe: '#E8B923', gruppe: 'serien' },
   serie_6: { titel: 'Lange Serie', text: `Sechs Wochen in Folge auf Rang ${RANG_ZIEL} oder höher.`, farbe: '#C9CDD6', gruppe: 'serien' },
@@ -275,7 +275,7 @@ export function auszeichnungenPruefen(
   // Besondere
   melden('erste_woche_level10', erste(aufZiel))
   melden('comeback', erste((w, i) => i > 0 && !wochen[i - 1].leer && r(wochen[i - 1]) < 5 && aufZiel(w)))
-  melden('eternal', erste((w) => r(w) >= MAX_RANG))
+  melden('eternal', erste((w) => r(w) >= RANG_ETERNAL))
 
   // Serien
   meldenFolge('drei_wochen_level10', 3, aufZiel)

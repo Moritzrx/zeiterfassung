@@ -66,8 +66,21 @@ export function WocheScreen(): ReactElement {
 
   useEffect(() => {
     const timer = setInterval(() => setJetzt(Date.now()), 30_000)
-    return () => clearInterval(timer)
+    const sichtbar = (): void => {
+      if (document.visibilityState === 'visible') setJetzt(Date.now())
+    }
+    document.addEventListener('visibilitychange', sichtbar)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', sichtbar)
+    }
   }, [])
+  // Tageswechsel (22. September 2026): mit jedem neuen Kalendertag zurück zur laufenden Woche, damit montags nicht die Vorwoche stehen bleibt.
+  const heuteDatum = berlinDatum(new Date(jetzt))
+  useEffect(() => {
+    setWochenStart(wochenanfang(new Date(jetzt)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heuteDatum])
 
   const startDatum = berlinDatum(wochenStart)
   const endDatum = datumVerschieben(startDatum, 6)

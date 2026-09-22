@@ -3,13 +3,16 @@ import { wochentag } from './zeit'
 /**
  * Die eine Rang-Rechnung, die überall gilt.
  * Rang 1 bis 10: alle 5 produktiven Stunden ein Rang, Rang 10 = 50 Stunden = Wochenziel.
- * Rang 11 bis 15: alle 2 Stunden ein Rang, Rang 15 = 60 Stunden. Höher geht es nicht.
+ * Rang 11 bis 20: alle 2 Stunden ein Rang, Rang 15 = 60 Stunden (Diamant), Rang 20 = 70 Stunden (Astral).
+ * Höher geht es nicht (seit 22. September 2026 bis 70 Stunden, vorher 60).
  */
 export const STANDARD_GESAMTZIEL = 50
 export const STUNDEN_PRO_RANG = 5
 export const RANG_ZIEL = 10
-export const MAX_RANG = 15
+export const MAX_RANG = 20
 export const STUNDEN_PRO_BONUSRANG = 2
+/** Rang 15, "Eternal": bis September 2026 der höchste Rang, die Auszeichnung "Eternal" hängt weiter daran. */
+export const RANG_ETERNAL = 15
 
 /** Die Namen der Ränge, Index = Rang. Rang 0 ist noch kein Rang. Bewusst englisch und episch. */
 export const RANG_NAMEN: readonly string[] = [
@@ -28,10 +31,15 @@ export const RANG_NAMEN: readonly string[] = [
   'Legend',
   'Mythic',
   'Immortal',
-  'Eternal'
+  'Eternal',
+  'Ascendant',
+  'Celestial',
+  'Astral',
+  'Cosmic',
+  'Omega'
 ]
 
-export type RangStufe = 'keine' | 'bronze' | 'silber' | 'gold' | 'champion' | 'diamant'
+export type RangStufe = 'keine' | 'bronze' | 'silber' | 'gold' | 'champion' | 'diamant' | 'astral'
 
 export const STUFEN_NAMEN: Record<RangStufe, string> = {
   keine: 'Noch kein Rang',
@@ -39,7 +47,8 @@ export const STUFEN_NAMEN: Record<RangStufe, string> = {
   silber: 'Silber',
   gold: 'Gold',
   champion: 'Champion',
-  diamant: 'Diamant'
+  diamant: 'Diamant',
+  astral: 'Astral'
 }
 
 export const STUFEN_FARBEN: Record<RangStufe, string> = {
@@ -48,7 +57,8 @@ export const STUFEN_FARBEN: Record<RangStufe, string> = {
   silber: '#C9CDD6',
   gold: '#E8B923',
   champion: '#FE5303',
-  diamant: '#7DD3FC'
+  diamant: '#7DD3FC',
+  astral: '#C084FC'
 }
 
 /** Ab wie vielen produktiven Sekunden ein Rang erreicht ist. */
@@ -95,7 +105,8 @@ export function rangStufe(r: number): RangStufe {
   if (r <= 6) return 'silber'
   if (r <= 9) return 'gold'
   if (r === RANG_ZIEL) return 'champion'
-  return 'diamant'
+  if (r <= RANG_ETERNAL) return 'diamant'
+  return 'astral'
 }
 
 /** Tagesrichtwert: Gesamtziel auf die Arbeitstage der Woche verteilt (5, 6 oder 7). */

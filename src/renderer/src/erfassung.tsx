@@ -39,7 +39,15 @@ export function useTakt(millisekunden: number): number {
   const [jetzt, setJetzt] = useState(() => Date.now())
   useEffect(() => {
     const timer = setInterval(() => setJetzt(Date.now()), millisekunden)
-    return () => clearInterval(timer)
+    // Wird das Fenster nach Stunden wieder sichtbar, sofort ticken (Tageswechsel, 22. September 2026).
+    const sichtbar = (): void => {
+      if (document.visibilityState === 'visible') setJetzt(Date.now())
+    }
+    document.addEventListener('visibilitychange', sichtbar)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', sichtbar)
+    }
   }, [millisekunden])
   return jetzt
 }

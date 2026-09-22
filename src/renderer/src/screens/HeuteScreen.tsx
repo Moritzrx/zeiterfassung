@@ -58,6 +58,11 @@ export function HeuteScreen(): ReactElement {
   const [durchgehen, setDurchgehen] = useState<{ liste: Block[]; index: number } | null>(null)
   const [auswahl, setAuswahl] = useState<Set<string> | null>(null)
   const istHeute = datum === heute
+  // Tageswechsel (22. September 2026, Auftraggeber: "sobald der nächste Tag anbricht, muss es beim aktuellsten Tag stehen"):
+  // die Screens bleiben dauerhaft geladen, deshalb springt die Ansicht hier selbst auf den neuen Tag.
+  useEffect(() => {
+    setDatum(heute)
+  }, [heute])
 
   const laden = useCallback(async () => {
     if (!window.api) return
