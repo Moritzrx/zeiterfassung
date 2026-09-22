@@ -112,20 +112,22 @@ Neue Programme kennt die App nicht, solche Blöcke landen als **ungeklärt** im 
 
 ### Ränge
 
-Jede Woche beginnt bei Rang 0. Bis Rang 10 gibt es alle 5 produktiven Stunden einen Rang, darüber alle 2 Stunden. Rang 10 ist das Wochenziel von 50 Stunden, Rang 15 mit 60 Stunden ist das Maximum.
+Jede Woche beginnt bei Rang 0. Bis Rang 10 gibt es alle 5 produktiven Stunden einen Rang, darüber alle 2 Stunden. Rang 10 ist das Wochenziel von 50 Stunden, Rang 20 mit 70 Stunden ist das Maximum (seit 1.0.51, vorher Rang 15 mit 60).
 
 | Rang | Stunden | Name | Rang | Stunden | Name |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 5 | Recruit | 9 | 45 | Overlord |
-| 2 | 10 | Initiate | 10 | 50 | Champion |
-| 3 | 15 | Vanguard | 11 | 52 | Titan |
-| 4 | 20 | Warden | 12 | 54 | Legend |
-| 5 | 25 | Sentinel | 13 | 56 | Mythic |
-| 6 | 30 | Paladin | 14 | 58 | Immortal |
-| 7 | 35 | Conqueror | 15 | 60 | Eternal |
-| 8 | 40 | Warlord | | | |
+| 1 | 5 | Recruit | 11 | 52 | Titan |
+| 2 | 10 | Initiate | 12 | 54 | Legend |
+| 3 | 15 | Vanguard | 13 | 56 | Mythic |
+| 4 | 20 | Warden | 14 | 58 | Immortal |
+| 5 | 25 | Sentinel | 15 | 60 | Eternal |
+| 6 | 30 | Paladin | 16 | 62 | Ascendant |
+| 7 | 35 | Conqueror | 17 | 64 | Celestial |
+| 8 | 40 | Warlord | 18 | 66 | Astral |
+| 9 | 45 | Overlord | 19 | 68 | Cosmic |
+| 10 | 50 | Champion | 20 | 70 | Omega |
 
-Bronze 1 bis 3, Silber 4 bis 6, Gold 7 bis 9, Champion 10, Diamant 11 bis 15. Jede Stufe hat ein eigenes, illustriertes Wappen (mit KI erzeugt), ebenso jede der 14 Auszeichnungen eine eigene Medaille, darauf stehen Rangzahl, Sterne und Name; die Ligen haben ebenfalls eigene Wappen mit römischer Ziffer. Beim Aufstieg erscheint eine große Einblendung: Wappen mit Strahlenkranz, Druckwellen und Funken in der Farbe der Stufe, dazu ein Klang; sie schließt nach ein paar Sekunden oder mit einem Klick. Wer sein Gesamtziel in den Einstellungen ändert (zum Beispiel 40 Stunden), bekommt einen anderen Ziel-Rang (dann Rang 8); die Stundengrenzen der Ränge bleiben gleich.
+Bronze 1 bis 3, Silber 4 bis 6, Gold 7 bis 9, Champion 10, Diamant 11 bis 15, Astral 16 bis 20. Jede Stufe hat ein eigenes, illustriertes Wappen (mit KI erzeugt), ebenso jede der 14 Auszeichnungen eine eigene Medaille, darauf stehen Rangzahl, Sterne und Name; die Ligen haben ebenfalls eigene Wappen mit römischer Ziffer. Beim Aufstieg erscheint eine große Einblendung: Wappen mit Strahlenkranz, Druckwellen und Funken in der Farbe der Stufe, dazu ein Klang; sie schließt nach ein paar Sekunden oder mit einem Klick. Wer sein Gesamtziel in den Einstellungen ändert (zum Beispiel 40 Stunden), bekommt einen anderen Ziel-Rang (dann Rang 8); die Stundengrenzen der Ränge bleiben gleich.
 
 ### Updates
 
@@ -177,6 +179,15 @@ Die Stunden-Meilensteine und die neuen Typen brauchen einmalig das Skript 13 in 
 Sonntags ab 18 Uhr meldet sich die App einmal kurz und zeigt auf dem Wochen-Screen den Zwischenstand: Rang, Stunden, produktiv gegen unproduktiv, welche Ziele erreicht sind, neue Auszeichnungen und ob noch ungeklärte Zeit offen ist. Montags steht dort die fertige Zusammenfassung der Vorwoche. Beim Blättern zu früheren Wochen erscheint sie ebenfalls.
 
 ---
+
+### Das Team-Spiel: Boss, Season Pass, Quests, Duelle, Feed (seit 1.0.51)
+
+- **Boss der Woche** (Team-Screen, ganz oben): Jede Woche wartet ein Boss mit Lebensbalken. Seine Lebenspunkte sind Teamstunden (Summe eurer Wochenziele mal einem Faktor, am Anfang 0,8, also 120 Stunden bei dreimal 50). Jede produktive Stunde von euch dreien ist Schaden, live. Fällt der Boss bis Sonntag 24 Uhr, bekommt jeder 60 Season-Punkte und der nächste Boss wird um 5 Prozent stärker; überlebt er, wird der nächste schwächer. Sechs Bosse wechseln sich ab (Prokrastinator, Scroll-Dämon, Meeting-Hydra, Tab-Kraken, Deadline-Drache, Chaos-Titan). "Trophäenhalle" zeigt alle abgeschlossenen Bosse.
+- **Season Pass** (Woche → "Belohnungen"): Eine Season dauert zwölf Wochen, Season 1 läuft seit dem 14. September 2026. Punkte gibt es für Daily Quests, Streaks, besiegte Bosse (60), gewonnene Duelle (40) und Medaillen (20). Alle 150 Punkte ein Level, 30 Level je Season. Belohnungen schalten sich mit dem Level frei: Titel unter deinem Namen (Aufsteiger, Fokus-Jäger, Boss-Jäger, Streak-Meister, Dauerläufer, Legende der Season), Rahmen um dein Wappen (Bronze-Lorbeer, Silber-Flügel, Gold-Krone, Astral-Halo), Hintergrund-Stimmungen (Smaragd, Violett, Rot-Gold, Monochrom) und ab Level 10 ein goldenes Symbol in der Taskleiste. Titel und Rahmen sehen die anderen auf dem Team-Screen, der Hintergrund gilt nur auf deinem Rechner.
+- **Daily Quests** (Heute): Jeden Tag drei Aufgaben, für jede Person anders gewürfelt, zum Beispiel "Früher Vogel" (vor 9 Uhr die erste produktive Minute), "Am Stück" (2 Stunden ohne Unterbrechung), "Tagesziel" (7 Stunden), "Zwei Kunden", "Tiefenfokus" (90 Minuten in einer Tätigkeit) oder "Nachgetragen". Quests mit "gilt am Tagesende" (Kein Rot, Sauberer Tag, Feierabend) werden erst am nächsten Tag gutgeschrieben. Alle drei geschafft: 15 Punkte extra. Dazu der **Streak**: Tage in Folge mit mindestens 4 produktiven Stunden, jeder Tag 10 Punkte, Bonus bei 3, 7, 14 und 30 Tagen.
+- **Duelle** (Team-Screen): "Herausfordern" öffnet ein Fenster: Gegner, Art (mehr produktive Stunden bis zu einem Zeitpunkt, mehr Stunden in einer Tätigkeit, oder wer morgen früher am Start ist), Ende (heute 20 Uhr, Freitag 20 Uhr, Sonntag 24 Uhr) und Einsatz (Standard "einen Kaffee"). Der andere nimmt an oder lehnt ab. Laufende Duelle zeigen den Stand beider live. Am Ende rechnet die App ab: der Sieger bekommt 40 Punkte, der Verlierer schuldet den Einsatz; "Eingelöst" hakt die Schuld ab.
+- **Team-Feed** (Team-Screen): Medaillen, Ränge (5, 10, 15, 20), Boss-Schaden (25, 50, 75 Prozent), Boss-Siege, Streak-Meilensteine, geschaffte Quest-Tage, Duelle und Season-Level (alle 5) landen von selbst im Verlauf, dazu eigene Nachrichten. Auf jeden Eintrag kann man mit 🔥 👏 💪 😂 ❤️ reagieren.
+- Alles läuft über Supabase (Skript 21). Fehlt das Skript, sagen die Karten das.
 
 ## 3. Symbole für Tätigkeiten
 
