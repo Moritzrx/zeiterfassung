@@ -154,8 +154,9 @@ export const QUESTS: readonly QuestDefinition[] = [
   { id: 'tiefenfokus', titel: 'Tiefenfokus', text: '90 Minuten am Stück in einer Tätigkeit.', punkte: 20 },
   { id: 'sechs_stunden', titel: 'Sechs Stunden', text: '6 Stunden produktiv an einem Tag.', punkte: 25 },
   { id: 'nachgetragen', titel: 'Nachgetragen', text: 'Mindestens eine Zeit von Hand eingetragen.', punkte: 10 },
-  { id: 'kein_rot', titel: 'Kein Rot', text: 'Den ganzen Tag kein Block, den eine Regel als unproduktiv einstuft (gilt am Tagesende).', punkte: 10, abendlich: true },
-  { id: 'sauberer_tag', titel: 'Sauberer Tag', text: 'Zwischen 9 und 18 Uhr keine Lücke über 15 Minuten ohne Aufzeichnung (gilt am Tagesende).', punkte: 20, abendlich: true },
+  // "Kein Rot" und "Sauberer Tag" gab es kurz (22. September 2026), der Auftraggeber hat sie gestrichen: Zeit nicht am Rechner ist
+  // immer rot, "man kann ja nicht den ganzen Tag durcharbeiten".
+  { id: 'nachmittag', titel: 'Nachmittagsschub', text: '2 Stunden produktiv nach 14 Uhr.', punkte: 15 },
   { id: 'feierabend', titel: 'Feierabend', text: 'Mindestens 4 Stunden am Tag und nach 21 Uhr nichts mehr (gilt am Tagesende).', punkte: 10, abendlich: true }
 ]
 
@@ -221,14 +222,13 @@ interface Tageswerte {
   kundenMit15Min: number
   taetigkeitenMit30Min: number
   laengsteTaetigkeitSekunden: number
-  unproduktive: number
   handEintraege: number
-  groessteLueckeSekunden: number
+  nach14Sekunden: number
   nach21Sekunden: number
 }
 
 /** Alle Kennzahlen eines Berliner Kalendertags aus den Blöcken (am Tagesrand anteilig). */
-export function tageswerte(bloecke: Block[], datum: string, jetztMs: number): Tageswerte {
+export function tageswerte(bloecke: Block[], datum: string): Tageswerte {
   const tagVon = datumZuTagesanfang(datum).getTime()
   const tagBis = datumZuTagesanfang(datumVerschieben(datum, 1)).getTime()
   // Uhrzeit des Tages: Berliner Mitternacht plus Stunden (am Tag der Zeitumstellung eine Stunde ungenau, für Quests egal).
@@ -241,9 +241,8 @@ export function tageswerte(bloecke: Block[], datum: string, jetztMs: number): Ta
     kundenMit15Min: 0,
     taetigkeitenMit30Min: 0,
     laengsteTaetigkeitSekunden: 0,
-    unproduktive: 0,
     handEintraege: 0,
-    groessteLueckeSekunden: 0,
+    nach14Sekunden: 0,
     nach21Sekunden: 0
   }
   const imTag = bloecke
@@ -264,6 +263,7 @@ export function tageswerte(bloecke: Block[], datum: string, jetztMs: number): Ta
     w.produktivSekunden += dauer
     if (w.ersterStartMs === null) w.ersterStartMs = b.s
     w.bisMittagSekunden += Math.max(0, Math.min(b.e, um(13)) - b.s) / 1000
+    w.nach14Sekunden += Math.max(0, b.e - Math.max(b.s, um(14))) / 1000
     w.nach21Sekunden += Math.max(0, b.e - Math.max(b.s, um(21))) / 1000
     if (b.kunde) kunden.set(b.kunde, (kunden.get(b.kunde) ?? 0) + dauer)
     if (b.taetigkeit) taetigkeiten.set(b.taetigkeit, (taetigkeiten.get(b.taetigkeit) ?? 0) + dauer)
@@ -286,25 +286,12 @@ export function tageswerte(bloecke: Block[], datum: string, jetztMs: number): Ta
   }
   w.kundenMit15Min = [...kunden.values()].filter((s) => s >= 15 * 60).length
   w.taetigkeitenMit30Min = [...taetigkeiten.values()].filter((s) => s >= 30 * 60).length
-  w.unproduktive = imTag.filter((b) => b.bewertung === 'unproduktiv' && b.programm).length
-  // Größte Lücke ohne Aufzeichnung zwischen 9 und 18 Uhr (Blöcke jeder Bewertung decken), heute nur bis jetzt.
-  const fensterVon = um(9)
-  const fensterBis = Math.min(um(18), jetztMs)
-  if (fensterBis > fensterVon) {
-    let frei = fensterVon
-    for (const b of imTag) {
-      if (b.s > frei) w.groessteLueckeSekunden = Math.max(w.groessteLueckeSekunden, (Math.min(b.s, fensterBis) - frei) / 1000)
-      frei = Math.max(frei, b.e)
-      if (frei >= fensterBis) break
-    }
-    if (fensterBis > frei) w.groessteLueckeSekunden = Math.max(w.groessteLueckeSekunden, (fensterBis - frei) / 1000)
-  }
   return w
 }
 
 /** Der Stand jeder Quest eines Tages; abendliche Quests gelten erst, wenn der Tag vorbei ist. */
 export function questsBewerten(quests: QuestDefinition[], bloecke: Block[], datum: string, jetztMs: number): QuestStand[] {
-  const w = tageswerte(bloecke, datum, jetztMs)
+  const w = tageswerte(bloecke, datum)
   const tagVorbei = jetztMs >= datumZuTagesanfang(datumVerschieben(datum, 1)).getTime()
   const tagVon = datumZuTagesanfang(datum).getTime()
   const anteil = (ist: number, soll: number): number => Math.max(0, Math.min(1, soll <= 0 ? 0 : ist / soll))
@@ -338,11 +325,8 @@ export function questsBewerten(quests: QuestDefinition[], bloecke: Block[], datu
       case 'nachgetragen':
         fortschritt = w.handEintraege > 0 ? 1 : 0
         break
-      case 'kein_rot':
-        fortschritt = w.unproduktive === 0 && w.produktivSekunden > 0 ? 1 : 0
-        break
-      case 'sauberer_tag':
-        fortschritt = w.groessteLueckeSekunden <= 15 * 60 && w.produktivSekunden >= 3600 ? 1 : 0
+      case 'nachmittag':
+        fortschritt = anteil(w.nach14Sekunden, 2 * 3600)
         break
       case 'feierabend':
         fortschritt = w.produktivSekunden >= 4 * 3600 && w.nach21Sekunden === 0 ? 1 : 0

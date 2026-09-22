@@ -28,7 +28,10 @@ export const REPO_NAME = 'zeiterfassung'
 const RELEASE_SEITE = `https://github.com/${REPO_BESITZER}/${REPO_NAME}/releases/latest`
 const RELEASE_API = `https://api.github.com/repos/${REPO_BESITZER}/${REPO_NAME}/releases/latest`
 const ERSTE_PRUEFUNG_MS = 30_000
-const PRUEF_ABSTAND_MS = 4 * 60 * 60_000
+/** Alle 30 Minuten (bis 22. September 2026 alle 4 Stunden), dazu beim Öffnen des Fensters, damit ein Update sofort auffällt. */
+const PRUEF_ABSTAND_MS = 30 * 60_000
+/** Beim Öffnen des Fensters nur prüfen, wenn die letzte Prüfung älter ist. */
+const FENSTER_PRUEF_ABSTAND_MS = 10 * 60_000
 
 const istMac = process.platform === 'darwin'
 const ausfuehren = promisify(execFile)
@@ -315,4 +318,13 @@ export function aktualisierungStarten(hauptfenster: BrowserWindow, beenden: () =
 
   setTimeout(() => void pruefen(), ERSTE_PRUEFUNG_MS)
   setInterval(() => void pruefen(), PRUEF_ABSTAND_MS)
+  // Wer die App öffnet, soll ein Update sofort sehen (22. September 2026): beim Zeigen und Fokussieren des Fensters
+  // prüfen, wenn die letzte Prüfung länger als zehn Minuten her ist.
+  const beiFenster = (): void => {
+    const zuletzt = status.zuletztGeprueft ? Date.parse(status.zuletztGeprueft) : 0
+    if (Date.now() - zuletzt < FENSTER_PRUEF_ABSTAND_MS) return
+    void pruefen()
+  }
+  hauptfenster.on('show', beiFenster)
+  hauptfenster.on('focus', beiFenster)
 }

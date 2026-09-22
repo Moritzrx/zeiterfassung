@@ -3,6 +3,7 @@ import { Fehlerschutz } from './components/Fehlerschutz'
 import { FokusDialogHalter, fokusDialogOeffnen } from './components/FokusDialog'
 import { Hinweise } from './components/Hinweis'
 import { UpdateHinweis } from './components/UpdateHinweis'
+import { UpdateDialog } from './components/UpdateDialog'
 import { WarnungHinweis } from './components/WarnungHinweis'
 import { NeuigkeitenHalter } from './components/NeuigkeitenDialog'
 import { Wochenrueckblick } from './components/Wochenrueckblick'
@@ -225,6 +226,9 @@ function Oberflaeche(): ReactElement {
       <Hinweise />
       <Fehlerschutz bereich="Neuigkeiten">
         <NeuigkeitenHalter />
+      </Fehlerschutz>
+      <Fehlerschutz bereich="Update">
+        <UpdateDialog />
       </Fehlerschutz>
       <Fehlerschutz bereich="Aufstieg">
         <RangAufstieg />
