@@ -329,7 +329,8 @@ function statusVerteilen(): void {
     fokus: status.fokus?.taetigkeit ?? null,
     weg: status.weg?.taetigkeit ?? null,
     ohneFokus: status.zustand === 'ohne-fokus',
-    zaehlt: status.zustand === 'laeuft' || status.zustand === 'weg'
+    zaehlt: status.zustand === 'laeuft' || status.zustand === 'weg',
+    gold: sitzung?.spiel.trayGold() ?? false
   })
 }
 

@@ -2,6 +2,7 @@ import { Menu, nativeImage, Tray } from 'electron'
 import trayWinPfad from '../assets/tray/tray-win.png?asset'
 import trayWinPausePfad from '../assets/tray/tray-win-paused.png?asset'
 import trayWinFokusPfad from '../assets/tray/tray-win-fokus.png?asset'
+import trayWinGoldPfad from '../assets/tray/tray-win-gold.png?asset'
 import trayMacPfad from '../assets/tray/trayTemplate.png?asset'
 
 export interface TrayAktionen {
@@ -29,6 +30,8 @@ export interface TrayStand {
   ohneFokus: boolean
   /** Gerade wird Zeit gezählt (Fokus bzw. Aufzeichnung läuft, oder "Ich bin weg"): Symbol grün */
   zaehlt: boolean
+  /** Season-Pass-Belohnung ab Level 10 (22. September 2026): das Symbol leuchtet gold statt grün, solange Zeit gezählt wird */
+  gold: boolean
 }
 
 /**
@@ -41,6 +44,7 @@ export class TrayLeiste {
   private readonly bildPause: Electron.NativeImage
   /** Grün, solange Zeit gezählt wird (Windows; auf dem Mac ist das Symbol einfarbig, dort sagt es der Titel). */
   private readonly bildFokus: Electron.NativeImage
+  private readonly bildGold: Electron.NativeImage
 
   constructor(private readonly aktionen: TrayAktionen) {
     if (process.platform === 'darwin') {
@@ -48,15 +52,17 @@ export class TrayLeiste {
       this.bild.setTemplateImage(true)
       this.bildPause = this.bild
       this.bildFokus = this.bild
+      this.bildGold = this.bild
     } else {
       this.bild = nativeImage.createFromPath(trayWinPfad)
       this.bildPause = nativeImage.createFromPath(trayWinPausePfad)
       this.bildFokus = nativeImage.createFromPath(trayWinFokusPfad)
+      this.bildGold = nativeImage.createFromPath(trayWinGoldPfad)
     }
     this.tray = new Tray(this.bild)
     this.tray.setToolTip('wessamedia Zeit')
     this.tray.on('click', () => this.aktionen.oeffnen())
-    this.aktualisieren({ angemeldet: false, heuteText: '0,0 h', rang: 0, pausiert: false, fokus: null, weg: null, ohneFokus: false, zaehlt: false })
+    this.aktualisieren({ angemeldet: false, heuteText: '0,0 h', rang: 0, pausiert: false, fokus: null, weg: null, ohneFokus: false, zaehlt: false, gold: false })
   }
 
   aktualisieren(stand: TrayStand): void {
@@ -79,7 +85,7 @@ export class TrayLeiste {
     ])
     this.tray.setContextMenu(menue)
     this.tray.setToolTip(stand.pausiert ? 'wessamedia Zeit · Erfassung pausiert' : stand.ohneFokus ? `wessamedia Zeit · Kein Fokus · ${zeile}` : `wessamedia Zeit · ${zeile}`)
-    this.tray.setImage(stand.pausiert ? this.bildPause : stand.zaehlt ? this.bildFokus : this.bild)
+    this.tray.setImage(stand.pausiert ? this.bildPause : stand.zaehlt ? (stand.gold ? this.bildGold : this.bildFokus) : this.bild)
     if (process.platform === 'darwin') {
       this.tray.setTitle(stand.angemeldet ? (stand.pausiert ? 'Pause' : stand.ohneFokus ? 'Kein Fokus' : stand.heuteText) : '')
     }

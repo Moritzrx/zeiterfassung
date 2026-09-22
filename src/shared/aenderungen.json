@@ -1,5 +1,19 @@
 [
   {
+    "version": "1.0.51",
+    "datum": "2026-09-22",
+    "titel": "Boss-Raid, Season Pass, Daily Quests, Duelle, Team-Feed, Ränge bis 70 Stunden",
+    "punkte": [
+      "Boss der Woche auf dem Team-Screen: ein Boss mit Lebensbalken aus Teamstunden. Jede produktive Stunde von euch dreien ist Schaden. Fällt er bis Sonntag, bekommt jeder 60 Season-Punkte und der nächste wird stärker. Besiegte Bosse stehen in der Trophäenhalle.",
+      "Season Pass (12 Wochen, Season 1 seit 14. September): Punkte für Daily Quests, Streaks, Bosse, Duelle und Medaillen, alle 150 Punkte ein Level. Belohnungen: Titel unter deinem Namen, Rahmen ums Wappen, Hintergrund-Stimmungen, goldenes Tray-Symbol. Auf der Woche unter „Belohnungen“.",
+      "Daily Quests auf „Heute“: jeden Tag drei Aufgaben („Früher Vogel“, „Am Stück“, „Tagesziel“ …) mit Fortschritt, dazu der Streak: Tage in Folge mit mindestens 4 Stunden, mit Bonus bei 3, 7, 14 und 30 Tagen.",
+      "Duelle auf dem Team-Screen: fordere jemanden heraus (mehr Stunden bis Freitag, mehr Stunden in einer Tätigkeit, oder wer morgen früher am Start ist). Der Sieger bekommt 40 Punkte, der Verlierer schuldet den Einsatz, zum Beispiel einen Kaffee.",
+      "Team-Feed: Medaillen, Ränge, Boss-Schaden, Streaks, Quests und Duelle der drei in einem Verlauf, mit Reaktionen (🔥 👏 💪 😂 ❤️) und eigenen Nachrichten.",
+      "Ränge gehen jetzt bis 70 Stunden: Rang 16 bis 20 (Ascendant, Celestial, Astral, Cosmic, Omega) in der neuen Stufe Astral mit eigenem Wappen.",
+      "Neuer Tag, neue Ansicht: „Heute“, „Woche“ und „Eintragen“ springen um Mitternacht (und beim Öffnen nach längerer Zeit) von selbst auf den aktuellen Tag bzw. die laufende Woche."
+    ]
+  },
+  {
     "version": "1.0.50",
     "datum": "2026-09-16",
     "titel": "Fokus ohne Löcher, alles außer Grün ist rot",

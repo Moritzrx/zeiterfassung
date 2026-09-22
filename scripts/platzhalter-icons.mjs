@@ -70,6 +70,8 @@ writeFileSync(join(ORDNER, 'tray-win.png'), kreis(32, GRAU))
 writeFileSync(join(ORDNER, 'tray-win-paused.png'), kreis(32, [90, 90, 96]))
 // Grün (#00C076 wie "produktiv"), solange Zeit gezählt wird: Fokus oder "Ich bin weg" läuft.
 writeFileSync(join(ORDNER, 'tray-win-fokus.png'), kreis(32, [0, 192, 118]))
+// Gold (#E8B923), Belohnung aus dem Season Pass ab Level 10 (22. September 2026): ersetzt Grün, solange Zeit gezählt wird.
+writeFileSync(join(ORDNER, 'tray-win-gold.png'), kreis(32, [232, 185, 35]))
 writeFileSync(join(ORDNER, 'trayTemplate.png'), kreis(16, SCHWARZ))
 writeFileSync(join(ORDNER, 'trayTemplate@2x.png'), kreis(32, SCHWARZ))
 console.log('Platzhalter geschrieben nach', ORDNER)

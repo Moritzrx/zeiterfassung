@@ -94,16 +94,19 @@ export function TeamFeed(): ReactElement {
       {!fehler && feed.length === 0 && <p className="mt-3 text-sm text-dim">Noch nichts passiert. Medaillen, Boss-Schaden, Streaks und Duelle landen hier von selbst.</p>}
       <div className="mt-2 divide-y divide-panel-2">
         {feed.map((e) => {
-          const istIch = e.userId === status?.userId
+          // Boss-Ereignisse gehören dem Team, nicht dem Rechner, der sie zuerst gesehen hat.
+          const teamEreignis = e.typ === 'boss' || e.typ === 'boss-schaden'
+          const istIch = !teamEreignis && e.userId === status?.userId
+          const name = teamEreignis ? 'Team' : e.name
           return (
             <div key={e.id} className="flex gap-3 py-3">
-              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs ${istIch ? 'bg-produktiv text-ground' : 'bg-panel-2 text-ink'}`}>
-                {initialen(e.name)}
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs ${istIch ? 'bg-produktiv text-ground' : teamEreignis ? 'bg-orange/25 text-orange' : 'bg-panel-2 text-ink'}`}>
+                {teamEreignis ? <Skull size={14} strokeWidth={1.8} /> : initialen(e.name)}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 text-xs text-dim">
                   <span className={e.typ === 'nachricht' ? 'text-mute' : 'text-orange'}>{SYMBOLE[e.typ] ?? SYMBOLE.nachricht}</span>
-                  <span className="text-mute">{e.name}</span>
+                  <span className="text-mute">{name}</span>
                   <span>{zeitText(e.erstelltAm)}</span>
                 </p>
                 <p className={`mt-0.5 text-sm ${e.typ === 'nachricht' ? '' : 'text-ink/90'}`}>{e.text}</p>
